@@ -115,6 +115,151 @@ class GameService {
     this.io.to('control-panel').emit('buzzers-disarmed', { gameId });
   }
 
+  async evaluateAnswer(gameId, isCorrect, buzzerPosition = 0) {
+    const gameState = this.activeGames.get(gameId);
+    if (!gameState || !gameState.buzzerOrder.length) {
+      throw new Error('No active question or buzzer presses found');
+    }
+
+    const game = await this.getGame(gameId);
+    const currentQuestion = game.questions[game.current_question_index];
+    
+    if (!currentQuestion) {
+      throw new Error('Current question not found');
+    }
+
+    // Get the buzzer entry at the specified position
+    const buzzerEntry = gameState.buzzerOrder[buzzerPosition];
+    if (!buzzerEntry) {
+      throw new Error('Buzzer entry not found at position ' + buzzerPosition);
+    }
+
+    const pointsToAward = isCorrect ? currentQuestion.points : -Math.floor(currentQuestion.points * 0.5);
+    
+    // Award or deduct points
+    await this.awardPoints(gameId, buzzerEntry.groupId, pointsToAward);
+    
+    // Mark this buzzer entry as evaluated
+    buzzerEntry.evaluated = true;
+    buzzerEntry.isCorrect = isCorrect;
+    buzzerEntry.pointsAwarded = pointsToAward;
+
+    // Emit answer evaluation event
+    this.io.to(`game-${gameId}`).emit('answer-evaluated', {
+      gameId,
+      groupId: buzzerEntry.groupId,
+      isCorrect,
+      pointsAwarded: pointsToAward,
+      buzzerPosition,
+      nextInLine: gameState.buzzerOrder.length > buzzerPosition + 1 ? gameState.buzzerOrder[buzzerPosition + 1] : null
+    });
+
+    this.io.to('control-panel').emit('answer-evaluated', {
+      gameId,
+      groupId: buzzerEntry.groupId,
+      isCorrect,
+      pointsAwarded: pointsToAward,
+      buzzerPosition,
+      remainingBuzzers: gameState.buzzerOrder.slice(buzzerPosition + 1).filter(b => !b.evaluated),
+      questionComplete: isCorrect || gameState.buzzerOrder.slice(buzzerPosition + 1).filter(b => !b.evaluated).length === 0
+    });
+
+    // If answer is correct, move to next question preparation
+    if (isCorrect) {
+      await this.prepareNextQuestion(gameId);
+    }
+
+    return {
+      success: true,
+      isCorrect,
+      pointsAwarded: pointsToAward,
+      nextInLine: gameState.buzzerOrder.length > buzzerPosition + 1 && !isCorrect,
+      questionComplete: isCorrect || gameState.buzzerOrder.slice(buzzerPosition + 1).filter(b => !b.evaluated).length === 0
+    };
+  }
+
+  async prepareNextQuestion(gameId) {
+    const game = await this.getGame(gameId);
+    const nextQuestionIndex = game.current_question_index + 1;
+    
+    if (nextQuestionIndex < game.questions.length) {
+      // Update current question index but don't start yet (host controls when to start)
+      await this.db.run(
+        'UPDATE games SET current_question_index = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [nextQuestionIndex, 'waiting_for_next', gameId]
+      );
+      
+      this.io.to(`game-${gameId}`).emit('question-prepared', {
+        gameId,
+        nextQuestionIndex,
+        question: game.questions[nextQuestionIndex],
+        totalQuestions: game.questions.length
+      });
+      
+      this.io.to('control-panel').emit('question-prepared', {
+        gameId,
+        nextQuestionIndex,
+        question: game.questions[nextQuestionIndex],
+        totalQuestions: game.questions.length
+      });
+    } else {
+      // Game completed
+      await this.db.run(
+        'UPDATE games SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        ['game_over', gameId]
+      );
+      
+      this.io.to(`game-${gameId}`).emit('game-completed', {
+        gameId,
+        finalScores: game.groups.sort((a, b) => b.score - a.score)
+      });
+      
+      this.io.to('control-panel').emit('game-completed', {
+        gameId,
+        finalScores: game.groups.sort((a, b) => b.score - a.score)
+      });
+    }
+
+    // Clear the active game state
+    this.activeGames.delete(gameId);
+  }
+
+  async getNextInLineBuzzer(gameId) {
+    const gameState = this.activeGames.get(gameId);
+    if (!gameState || !gameState.buzzerOrder.length) {
+      return null;
+    }
+
+    // Find the first unevaluated buzzer entry
+    const nextBuzzer = gameState.buzzerOrder.find(buzzer => !buzzer.evaluated);
+    return nextBuzzer || null;
+  }
+
+  async getCurrentQuestionState(gameId) {
+    const gameState = this.activeGames.get(gameId);
+    const game = await this.getGame(gameId);
+    
+    if (!gameState) {
+      return {
+        hasActiveQuestion: false,
+        currentQuestion: null,
+        buzzerOrder: [],
+        nextInLine: null
+      };
+    }
+
+    const currentQuestion = game.questions[game.current_question_index];
+    const nextInLine = this.getNextInLineBuzzer(gameId);
+    
+    return {
+      hasActiveQuestion: true,
+      currentQuestion,
+      buzzerOrder: gameState.buzzerOrder,
+      nextInLine: await nextInLine,
+      timeRemaining: Math.max(0, gameState.timeLimit - (Date.now() - gameState.startTime))
+    };
+  }
+
   async handleBuzzerPress(data) {
     const { gameId, groupId, timestamp, buzzer_id } = data;
     const gameState = this.activeGames.get(gameId);

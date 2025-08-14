@@ -129,7 +129,10 @@ class GameDisplay {
 
         this.hideWaitingScreen(); // Ensure waiting screen is hidden when question starts
         this.hideAllSections();
+        
+        // Add smooth reveal animation
         this.elements.questionSection.classList.remove('hidden');
+        this.elements.questionSection.classList.add('animate-fade-in');
         
         this.elements.questionText.textContent = data.question.text;
         
@@ -156,7 +159,13 @@ class GameDisplay {
         this.updateBuzzerResults();
         
         if (this.buzzerOrder.length === 1) {
-            this.showMessage('First Buzzer!', `${this.getTeamName(data.groupId)} buzzed in first!`, 2000);
+            this.showMessage('⚡ First Buzzer!', `${this.getTeamName(data.groupId)} buzzed in first!`, 2000);
+            
+            // Add visual feedback with screen flash effect
+            document.body.style.background = 'linear-gradient(135deg, #FFD700 0%, #FF6B35 100%)';
+            setTimeout(() => {
+                document.body.style.background = '';
+            }, 200);
         }
     }
 
@@ -164,7 +173,10 @@ class GameDisplay {
         this.updateTeamScore(data.groupId, data.newScore);
         
         if (data.pointsAwarded > 0) {
-            this.showMessage('Points Awarded!', `+${data.pointsAwarded} points to ${this.getTeamName(data.groupId)}!`, 3000);
+            this.showMessage('🎉 Points Awarded!', `+${data.pointsAwarded} points to ${this.getTeamName(data.groupId)}!`, 3000);
+            
+            // Create floating points animation
+            this.createFloatingPointsAnimation(data.groupId, data.pointsAwarded);
         }
     }
 
@@ -180,6 +192,7 @@ class GameDisplay {
         this.stopTimer();
         
         const totalTime = this.currentQuestion?.time_limit || 30;
+        const timerElement = document.querySelector('.timer');
         
         this.questionTimer = setInterval(() => {
             this.timeRemaining--;
@@ -188,10 +201,26 @@ class GameDisplay {
             const progress = (this.timeRemaining / totalTime) * 360;
             this.elements.timerCircle.style.setProperty('--progress', `${progress}deg`);
             
+            // Add warning and danger states with smooth transitions
+            timerElement.classList.remove('warning', 'danger');
+            if (this.timeRemaining <= 5) {
+                timerElement.classList.add('danger');
+            } else if (this.timeRemaining <= 10) {
+                timerElement.classList.add('warning');
+            }
+            
             if (this.timeRemaining <= 0) {
                 this.stopTimer();
             }
         }, 1000);
+        
+        // Add entrance animation to question section
+        if (this.elements.questionSection) {
+            this.elements.questionSection.classList.add('animate-in');
+            setTimeout(() => {
+                this.elements.questionSection.classList.remove('animate-in');
+            }, 500);
+        }
     }
 
     stopTimer() {
@@ -203,7 +232,13 @@ class GameDisplay {
 
     showBuzzerResults() {
         this.elements.buzzerResults.classList.remove('hidden');
+        this.elements.buzzerResults.classList.add('animate-slide-up');
         this.updateBuzzerResults();
+        
+        // Remove animation class after completion
+        setTimeout(() => {
+            this.elements.buzzerResults.classList.remove('animate-slide-up');
+        }, 350);
     }
 
     updateBuzzerResults() {
@@ -254,7 +289,7 @@ class GameDisplay {
         teams.sort((a, b) => b.score - a.score).forEach((team, index) => {
             const teamItem = document.createElement('div');
             teamItem.className = 'team-item';
-            teamItem.style.setProperty('--team-color', team.color || '#FFF');
+            teamItem.style.setProperty('--team-color', team.color || '#6750A4');
             teamItem.dataset.teamId = team.id;
             
             teamItem.innerHTML = `
@@ -262,9 +297,23 @@ class GameDisplay {
                 <span class="team-score">${team.score}</span>
             `;
             
+            // Enhanced leader styling with Material Design colors
             if (index === 0 && team.score > 0) {
-                teamItem.style.boxShadow = '0 0 20px rgba(255, 215, 0, 0.5)';
+                teamItem.style.background = 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)';
+                teamItem.style.boxShadow = '0 8px 32px rgba(255, 215, 0, 0.4), 0 0 0 1px rgba(255, 215, 0, 0.1)';
+                teamItem.style.transform = 'scale(1.05)';
+                
+                // Add crown emoji for leader
+                const crownSpan = document.createElement('span');
+                crownSpan.textContent = '👑';
+                crownSpan.style.marginLeft = '8px';
+                crownSpan.style.fontSize = '1.2em';
+                teamItem.querySelector('.team-name').appendChild(crownSpan);
             }
+            
+            // Staggered entrance animations
+            teamItem.style.animationDelay = `${index * 100}ms`;
+            teamItem.classList.add('animate-fade-in');
             
             teamsList.appendChild(teamItem);
         });
@@ -274,12 +323,27 @@ class GameDisplay {
         const teamItem = document.querySelector(`[data-team-id="${groupId}"]`);
         if (teamItem) {
             const scoreElement = teamItem.querySelector('.team-score');
-            scoreElement.textContent = newScore;
             
-            teamItem.style.transform = 'scale(1.1)';
+            // Animate score change with bounce effect
+            scoreElement.style.transform = 'scale(1.3)';
+            scoreElement.style.color = 'var(--md-sys-color-primary)';
+            
             setTimeout(() => {
-                teamItem.style.transform = 'scale(1)';
-            }, 500);
+                scoreElement.textContent = newScore;
+                scoreElement.style.transform = 'scale(1)';
+                scoreElement.style.color = '';
+            }, 200);
+            
+            // Enhanced team item animation with elevation
+            teamItem.style.transform = 'translateY(-8px) scale(1.02)';
+            teamItem.style.boxShadow = 'var(--md-sys-elevation-level5)';
+            teamItem.style.zIndex = '10';
+            
+            setTimeout(() => {
+                teamItem.style.transform = '';
+                teamItem.style.boxShadow = '';
+                teamItem.style.zIndex = '';
+            }, 600);
         }
     }
 
@@ -328,6 +392,15 @@ class GameDisplay {
         this.elements.overlayMessage.textContent = message;
         this.elements.messageOverlay.classList.remove('hidden');
         
+        // Add entrance animation
+        const messageContent = this.elements.messageOverlay.querySelector('.message-content');
+        if (messageContent) {
+            messageContent.style.animation = 'none';
+            setTimeout(() => {
+                messageContent.style.animation = 'bounceIn var(--md-sys-motion-duration-long1) var(--md-sys-motion-easing-emphasized)';
+            }, 10);
+        }
+        
         setTimeout(() => {
             this.elements.messageOverlay.classList.add('hidden');
         }, duration);
@@ -339,12 +412,65 @@ class GameDisplay {
         this.elements.answerSection.classList.add('hidden');
     }
 
+    createFloatingPointsAnimation(groupId, points) {
+        const teamItem = document.querySelector(`[data-team-id="${groupId}"]`);
+        if (!teamItem) return;
+        
+        const floatingElement = document.createElement('div');
+        floatingElement.textContent = `+${points}`;
+        floatingElement.style.cssText = `
+            position: absolute;
+            color: var(--md-sys-color-primary);
+            font-weight: 700;
+            font-size: 1.5em;
+            pointer-events: none;
+            z-index: 1000;
+            animation: floatUp 2s ease-out forwards;
+        `;
+        
+        const rect = teamItem.getBoundingClientRect();
+        floatingElement.style.left = `${rect.left + rect.width / 2}px`;
+        floatingElement.style.top = `${rect.top}px`;
+        
+        document.body.appendChild(floatingElement);
+        
+        // Add floating animation keyframes if not already present
+        if (!document.querySelector('#floating-points-keyframes')) {
+            const style = document.createElement('style');
+            style.id = 'floating-points-keyframes';
+            style.textContent = `
+                @keyframes floatUp {
+                    0% {
+                        opacity: 1;
+                        transform: translateY(0px) scale(1);
+                    }
+                    100% {
+                        opacity: 0;
+                        transform: translateY(-100px) scale(1.5);
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        setTimeout(() => {
+            floatingElement.remove();
+        }, 2000);
+    }
+
     resetDisplay() {
         this.hideAllSections();
         this.stopTimer();
         this.buzzerOrder = [];
         this.currentQuestion = null;
-        this.showWaitingScreen('Game has been reset');
+        
+        // Reset timer classes
+        const timerElement = document.querySelector('.timer');
+        if (timerElement) {
+            timerElement.classList.remove('warning', 'danger');
+        }
+        
+        this.showWaitingScreen('🔄 Game has been reset');
     }
 }
 

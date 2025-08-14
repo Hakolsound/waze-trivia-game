@@ -15,6 +15,8 @@ class HostControl {
         this.setupEventListeners();
         this.loadGames();
         this.refreshSystemStatus();
+        this.currentBuzzerPosition = 0;
+        this.evaluationHistory = [];
     }
 
     initializeElements() {
@@ -57,7 +59,23 @@ class HostControl {
             modalBuzzerStatusList: document.getElementById('modal-buzzer-status-list'),
             modalRefreshBuzzersBtn: document.getElementById('modal-refresh-buzzers-btn'),
             modalArmAllBuzzersBtn: document.getElementById('modal-arm-all-buzzers-btn'),
-            modalDisarmAllBuzzersBtn: document.getElementById('modal-disarm-all-buzzers-btn')
+            modalDisarmAllBuzzersBtn: document.getElementById('modal-disarm-all-buzzers-btn'),
+            
+            // Answer evaluation elements
+            answerEvaluationContainer: document.getElementById('answer-evaluation-container'),
+            noActiveQuestion: document.getElementById('no-active-question'),
+            currentAnswerer: document.getElementById('current-answerer'),
+            currentPosition: document.getElementById('current-position'),
+            currentTeamName: document.getElementById('current-team-name'),
+            currentBuzzerTime: document.getElementById('current-buzzer-time'),
+            questionPoints: document.getElementById('question-points'),
+            markCorrectBtn: document.getElementById('mark-correct-btn'),
+            markIncorrectBtn: document.getElementById('mark-incorrect-btn'),
+            nextInLineInfo: document.getElementById('next-in-line-info'),
+            nextTeamName: document.getElementById('next-team-name'),
+            nextBuzzerTime: document.getElementById('next-buzzer-time'),
+            evaluationHistory: document.getElementById('evaluation-history'),
+            evaluationList: document.getElementById('evaluation-list')
         };
     }
 
@@ -92,6 +110,7 @@ class HostControl {
         this.socket.on('question-start', (data) => {
             this.isQuestionActive = true;
             this.updateQuestionControls();
+            this.resetAnswerEvaluation(); // Clear previous evaluation state
         });
 
         this.socket.on('question-end', (data) => {
@@ -123,6 +142,19 @@ class HostControl {
         this.socket.on('esp32-status', (data) => {
             this.updateESP32Status(data);
         });
+
+        // Answer evaluation listeners
+        this.socket.on('answer-evaluated', (data) => {
+            this.handleAnswerEvaluated(data);
+        });
+
+        this.socket.on('question-prepared', (data) => {
+            this.handleQuestionPrepared(data);
+        });
+
+        this.socket.on('game-completed', (data) => {
+            this.handleGameCompleted(data);
+        });
     }
 
     setupEventListeners() {
@@ -153,6 +185,10 @@ class HostControl {
                 this.hideBuzzerStatusModal();
             }
         });
+
+        // Answer evaluation event listeners
+        this.elements.markCorrectBtn.addEventListener('click', () => this.markAnswer(true));
+        this.elements.markIncorrectBtn.addEventListener('click', () => this.markAnswer(false));
     }
 
     async loadGames() {
@@ -479,6 +515,7 @@ class HostControl {
     handleBuzzerPress(data) {
         this.buzzerOrder.push(data);
         this.updateBuzzerResults();
+        this.updateAnswerEvaluation();
     }
 
     resetControlPanel() {
@@ -488,6 +525,7 @@ class HostControl {
         this.updateBuzzerResults();
         this.updateQuestionControls();
         this.updateBuzzerStatus();
+        this.resetAnswerEvaluation();
     }
 
     updateConnectionStatus(status, connected) {
@@ -699,6 +737,172 @@ class HostControl {
             console.error('Failed to disarm buzzers:', error);
             this.showToast('Failed to disarm all buzzers', 'error');
         }
+    }
+
+    // Answer Evaluation Methods
+    updateAnswerEvaluation() {
+        if (!this.currentGame || !this.isQuestionActive || this.buzzerOrder.length === 0) {
+            this.showNoActiveQuestion();
+            return;
+        }
+
+        // Find the first unevaluated buzzer
+        const currentBuzzer = this.buzzerOrder.find(b => !b.evaluated);
+        if (!currentBuzzer) {
+            this.showNoActiveQuestion();
+            return;
+        }
+
+        this.showCurrentAnswerer(currentBuzzer);
+        this.showNextInLine();
+    }
+
+    showNoActiveQuestion() {
+        this.elements.noActiveQuestion.classList.remove('hidden');
+        this.elements.currentAnswerer.classList.add('hidden');
+        this.elements.evaluationHistory.classList.add('hidden');
+    }
+
+    showCurrentAnswerer(buzzer) {
+        this.elements.noActiveQuestion.classList.add('hidden');
+        this.elements.currentAnswerer.classList.remove('hidden');
+
+        const position = this.buzzerOrder.findIndex(b => b === buzzer) + 1;
+        const teamName = this.getTeamName(buzzer.groupId);
+        const deltaTime = (buzzer.deltaMs / 1000).toFixed(2);
+        const currentQuestion = this.questions[this.currentQuestionIndex];
+
+        // Update position indicator
+        const positionText = position === 1 ? '1st' : position === 2 ? '2nd' : position === 3 ? '3rd' : `${position}th`;
+        this.elements.currentPosition.textContent = positionText;
+
+        // Update team info
+        this.elements.currentTeamName.textContent = teamName;
+        this.elements.currentBuzzerTime.textContent = `Buzzed in at ${deltaTime}s`;
+
+        // Update points
+        this.elements.questionPoints.textContent = `+${currentQuestion?.points || 100}`;
+
+        // Store current buzzer position for evaluation
+        this.currentBuzzerPosition = this.buzzerOrder.indexOf(buzzer);
+    }
+
+    showNextInLine() {
+        const nextBuzzer = this.buzzerOrder.find((b, index) => 
+            index > this.currentBuzzerPosition && !b.evaluated
+        );
+
+        if (nextBuzzer) {
+            const nextTeamName = this.getTeamName(nextBuzzer.groupId);
+            const nextDeltaTime = (nextBuzzer.deltaMs / 1000).toFixed(2);
+            
+            this.elements.nextTeamName.textContent = nextTeamName;
+            this.elements.nextBuzzerTime.textContent = `${nextDeltaTime}s`;
+            this.elements.nextInLineInfo.classList.remove('hidden');
+        } else {
+            this.elements.nextInLineInfo.classList.add('hidden');
+        }
+    }
+
+    async markAnswer(isCorrect) {
+        if (!this.currentGame || this.currentBuzzerPosition === -1) {
+            this.showToast('No active buzzer to evaluate', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/games/${this.currentGame.id}/evaluate-answer`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    isCorrect,
+                    buzzerPosition: this.currentBuzzerPosition
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to evaluate answer');
+            }
+
+            const result = await response.json();
+            
+            // Mark this buzzer as evaluated locally
+            if (this.buzzerOrder[this.currentBuzzerPosition]) {
+                this.buzzerOrder[this.currentBuzzerPosition].evaluated = true;
+                this.buzzerOrder[this.currentBuzzerPosition].isCorrect = isCorrect;
+            }
+
+            const statusMessage = isCorrect ? 'Correct answer!' : 'Incorrect answer';
+            this.showToast(statusMessage, isCorrect ? 'success' : 'warning');
+
+            // Update the evaluation interface for next buzzer
+            setTimeout(() => {
+                this.updateAnswerEvaluation();
+            }, 500);
+
+        } catch (error) {
+            console.error('Failed to evaluate answer:', error);
+            this.showToast('Failed to evaluate answer', 'error');
+        }
+    }
+
+    handleAnswerEvaluated(data) {
+        // Add to evaluation history
+        const teamName = this.getTeamName(data.groupId);
+        this.addToEvaluationHistory(teamName, data.isCorrect, data.pointsAwarded);
+        
+        // Update team display to reflect new scores
+        this.updateTeamDisplay();
+
+        // If question is complete, reset evaluation interface
+        if (data.questionComplete) {
+            this.resetAnswerEvaluation();
+        }
+    }
+
+    addToEvaluationHistory(teamName, isCorrect, points) {
+        this.evaluationHistory.push({ teamName, isCorrect, points });
+        
+        const historyItem = document.createElement('div');
+        historyItem.className = `evaluation-item ${isCorrect ? 'correct' : 'incorrect'}`;
+        historyItem.innerHTML = `
+            <span class="team-name">${teamName}</span>
+            <span class="result">${isCorrect ? '✅ Correct' : '❌ Incorrect'}</span>
+            <span class="points">${points > 0 ? '+' : ''}${points} pts</span>
+        `;
+        
+        this.elements.evaluationList.prepend(historyItem);
+        this.elements.evaluationHistory.classList.remove('hidden');
+
+        // Add entrance animation
+        historyItem.style.transform = 'translateX(-20px)';
+        historyItem.style.opacity = '0';
+        setTimeout(() => {
+            historyItem.style.transform = 'translateX(0)';
+            historyItem.style.opacity = '1';
+        }, 50);
+    }
+
+    handleQuestionPrepared(data) {
+        this.showToast(`Next question prepared: ${data.question.text.substring(0, 50)}...`, 'info');
+        this.resetAnswerEvaluation();
+        
+        // Update current question index
+        this.currentQuestionIndex = data.nextQuestionIndex;
+        this.updateQuestionDisplay();
+    }
+
+    handleGameCompleted(data) {
+        this.showToast('🎉 Game completed! Final scores calculated.', 'success', 5000);
+        this.resetAnswerEvaluation();
+        this.resetControlPanel();
+    }
+
+    resetAnswerEvaluation() {
+        this.currentBuzzerPosition = -1;
+        this.evaluationHistory = [];
+        this.elements.evaluationList.innerHTML = '';
+        this.showNoActiveQuestion();
     }
 }
 

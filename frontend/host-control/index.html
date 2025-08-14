@@ -86,9 +86,56 @@
                 </div>
             </section>
 
+            <!-- Answer Evaluation -->
+            <section class="panel answer-evaluation">
+                <h2 data-icon="quiz">Answer Evaluation</h2>
+                <div id="answer-evaluation-container" class="answer-evaluation-container">
+                    <div id="no-active-question" class="no-active-content">
+                        <p>🤔 No active question or buzzer presses</p>
+                        <small>Start a question and wait for buzzer presses to evaluate answers</small>
+                    </div>
+                    
+                    <div id="current-answerer" class="current-answerer hidden">
+                        <div class="answerer-info">
+                            <div class="answerer-badge">
+                                <span class="position-indicator" id="current-position">1st</span>
+                                <div class="team-info">
+                                    <h3 id="current-team-name">Team Alpha</h3>
+                                    <p id="current-buzzer-time">Buzzed in at 2.3s</p>
+                                </div>
+                            </div>
+                            <div class="question-points">
+                                <span class="points-value" id="question-points">+100</span>
+                                <small>points available</small>
+                            </div>
+                        </div>
+                        
+                        <div class="evaluation-controls">
+                            <button id="mark-correct-btn" class="btn btn-success">
+                                <span class="material-icons">check_circle</span>
+                                Correct Answer
+                            </button>
+                            <button id="mark-incorrect-btn" class="btn btn-danger">
+                                <span class="material-icons">cancel</span>
+                                Incorrect Answer
+                            </button>
+                        </div>
+                        
+                        <div id="next-in-line-info" class="next-in-line-info hidden">
+                            <p>📋 Next in line: <strong id="next-team-name">Team Beta</strong> (buzzed at <span id="next-buzzer-time">3.1s</span>)</p>
+                        </div>
+                    </div>
+                    
+                    <div id="evaluation-history" class="evaluation-history hidden">
+                        <h4>Answer History</h4>
+                        <div id="evaluation-list" class="evaluation-list"></div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Score Management -->
             <section class="panel score-management">
-                <h2>Score Management</h2>
+                <h2 data-icon="leaderboard">Score Management</h2>
                 <div id="teams-scoring" class="teams-scoring">
                     <!-- Teams will be populated dynamically -->
                 </div>

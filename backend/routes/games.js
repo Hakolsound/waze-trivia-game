@@ -188,5 +188,33 @@ module.exports = (gameService) => {
     }
   });
 
+  router.post('/:id/evaluate-answer', async (req, res) => {
+    try {
+      const { isCorrect, buzzerPosition = 0 } = req.body;
+      const result = await gameService.evaluateAnswer(req.params.id, isCorrect, buzzerPosition);
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  router.get('/:id/question-state', async (req, res) => {
+    try {
+      const state = await gameService.getCurrentQuestionState(req.params.id);
+      res.json(state);
+    } catch (error) {
+      res.status(404).json({ error: error.message });
+    }
+  });
+
+  router.get('/:id/next-buzzer', async (req, res) => {
+    try {
+      const nextBuzzer = await gameService.getNextInLineBuzzer(req.params.id);
+      res.json({ nextBuzzer });
+    } catch (error) {
+      res.status(404).json({ error: error.message });
+    }
+  });
+
   return router;
 };

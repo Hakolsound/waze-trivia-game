@@ -89,7 +89,18 @@ class ESP32Service {
         const [buzzerId, timestamp] = buzzerData.split(',');
         this.handleBuzzerPress(buzzerId, parseInt(timestamp));
       } else if (data.startsWith('STATUS:')) {
-        const statusData = JSON.parse(data.substring(7));
+        // Parse STATUS:timestamp,armed=0,game=0,devices=1,presses=0 format
+        const statusStr = data.substring(7);
+        const parts = statusStr.split(',');
+        const statusData = {};
+        
+        parts.forEach(part => {
+          if (part.includes('=')) {
+            const [key, value] = part.split('=');
+            statusData[key] = isNaN(value) ? value : parseInt(value);
+          }
+        });
+        
         this.updateBuzzerStates(statusData);
       } else if (data.startsWith('ACK:')) {
         console.log('ESP32 Command acknowledged:', data.substring(4));

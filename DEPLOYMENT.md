@@ -21,14 +21,14 @@ This guide covers deploying the Waze Trivia Game system to a Raspberry Pi using 
 ssh pi@<pi-ip-address>
 
 # Download and run the setup script
-curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/waze-trivia-game/main/deploy/pi-setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Hakolsound/waze-trivia-game/main/deploy/pi-setup.sh | bash
 ```
 
 ### Step 2: Network Configuration
 
 ```bash
 # Configure static IP (192.168.0.111) and hostname (game.local)
-sudo /home/pi/waze-trivia-game/deploy/network-setup.sh
+sudo curl -fsSL https://raw.githubusercontent.com/Hakolsound/waze-trivia-game/main/deploy/network-setup.sh | bash
 
 # System will reboot automatically
 ```
@@ -40,7 +40,7 @@ sudo /home/pi/waze-trivia-game/deploy/network-setup.sh
 ssh pi@game.local  # or ssh pi@192.168.0.111
 
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/waze-trivia-game.git /opt/waze-trivia
+git clone https://github.com/Hakolsound/waze-trivia-game.git /opt/waze-trivia
 cd /opt/waze-trivia
 
 # Copy your Firebase key (if using Firebase)
@@ -124,7 +124,7 @@ sudo mkdir -p /opt/waze-trivia /var/log/waze-trivia
 sudo chown pi:pi /opt/waze-trivia /var/log/waze-trivia
 
 # Clone repository
-git clone https://github.com/YOUR_USERNAME/waze-trivia-game.git /opt/waze-trivia
+git clone https://github.com/Hakolsound/waze-trivia-game.git /opt/waze-trivia
 cd /opt/waze-trivia
 
 # Install dependencies

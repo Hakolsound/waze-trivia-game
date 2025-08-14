@@ -18,7 +18,7 @@ This guide helps you set up a Git repository for easy Raspberry Pi deployment an
    cd "/Users/ronpeer/Code Projects local/Waze Trivia Game"
    
    # Add remote origin
-   git remote add origin https://github.com/YOUR_USERNAME/waze-trivia-game.git
+   git remote add origin https://github.com/Hakolsound/waze-trivia-game.git
    
    # Push to GitHub
    git branch -M main
@@ -26,7 +26,7 @@ This guide helps you set up a Git repository for easy Raspberry Pi deployment an
    ```
 
 3. **Verify upload**:
-   - Visit your repository: `https://github.com/YOUR_USERNAME/waze-trivia-game`
+   - Visit your repository: `https://github.com/Hakolsound/waze-trivia-game`
    - Check that all files are present
    - README.md should display properly
 
@@ -34,13 +34,13 @@ This guide helps you set up a Git repository for easy Raspberry Pi deployment an
 
 #### GitLab
 ```bash
-git remote add origin https://gitlab.com/YOUR_USERNAME/waze-trivia-game.git
+git remote add origin https://gitlab.com/Hakolsound/waze-trivia-game.git
 git push -u origin main
 ```
 
 #### Bitbucket
 ```bash
-git remote add origin https://bitbucket.org/YOUR_USERNAME/waze-trivia-game.git
+git remote add origin https://bitbucket.org/Hakolsound/waze-trivia-game.git
 git push -u origin main
 ```
 
@@ -90,14 +90,14 @@ Once your repository is set up, use these commands on the Pi:
 
 ### Initial Setup
 ```bash
-# One-time setup (replace YOUR_USERNAME)
-curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/waze-trivia-game/main/deploy/pi-setup.sh | bash
+# One-time setup
+curl -fsSL https://raw.githubusercontent.com/Hakolsound/waze-trivia-game/main/deploy/pi-setup.sh | bash
 
 # Configure network
-sudo curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/waze-trivia-game/main/deploy/network-setup.sh | bash
+sudo curl -fsSL https://raw.githubusercontent.com/Hakolsound/waze-trivia-game/main/deploy/network-setup.sh | bash
 
 # Clone and deploy (after reboot)
-git clone https://github.com/YOUR_USERNAME/waze-trivia-game.git /opt/waze-trivia
+git clone https://github.com/Hakolsound/waze-trivia-game.git /opt/waze-trivia
 cd /opt/waze-trivia
 ./deploy/pi-deploy.sh
 ```
@@ -208,7 +208,7 @@ cat ~/.ssh/id_ed25519.pub
 # Copy and paste to your Git service
 
 # Clone with SSH
-git clone git@github.com:YOUR_USERNAME/waze-trivia-game.git /opt/waze-trivia
+git clone git@github.com:Hakolsound/waze-trivia-game.git /opt/waze-trivia
 ```
 
 ---
@@ -267,11 +267,11 @@ git push origin main
 
 ## 📞 Quick Reference
 
-### Repository URLs to Update
-Replace `YOUR_USERNAME` in these files:
-- `DEPLOYMENT.md` - All GitHub URLs
-- `deploy/pi-setup.sh` - Raw GitHub URL
-- This guide - Example commands
+### Repository URLs Updated
+All files now use the correct GitHub URLs:
+- `DEPLOYMENT.md` - All GitHub URLs updated
+- `GIT_SETUP.md` - All example commands updated
+- Ready for deployment with Hakolsound username
 
 ### Important Commands
 ```bash

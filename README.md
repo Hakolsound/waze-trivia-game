@@ -33,7 +33,7 @@ Group Buzzers → Central ESP32 → Raspberry Pi → Web Clients
 
 1. **Clone and install dependencies**:
 ```bash
-git clone <repository-url>
+git clone https://github.com/Hakolsound/waze-trivia-game.git
 cd waze-trivia-game
 npm install
 ```

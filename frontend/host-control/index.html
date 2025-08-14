@@ -3,193 +3,207 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trivia Game Host Control</title>
+    <title>Waze Trivia Host Control</title>
     <link rel="stylesheet" href="/control/control.css">
     <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
     <div id="app">
-        <header class="control-header">
-            <h1>Host Control Panel</h1>
-            <div class="connection-status">
-                <span id="connection-status">Connecting...</span>
-                <div id="status-indicator" class="status-indicator"></div>
+        <!-- Main Header with Game Status -->
+        <header class="game-header">
+            <div class="header-content">
+                <div class="game-branding">
+                    <h1>🏆 Waze Trivia Host</h1>
+                    <div class="game-info">
+                        <span id="current-game-name">No Game Loaded</span>
+                        <div class="game-stats">
+                            <span id="question-progress">Q 0/0</span>
+                            <span id="teams-count">0 Teams</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="connection-status">
+                    <div class="status-item">
+                        <div id="status-indicator" class="status-indicator"></div>
+                        <span id="connection-status">Connecting...</span>
+                    </div>
+                </div>
             </div>
         </header>
 
-        <main class="control-main">
-            <!-- Game Selection -->
-            <section class="panel game-selection">
-                <h2>Game Selection</h2>
-                <div class="game-selector">
-                    <select id="game-select">
-                        <option value="">Select a game...</option>
+        <main class="host-main">
+            <!-- Primary Game Control Area -->
+            <section class="primary-control">
+                <!-- Question Display Card -->
+                <div class="question-card">
+                    <div class="card-header">
+                        <h2>📝 Current Question</h2>
+                        <div class="question-meta" id="question-meta">
+                            <span class="points">100 pts</span>
+                            <span class="time">30s</span>
+                        </div>
+                    </div>
+                    <div class="question-content">
+                        <p id="question-text">Select a game and start your first question...</p>
+                        <div id="question-media" class="question-media hidden"></div>
+                    </div>
+                </div>
+
+                <!-- Main Control Buttons -->
+                <div class="main-controls">
+                    <button id="start-question-btn" class="btn btn-primary btn-large" disabled>
+                        <span class="material-icons">play_arrow</span>
+                        Start Question
+                    </button>
+                    <button id="show-answers-btn" class="btn btn-success btn-large hidden">
+                        <span class="material-icons">quiz</span>
+                        Evaluate Answers
+                    </button>
+                    <button id="next-question-btn" class="btn btn-info btn-large" disabled>
+                        <span class="material-icons">skip_next</span>
+                        Next Question
+                    </button>
+                </div>
+
+                <!-- Quick Actions Bar -->
+                <div class="quick-actions">
+                    <button id="prev-question-btn" class="btn btn-secondary" disabled>
+                        <span class="material-icons">skip_previous</span>
+                        Previous
+                    </button>
+                    <select id="question-select" class="question-selector" disabled>
+                        <option value="">Jump to Question...</option>
                     </select>
-                    <button id="load-game-btn" class="btn btn-primary">Load Game</button>
-                </div>
-                <div class="current-game" id="current-game-info">
-                    No game loaded
-                </div>
-            </section>
-
-            <!-- Question Control -->
-            <section class="panel question-control">
-                <h2>Question Control</h2>
-                <div class="question-info">
-                    <div id="current-question-display">
-                        <p id="question-text">No question active</p>
-                        <div id="question-meta" class="question-meta"></div>
-                    </div>
-                </div>
-                
-                <div class="question-controls">
-                    <button id="start-question-btn" class="btn btn-success" disabled>Start Question</button>
-                    <button id="end-question-btn" class="btn btn-warning" disabled>End Question</button>
-                    <button id="next-question-btn" class="btn btn-info" disabled>Next Question</button>
-                    <button id="prev-question-btn" class="btn btn-secondary" disabled>Previous Question</button>
-                </div>
-
-                <div class="question-navigation">
-                    <label for="question-select">Jump to Question:</label>
-                    <select id="question-select" disabled>
-                        <option value="">Select question...</option>
-                    </select>
+                    <button id="end-question-btn" class="btn btn-warning" disabled>
+                        <span class="material-icons">stop</span>
+                        End Question
+                    </button>
                 </div>
             </section>
 
-            <!-- Buzzer Control -->
-            <section class="panel buzzer-control">
-                <h2>Buzzer Control</h2>
-                <div class="buzzer-status">
-                    <div class="status-item">
-                        <label>ESP32 Status:</label>
-                        <span id="esp32-status">Disconnected</span>
+            <!-- Secondary Panels -->
+            <div class="secondary-panels">
+                <!-- Live Scoreboard -->
+                <div class="panel scoreboard-panel">
+                    <div class="panel-header">
+                        <h3>🏆 Live Scoreboard</h3>
+                        <button id="refresh-scores-btn" class="btn btn-small btn-secondary">
+                            <span class="material-icons">refresh</span>
+                        </button>
                     </div>
-                    <div class="status-item">
-                        <label>Buzzers Armed:</label>
-                        <span id="buzzers-armed">No</span>
+                    <div id="teams-scoring" class="teams-list">
+                        <div class="no-teams">No teams loaded</div>
                     </div>
                 </div>
 
-                <div class="buzzer-controls">
-                    <button id="arm-buzzers-btn" class="btn btn-warning" disabled>Arm Buzzers</button>
-                    <button id="disarm-buzzers-btn" class="btn btn-secondary" disabled>Disarm Buzzers</button>
-                    <button id="test-buzzers-btn" class="btn btn-info">Test All Buzzers</button>
-                    <button id="show-buzzer-status-btn" class="btn btn-info">Show Buzzer Status</button>
-                </div>
-
-                <div class="buzzer-results" id="buzzer-results">
-                    <h3>Buzzer Order</h3>
-                    <div id="buzzer-list" class="buzzer-list">
-                        No buzzer presses yet
-                    </div>
-                </div>
-            </section>
-
-            <!-- Answer Evaluation -->
-            <section class="panel answer-evaluation">
-                <h2 data-icon="quiz">Answer Evaluation</h2>
-                <div id="answer-evaluation-container" class="answer-evaluation-container">
-                    <div id="no-active-question" class="no-active-content">
-                        <p>🤔 No active question or buzzer presses</p>
-                        <small>Start a question and wait for buzzer presses to evaluate answers</small>
-                    </div>
-                    
-                    <div id="current-answerer" class="current-answerer hidden">
-                        <div class="answerer-info">
-                            <div class="answerer-badge">
-                                <span class="position-indicator" id="current-position">1st</span>
-                                <div class="team-info">
-                                    <h3 id="current-team-name">Team Alpha</h3>
-                                    <p id="current-buzzer-time">Buzzed in at 2.3s</p>
-                                </div>
-                            </div>
-                            <div class="question-points">
-                                <span class="points-value" id="question-points">+100</span>
-                                <small>points available</small>
-                            </div>
-                        </div>
-                        
-                        <div class="evaluation-controls">
-                            <button id="mark-correct-btn" class="btn btn-success">
-                                <span class="material-icons">check_circle</span>
-                                Correct Answer
-                            </button>
-                            <button id="mark-incorrect-btn" class="btn btn-danger">
-                                <span class="material-icons">cancel</span>
-                                Incorrect Answer
-                            </button>
-                        </div>
-                        
-                        <div id="next-in-line-info" class="next-in-line-info hidden">
-                            <p>📋 Next in line: <strong id="next-team-name">Team Beta</strong> (buzzed at <span id="next-buzzer-time">3.1s</span>)</p>
+                <!-- Buzzer Status -->
+                <div class="panel buzzer-panel">
+                    <div class="panel-header">
+                        <h3>🔔 Buzzer Control</h3>
+                        <div class="buzzer-status-indicator">
+                            <span id="buzzers-armed-status">Disarmed</span>
                         </div>
                     </div>
-                    
-                    <div id="evaluation-history" class="evaluation-history hidden">
-                        <h4>Answer History</h4>
-                        <div id="evaluation-list" class="evaluation-list"></div>
+                    <div class="buzzer-controls">
+                        <button id="arm-buzzers-btn" class="btn btn-warning" disabled>Arm Buzzers</button>
+                        <button id="disarm-buzzers-btn" class="btn btn-secondary" disabled>Disarm</button>
+                    </div>
+                    <div id="buzzer-results" class="buzzer-results">
+                        <div class="no-buzzes">No buzzer presses yet</div>
                     </div>
                 </div>
-            </section>
 
-            <!-- Score Management -->
-            <section class="panel score-management">
-                <h2 data-icon="leaderboard">Score Management</h2>
-                <div id="teams-scoring" class="teams-scoring">
-                    <!-- Teams will be populated dynamically -->
-                </div>
-                
-                <div class="scoring-controls">
-                    <div class="award-points">
-                        <input type="number" id="points-input" placeholder="Points" value="100">
-                        <select id="team-select" disabled>
-                            <option value="">Select team...</option>
+                <!-- Game Management -->
+                <div class="panel game-panel">
+                    <div class="panel-header">
+                        <h3>⚙️ Game Setup</h3>
+                    </div>
+                    <div class="game-selector">
+                        <select id="game-select">
+                            <option value="">Select a game...</option>
                         </select>
-                        <button id="award-points-btn" class="btn btn-success" disabled>Award Points</button>
+                        <button id="load-game-btn" class="btn btn-primary">Load Game</button>
                     </div>
-                    
-                    <div class="game-controls">
+                    <div class="game-actions">
                         <button id="reset-game-btn" class="btn btn-danger">Reset Game</button>
                         <button id="end-game-btn" class="btn btn-warning">End Game</button>
                     </div>
                 </div>
-            </section>
-
-            <!-- System Status -->
-            <section class="panel system-status">
-                <h2>System Status</h2>
-                <div class="status-grid">
-                    <div class="status-item">
-                        <label>Database:</label>
-                        <span id="db-status">Unknown</span>
-                    </div>
-                    <div class="status-item">
-                        <label>ESP32:</label>
-                        <span id="hardware-status">Unknown</span>
-                    </div>
-                    <div class="status-item">
-                        <label>Firebase:</label>
-                        <span id="firebase-status">Unknown</span>
-                    </div>
-                    <div class="status-item">
-                        <label>Connected Clients:</label>
-                        <span id="client-count">0</span>
-                    </div>
-                </div>
-                
-                <button id="refresh-status-btn" class="btn btn-secondary">Refresh Status</button>
-            </section>
+            </div>
         </main>
 
-        <!-- Toast Notifications -->
-        <div id="toast-container" class="toast-container"></div>
-        
+        <!-- Answer Evaluation Modal -->
+        <div id="answer-evaluation-modal" class="modal hidden">
+            <div class="modal-content evaluation-modal">
+                <div class="modal-header">
+                    <h3>🎯 Answer Evaluation</h3>
+                    <button id="close-evaluation-btn" class="btn btn-secondary">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+                
+                <div class="modal-body">
+                    <div id="no-buzzer-content" class="no-buzzer-content">
+                        <div class="empty-state">
+                            <span class="material-icons">quiz</span>
+                            <h4>Waiting for Buzzer Presses</h4>
+                            <p>Start a question and wait for teams to buzz in</p>
+                        </div>
+                    </div>
+
+                    <div id="current-answerer-content" class="current-answerer-content hidden">
+                        <div class="answerer-card">
+                            <div class="answerer-info">
+                                <div class="position-badge">
+                                    <span id="current-position">1st</span>
+                                </div>
+                                <div class="team-details">
+                                    <h4 id="current-team-name">Team Alpha</h4>
+                                    <p id="current-buzzer-time">Buzzed in at 2.3s</p>
+                                </div>
+                                <div class="points-display">
+                                    <span id="question-points">+100</span>
+                                    <small>points</small>
+                                </div>
+                            </div>
+                            
+                            <div class="evaluation-actions">
+                                <button id="mark-correct-btn" class="btn btn-success btn-large">
+                                    <span class="material-icons">check_circle</span>
+                                    Correct Answer
+                                </button>
+                                <button id="mark-incorrect-btn" class="btn btn-danger btn-large">
+                                    <span class="material-icons">cancel</span>
+                                    Incorrect Answer
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="next-in-line-card" class="next-in-line-card hidden">
+                            <div class="next-info">
+                                <span class="material-icons">queue</span>
+                                <div>
+                                    <strong>Next in line:</strong>
+                                    <span id="next-team-name">Team Beta</span>
+                                    <small>(buzzed at <span id="next-buzzer-time">3.1s</span>)</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="evaluation-history-section" class="evaluation-history-section hidden">
+                        <h4>📋 Answer History</h4>
+                        <div id="evaluation-list" class="evaluation-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Buzzer Status Modal -->
         <div id="buzzer-status-modal" class="modal hidden">
             <div class="modal-content large">
                 <div class="modal-header">
-                    <h3>Live Buzzer Status</h3>
+                    <h3>🔔 Live Buzzer Status</h3>
                     <button id="close-buzzer-modal-btn" class="btn btn-secondary">Close</button>
                 </div>
                 
@@ -206,6 +220,44 @@
                 </div>
             </div>
         </div>
+
+        <!-- Quick Actions Floating Panel -->
+        <div class="floating-actions">
+            <button id="show-buzzer-status-btn" class="fab" title="Show Buzzer Status">
+                <span class="material-icons">sensors</span>
+            </button>
+            <button id="award-points-btn" class="fab" title="Manual Points">
+                <span class="material-icons">add</span>
+            </button>
+        </div>
+
+        <!-- Manual Points Award Modal -->
+        <div id="manual-points-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>🎁 Award Points Manually</h3>
+                    <button id="close-points-modal-btn" class="btn btn-secondary">Close</button>
+                </div>
+                <div class="modal-body">
+                    <div class="points-form">
+                        <div class="form-group">
+                            <label for="points-input">Points to Award:</label>
+                            <input type="number" id="points-input" value="100" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="team-select">Select Team:</label>
+                            <select id="team-select" class="form-select">
+                                <option value="">Select team...</option>
+                            </select>
+                        </div>
+                        <button id="award-points-submit-btn" class="btn btn-success btn-large">Award Points</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div id="toast-container" class="toast-container"></div>
     </div>
 
     <script src="/control/control.js"></script>

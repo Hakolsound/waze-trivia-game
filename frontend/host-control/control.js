@@ -21,39 +21,60 @@ class HostControl {
 
     initializeElements() {
         this.elements = {
+            // Header elements
             connectionStatus: document.getElementById('connection-status'),
             statusIndicator: document.getElementById('status-indicator'),
-            gameSelect: document.getElementById('game-select'),
-            loadGameBtn: document.getElementById('load-game-btn'),
-            currentGameInfo: document.getElementById('current-game-info'),
+            currentGameName: document.getElementById('current-game-name'),
+            questionProgress: document.getElementById('question-progress'),
+            teamsCount: document.getElementById('teams-count'),
+            
+            // Main question elements
             questionText: document.getElementById('question-text'),
             questionMeta: document.getElementById('question-meta'),
+            questionMedia: document.getElementById('question-media'),
+            
+            // Main control buttons
             startQuestionBtn: document.getElementById('start-question-btn'),
-            endQuestionBtn: document.getElementById('end-question-btn'),
+            showAnswersBtn: document.getElementById('show-answers-btn'),
             nextQuestionBtn: document.getElementById('next-question-btn'),
+            endQuestionBtn: document.getElementById('end-question-btn'),
             prevQuestionBtn: document.getElementById('prev-question-btn'),
             questionSelect: document.getElementById('question-select'),
-            esp32Status: document.getElementById('esp32-status'),
-            buzzersArmed: document.getElementById('buzzers-armed'),
+            
+            // Secondary panels
+            teamsScoring: document.getElementById('teams-scoring'),
+            refreshScoresBtn: document.getElementById('refresh-scores-btn'),
+            buzzersArmedStatus: document.getElementById('buzzers-armed-status'),
             armBuzzersBtn: document.getElementById('arm-buzzers-btn'),
             disarmBuzzersBtn: document.getElementById('disarm-buzzers-btn'),
-            testBuzzersBtn: document.getElementById('test-buzzers-btn'),
-            buzzerList: document.getElementById('buzzer-list'),
-            teamsScoring: document.getElementById('teams-scoring'),
-            pointsInput: document.getElementById('points-input'),
-            teamSelect: document.getElementById('team-select'),
-            awardPointsBtn: document.getElementById('award-points-btn'),
+            buzzerResults: document.getElementById('buzzer-results'),
+            gameSelect: document.getElementById('game-select'),
+            loadGameBtn: document.getElementById('load-game-btn'),
             resetGameBtn: document.getElementById('reset-game-btn'),
             endGameBtn: document.getElementById('end-game-btn'),
-            dbStatus: document.getElementById('db-status'),
-            hardwareStatus: document.getElementById('hardware-status'),
-            firebaseStatus: document.getElementById('firebase-status'),
-            clientCount: document.getElementById('client-count'),
-            refreshStatusBtn: document.getElementById('refresh-status-btn'),
-            toastContainer: document.getElementById('toast-container'),
             
-            // Buzzer status modal elements
+            // Floating action buttons
             showBuzzerStatusBtn: document.getElementById('show-buzzer-status-btn'),
+            awardPointsBtn: document.getElementById('award-points-btn'),
+            
+            // Answer evaluation modal
+            answerEvaluationModal: document.getElementById('answer-evaluation-modal'),
+            closeEvaluationBtn: document.getElementById('close-evaluation-btn'),
+            noBuzzerContent: document.getElementById('no-buzzer-content'),
+            currentAnswererContent: document.getElementById('current-answerer-content'),
+            currentPosition: document.getElementById('current-position'),
+            currentTeamName: document.getElementById('current-team-name'),
+            currentBuzzerTime: document.getElementById('current-buzzer-time'),
+            questionPoints: document.getElementById('question-points'),
+            markCorrectBtn: document.getElementById('mark-correct-btn'),
+            markIncorrectBtn: document.getElementById('mark-incorrect-btn'),
+            nextInLineCard: document.getElementById('next-in-line-card'),
+            nextTeamName: document.getElementById('next-team-name'),
+            nextBuzzerTime: document.getElementById('next-buzzer-time'),
+            evaluationHistorySection: document.getElementById('evaluation-history-section'),
+            evaluationList: document.getElementById('evaluation-list'),
+            
+            // Buzzer status modal
             buzzerStatusModal: document.getElementById('buzzer-status-modal'),
             closeBuzzerModalBtn: document.getElementById('close-buzzer-modal-btn'),
             modalBuzzerStatusList: document.getElementById('modal-buzzer-status-list'),
@@ -61,21 +82,15 @@ class HostControl {
             modalArmAllBuzzersBtn: document.getElementById('modal-arm-all-buzzers-btn'),
             modalDisarmAllBuzzersBtn: document.getElementById('modal-disarm-all-buzzers-btn'),
             
-            // Answer evaluation elements
-            answerEvaluationContainer: document.getElementById('answer-evaluation-container'),
-            noActiveQuestion: document.getElementById('no-active-question'),
-            currentAnswerer: document.getElementById('current-answerer'),
-            currentPosition: document.getElementById('current-position'),
-            currentTeamName: document.getElementById('current-team-name'),
-            currentBuzzerTime: document.getElementById('current-buzzer-time'),
-            questionPoints: document.getElementById('question-points'),
-            markCorrectBtn: document.getElementById('mark-correct-btn'),
-            markIncorrectBtn: document.getElementById('mark-incorrect-btn'),
-            nextInLineInfo: document.getElementById('next-in-line-info'),
-            nextTeamName: document.getElementById('next-team-name'),
-            nextBuzzerTime: document.getElementById('next-buzzer-time'),
-            evaluationHistory: document.getElementById('evaluation-history'),
-            evaluationList: document.getElementById('evaluation-list')
+            // Manual points modal
+            manualPointsModal: document.getElementById('manual-points-modal'),
+            closePointsModalBtn: document.getElementById('close-points-modal-btn'),
+            pointsInput: document.getElementById('points-input'),
+            teamSelect: document.getElementById('team-select'),
+            awardPointsSubmitBtn: document.getElementById('award-points-submit-btn'),
+            
+            // Toast container
+            toastContainer: document.getElementById('toast-container')
         };
     }
 
@@ -158,37 +173,65 @@ class HostControl {
     }
 
     setupEventListeners() {
+        // Main game controls
         this.elements.loadGameBtn.addEventListener('click', () => this.loadSelectedGame());
         this.elements.startQuestionBtn.addEventListener('click', () => this.startQuestion());
         this.elements.endQuestionBtn.addEventListener('click', () => this.endQuestion());
         this.elements.nextQuestionBtn.addEventListener('click', () => this.nextQuestion());
         this.elements.prevQuestionBtn.addEventListener('click', () => this.prevQuestion());
         this.elements.questionSelect.addEventListener('change', (e) => this.jumpToQuestion(e.target.value));
-        this.elements.armBuzzersBtn.addEventListener('click', () => this.armBuzzers());
-        this.elements.disarmBuzzersBtn.addEventListener('click', () => this.disarmBuzzers());
-        this.elements.testBuzzersBtn.addEventListener('click', () => this.testBuzzers());
-        this.elements.awardPointsBtn.addEventListener('click', () => this.awardPoints());
         this.elements.resetGameBtn.addEventListener('click', () => this.resetGame());
         this.elements.endGameBtn.addEventListener('click', () => this.endGame());
-        this.elements.refreshStatusBtn.addEventListener('click', () => this.refreshSystemStatus());
         
-        // Buzzer status modal event listeners
+        // Buzzer controls
+        this.elements.armBuzzersBtn.addEventListener('click', () => this.armBuzzers());
+        this.elements.disarmBuzzersBtn.addEventListener('click', () => this.disarmBuzzers());
+        
+        // Show answer evaluation modal
+        this.elements.showAnswersBtn.addEventListener('click', () => this.showAnswerEvaluationModal());
+        
+        // Floating action buttons
         this.elements.showBuzzerStatusBtn.addEventListener('click', () => this.showBuzzerStatusModal());
+        this.elements.awardPointsBtn.addEventListener('click', () => this.showManualPointsModal());
+        
+        // Answer evaluation modal
+        this.elements.closeEvaluationBtn.addEventListener('click', () => this.hideAnswerEvaluationModal());
+        this.elements.markCorrectBtn.addEventListener('click', () => this.markAnswer(true));
+        this.elements.markIncorrectBtn.addEventListener('click', () => this.markAnswer(false));
+        
+        // Buzzer status modal
         this.elements.closeBuzzerModalBtn.addEventListener('click', () => this.hideBuzzerStatusModal());
         this.elements.modalRefreshBuzzersBtn.addEventListener('click', () => this.refreshModalBuzzerStatus());
         this.elements.modalArmAllBuzzersBtn.addEventListener('click', () => this.modalArmAllBuzzers());
         this.elements.modalDisarmAllBuzzersBtn.addEventListener('click', () => this.modalDisarmAllBuzzers());
         
-        // Close modal when clicking outside
+        // Manual points modal
+        this.elements.closePointsModalBtn.addEventListener('click', () => this.hideManualPointsModal());
+        this.elements.awardPointsSubmitBtn.addEventListener('click', () => this.awardManualPoints());
+        
+        // Close modals when clicking outside
+        this.elements.answerEvaluationModal.addEventListener('click', (e) => {
+            if (e.target === this.elements.answerEvaluationModal) {
+                this.hideAnswerEvaluationModal();
+            }
+        });
+        
         this.elements.buzzerStatusModal.addEventListener('click', (e) => {
             if (e.target === this.elements.buzzerStatusModal) {
                 this.hideBuzzerStatusModal();
             }
         });
-
-        // Answer evaluation event listeners
-        this.elements.markCorrectBtn.addEventListener('click', () => this.markAnswer(true));
-        this.elements.markIncorrectBtn.addEventListener('click', () => this.markAnswer(false));
+        
+        this.elements.manualPointsModal.addEventListener('click', (e) => {
+            if (e.target === this.elements.manualPointsModal) {
+                this.hideManualPointsModal();
+            }
+        });
+        
+        // Refresh scores button
+        if (this.elements.refreshScoresBtn) {
+            this.elements.refreshScoresBtn.addEventListener('click', () => this.updateTeamDisplay());
+        }
     }
 
     async loadGames() {
@@ -248,27 +291,51 @@ class HostControl {
 
     updateGameDisplay() {
         if (this.currentGame) {
-            this.elements.currentGameInfo.innerHTML = `
-                <strong>${this.currentGame.name}</strong><br>
-                Status: ${this.currentGame.status}<br>
-                Teams: ${this.teams.length}<br>
-                Questions: ${this.questions.length}
-            `;
+            this.elements.currentGameName.textContent = this.currentGame.name;
+            this.elements.questionProgress.textContent = `Q ${this.currentQuestionIndex + 1}/${this.questions.length}`;
+            this.elements.teamsCount.textContent = `${this.teams.length} Teams`;
+            
+            // Update question meta in the main card
+            if (this.questions.length > 0) {
+                const currentQuestion = this.questions[this.currentQuestionIndex];
+                if (currentQuestion) {
+                    const pointsSpan = this.elements.questionMeta.querySelector('.points');
+                    const timeSpan = this.elements.questionMeta.querySelector('.time');
+                    if (pointsSpan) pointsSpan.textContent = `${currentQuestion.points || 100} pts`;
+                    if (timeSpan) timeSpan.textContent = `${currentQuestion.time_limit || 30}s`;
+                }
+            }
+        } else {
+            this.elements.currentGameName.textContent = 'No Game Loaded';
+            this.elements.questionProgress.textContent = 'Q 0/0';
+            this.elements.teamsCount.textContent = '0 Teams';
         }
     }
 
     updateTeamDisplay() {
+        if (this.teams.length === 0) {
+            this.elements.teamsScoring.innerHTML = '<div class="no-teams">No teams loaded</div>';
+            this.elements.teamSelect.innerHTML = '<option value="">No teams available</option>';
+            return;
+        }
+        
         this.elements.teamsScoring.innerHTML = '';
         this.elements.teamSelect.innerHTML = '<option value="">Select team...</option>';
         
-        this.teams.sort((a, b) => b.score - a.score).forEach(team => {
+        this.teams.sort((a, b) => b.score - a.score).forEach((team, index) => {
             const teamItem = document.createElement('div');
             teamItem.className = 'team-score-item';
-            teamItem.style.setProperty('--team-color', team.color || '#667eea');
+            teamItem.style.setProperty('--team-color', team.color || '#00D4FF');
             teamItem.innerHTML = `
                 <span class="team-name">${team.name}</span>
                 <span class="team-score">${team.score}</span>
             `;
+            
+            // Add crown for leader
+            if (index === 0 && team.score > 0) {
+                teamItem.querySelector('.team-name').innerHTML += ' 👑';
+            }
+            
             this.elements.teamsScoring.appendChild(teamItem);
             
             const option = document.createElement('option');
@@ -322,17 +389,18 @@ class HostControl {
     }
 
     updateBuzzerStatus() {
-        this.elements.buzzersArmed.textContent = this.isBuzzersArmed ? 'Yes' : 'No';
+        this.elements.buzzersArmedStatus.textContent = this.isBuzzersArmed ? 'Armed' : 'Disarmed';
         this.updateQuestionControls();
     }
 
     updateBuzzerResults() {
         if (this.buzzerOrder.length === 0) {
-            this.elements.buzzerList.innerHTML = 'No buzzer presses yet';
+            this.elements.buzzerResults.innerHTML = '<div class="no-buzzes">No buzzer presses yet</div>';
+            this.elements.showAnswersBtn.classList.add('hidden');
             return;
         }
 
-        this.elements.buzzerList.innerHTML = '';
+        this.elements.buzzerResults.innerHTML = '';
         this.buzzerOrder.forEach((buzzer, index) => {
             const buzzerItem = document.createElement('div');
             buzzerItem.className = 'buzzer-item';
@@ -346,8 +414,11 @@ class HostControl {
                 <span>${deltaTime}s</span>
             `;
             
-            this.elements.buzzerList.appendChild(buzzerItem);
+            this.elements.buzzerResults.appendChild(buzzerItem);
         });
+        
+        // Show the evaluate answers button when there are buzzer presses
+        this.elements.showAnswersBtn.classList.remove('hidden');
     }
 
     getTeamName(groupId) {
@@ -901,8 +972,165 @@ class HostControl {
     resetAnswerEvaluation() {
         this.currentBuzzerPosition = -1;
         this.evaluationHistory = [];
-        this.elements.evaluationList.innerHTML = '';
-        this.showNoActiveQuestion();
+        if (this.elements.evaluationList) {
+            this.elements.evaluationList.innerHTML = '';
+        }
+        this.hideAnswerEvaluationModal();
+    }
+
+    // Modal Management Methods
+    showAnswerEvaluationModal() {
+        this.elements.answerEvaluationModal.classList.remove('hidden');
+        this.updateAnswerEvaluationModal();
+    }
+
+    hideAnswerEvaluationModal() {
+        this.elements.answerEvaluationModal.classList.add('hidden');
+    }
+
+    updateAnswerEvaluationModal() {
+        if (!this.currentGame || !this.isQuestionActive || this.buzzerOrder.length === 0) {
+            this.elements.noBuzzerContent.classList.remove('hidden');
+            this.elements.currentAnswererContent.classList.add('hidden');
+            this.elements.evaluationHistorySection.classList.add('hidden');
+            return;
+        }
+
+        // Find the first unevaluated buzzer
+        const currentBuzzer = this.buzzerOrder.find(b => !b.evaluated);
+        if (!currentBuzzer) {
+            this.elements.noBuzzerContent.classList.remove('hidden');
+            this.elements.currentAnswererContent.classList.add('hidden');
+            return;
+        }
+
+        this.showCurrentAnswererInModal(currentBuzzer);
+        this.showNextInLineInModal();
+        
+        // Show evaluation history if there is any
+        if (this.evaluationHistory.length > 0) {
+            this.elements.evaluationHistorySection.classList.remove('hidden');
+        }
+    }
+
+    showCurrentAnswererInModal(buzzer) {
+        this.elements.noBuzzerContent.classList.add('hidden');
+        this.elements.currentAnswererContent.classList.remove('hidden');
+
+        const position = this.buzzerOrder.findIndex(b => b === buzzer) + 1;
+        const teamName = this.getTeamName(buzzer.groupId);
+        const deltaTime = (buzzer.deltaMs / 1000).toFixed(2);
+        const currentQuestion = this.questions[this.currentQuestionIndex];
+
+        // Update position indicator
+        const positionText = position === 1 ? '1st' : position === 2 ? '2nd' : position === 3 ? '3rd' : `${position}th`;
+        this.elements.currentPosition.textContent = positionText;
+
+        // Update team info
+        this.elements.currentTeamName.textContent = teamName;
+        this.elements.currentBuzzerTime.textContent = `Buzzed in at ${deltaTime}s`;
+
+        // Update points
+        this.elements.questionPoints.textContent = `+${currentQuestion?.points || 100}`;
+
+        // Store current buzzer position for evaluation
+        this.currentBuzzerPosition = this.buzzerOrder.indexOf(buzzer);
+    }
+
+    showNextInLineInModal() {
+        const nextBuzzer = this.buzzerOrder.find((b, index) => 
+            index > this.currentBuzzerPosition && !b.evaluated
+        );
+
+        if (nextBuzzer) {
+            const nextTeamName = this.getTeamName(nextBuzzer.groupId);
+            const nextDeltaTime = (nextBuzzer.deltaMs / 1000).toFixed(2);
+            
+            this.elements.nextTeamName.textContent = nextTeamName;
+            this.elements.nextBuzzerTime.textContent = `${nextDeltaTime}s`;
+            this.elements.nextInLineCard.classList.remove('hidden');
+        } else {
+            this.elements.nextInLineCard.classList.add('hidden');
+        }
+    }
+
+    showManualPointsModal() {
+        this.elements.manualPointsModal.classList.remove('hidden');
+    }
+
+    hideManualPointsModal() {
+        this.elements.manualPointsModal.classList.add('hidden');
+    }
+
+    async awardManualPoints() {
+        const teamId = this.elements.teamSelect.value;
+        const points = parseInt(this.elements.pointsInput.value) || 0;
+        
+        if (!teamId || !this.currentGame) {
+            this.showToast('Please select a team and enter points', 'error');
+            return;
+        }
+
+        try {
+            await fetch(`/api/games/${this.currentGame.id}/award-points`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ groupId: teamId, points })
+            });
+            
+            this.elements.pointsInput.value = '100';
+            this.elements.teamSelect.value = '';
+            this.hideManualPointsModal();
+            this.showToast(`Awarded ${points} points!`, 'success');
+        } catch (error) {
+            this.showToast('Failed to award points', 'error');
+        }
+    }
+
+    // Override the original answer evaluation methods to work with modal
+    showNoActiveQuestion() {
+        // This method is now handled by updateAnswerEvaluationModal
+    }
+
+    showCurrentAnswerer(buzzer) {
+        // This method is now handled by showCurrentAnswererInModal
+    }
+
+    showNextInLine() {
+        // This method is now handled by showNextInLineInModal
+    }
+
+    updateAnswerEvaluation() {
+        // Update the modal content when buzzer order changes
+        if (!this.elements.answerEvaluationModal.classList.contains('hidden')) {
+            this.updateAnswerEvaluationModal();
+        }
+    }
+
+    // Override addToEvaluationHistory to work with new modal structure
+    addToEvaluationHistory(teamName, isCorrect, points) {
+        this.evaluationHistory.push({ teamName, isCorrect, points });
+        
+        if (this.elements.evaluationList) {
+            const historyItem = document.createElement('div');
+            historyItem.className = `evaluation-item ${isCorrect ? 'correct' : 'incorrect'}`;
+            historyItem.innerHTML = `
+                <span class="team-name">${teamName}</span>
+                <span class="result">${isCorrect ? '✅ Correct' : '❌ Incorrect'}</span>
+                <span class="points">${points > 0 ? '+' : ''}${points} pts</span>
+            `;
+            
+            this.elements.evaluationList.prepend(historyItem);
+            this.elements.evaluationHistorySection.classList.remove('hidden');
+
+            // Add entrance animation
+            historyItem.style.transform = 'translateX(-20px)';
+            historyItem.style.opacity = '0';
+            setTimeout(() => {
+                historyItem.style.transform = 'translateX(0)';
+                historyItem.style.opacity = '1';
+            }, 50);
+        }
     }
 }
 

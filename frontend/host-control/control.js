@@ -8,6 +8,7 @@ class HostControl {
         this.buzzerOrder = [];
         this.isQuestionActive = false;
         this.isBuzzersArmed = false;
+        this.buzzerDevices = new Map();
         
         this.initializeElements();
         this.setupSocketListeners();
@@ -47,7 +48,16 @@ class HostControl {
             firebaseStatus: document.getElementById('firebase-status'),
             clientCount: document.getElementById('client-count'),
             refreshStatusBtn: document.getElementById('refresh-status-btn'),
-            toastContainer: document.getElementById('toast-container')
+            toastContainer: document.getElementById('toast-container'),
+            
+            // Buzzer status modal elements
+            showBuzzerStatusBtn: document.getElementById('show-buzzer-status-btn'),
+            buzzerStatusModal: document.getElementById('buzzer-status-modal'),
+            closeBuzzerModalBtn: document.getElementById('close-buzzer-modal-btn'),
+            modalBuzzerStatusList: document.getElementById('modal-buzzer-status-list'),
+            modalRefreshBuzzersBtn: document.getElementById('modal-refresh-buzzers-btn'),
+            modalArmAllBuzzersBtn: document.getElementById('modal-arm-all-buzzers-btn'),
+            modalDisarmAllBuzzersBtn: document.getElementById('modal-disarm-all-buzzers-btn')
         };
     }
 
@@ -100,6 +110,19 @@ class HostControl {
             this.resetControlPanel();
             this.showToast('Game has been reset', 'info');
         });
+
+        // Buzzer device monitoring listeners
+        this.socket.on('esp32-device', (data) => {
+            this.updateBuzzerDevice(data);
+        });
+
+        this.socket.on('buzzer-heartbeat', (data) => {
+            this.updateBuzzerHeartbeat(data);
+        });
+
+        this.socket.on('esp32-status', (data) => {
+            this.updateESP32Status(data);
+        });
     }
 
     setupEventListeners() {
@@ -116,6 +139,20 @@ class HostControl {
         this.elements.resetGameBtn.addEventListener('click', () => this.resetGame());
         this.elements.endGameBtn.addEventListener('click', () => this.endGame());
         this.elements.refreshStatusBtn.addEventListener('click', () => this.refreshSystemStatus());
+        
+        // Buzzer status modal event listeners
+        this.elements.showBuzzerStatusBtn.addEventListener('click', () => this.showBuzzerStatusModal());
+        this.elements.closeBuzzerModalBtn.addEventListener('click', () => this.hideBuzzerStatusModal());
+        this.elements.modalRefreshBuzzersBtn.addEventListener('click', () => this.refreshModalBuzzerStatus());
+        this.elements.modalArmAllBuzzersBtn.addEventListener('click', () => this.modalArmAllBuzzers());
+        this.elements.modalDisarmAllBuzzersBtn.addEventListener('click', () => this.modalDisarmAllBuzzers());
+        
+        // Close modal when clicking outside
+        this.elements.buzzerStatusModal.addEventListener('click', (e) => {
+            if (e.target === this.elements.buzzerStatusModal) {
+                this.hideBuzzerStatusModal();
+            }
+        });
     }
 
     async loadGames() {
@@ -476,6 +513,192 @@ class HostControl {
         setTimeout(() => {
             toast.remove();
         }, duration);
+    }
+
+    // Buzzer Status Modal Methods
+    showBuzzerStatusModal() {
+        this.elements.buzzerStatusModal.classList.remove('hidden');
+        this.refreshModalBuzzerStatus();
+    }
+
+    hideBuzzerStatusModal() {
+        this.elements.buzzerStatusModal.classList.add('hidden');
+    }
+
+    updateBuzzerDevice(data) {
+        const deviceId = data.device_id || data.id;
+        const now = Date.now();
+        
+        this.buzzerDevices.set(deviceId, {
+            ...data,
+            last_seen: now,
+            status: 'online'
+        });
+        
+        this.updateModalBuzzerStatusDisplay();
+    }
+
+    updateBuzzerHeartbeat(data) {
+        const deviceId = data.device_id || data.id;
+        const now = Date.now();
+        
+        if (this.buzzerDevices.has(deviceId)) {
+            const device = this.buzzerDevices.get(deviceId);
+            device.last_seen = now;
+            device.status = 'online';
+            this.buzzerDevices.set(deviceId, device);
+        } else {
+            // Create new device entry from heartbeat
+            this.buzzerDevices.set(deviceId, {
+                device_id: deviceId,
+                name: `Buzzer ${deviceId}`,
+                last_seen: now,
+                status: 'online',
+                ...data
+            });
+        }
+        
+        this.updateModalBuzzerStatusDisplay();
+    }
+
+    updateESP32Status(data) {
+        // Update ESP32 connection status in main UI
+        if (this.elements.esp32Status) {
+            this.elements.esp32Status.textContent = data.connected ? 'Connected' : 'Disconnected';
+        }
+    }
+
+    getTeamNameByBuzzerId(buzzerId) {
+        const team = this.teams.find(team => team.buzzer_id === buzzerId);
+        return team ? team.name : null;
+    }
+
+    updateModalBuzzerStatusDisplay() {
+        const container = this.elements.modalBuzzerStatusList;
+        if (!container) return;
+        
+        const now = Date.now();
+        const staleMaxLength = 60000; // 60 seconds
+        
+        if (this.buzzerDevices.size === 0) {
+            container.innerHTML = '<div class="no-buzzers">No buzzers detected</div>';
+            return;
+        }
+        
+        container.innerHTML = '';
+        
+        // Sort devices by last seen (most recent first)
+        const sortedDevices = Array.from(this.buzzerDevices.values()).sort((a, b) => b.last_seen - a.last_seen);
+        
+        sortedDevices.forEach(device => {
+            const timeSinceLastSeen = now - device.last_seen;
+            let status = 'offline';
+            let statusText = 'Offline';
+            
+            if (timeSinceLastSeen < staleMaxLength) {
+                status = 'online';
+                statusText = 'Online';
+            } else if (timeSinceLastSeen < staleMaxLength * 2) {
+                status = 'stale';
+                statusText = 'Stale';
+            }
+            
+            const buzzerElement = document.createElement('div');
+            buzzerElement.className = `buzzer-item ${status}`;
+            
+            const lastSeenText = this.formatLastSeen(timeSinceLastSeen);
+            const teamName = this.getTeamNameByBuzzerId(device.device_id);
+            
+            buzzerElement.innerHTML = `
+                <div class="buzzer-info">
+                    <div class="buzzer-name">${device.name || `Buzzer ${device.device_id}`}</div>
+                    <div class="buzzer-meta">
+                        <span>ID: ${device.device_id}</span>
+                        <span class="last-seen">Last seen: ${lastSeenText}</span>
+                        ${teamName ? `<span class="team-name-display">Team: ${teamName}</span>` : '<span>No team assigned</span>'}
+                        ${device.armed !== undefined ? `<span>Armed: ${device.armed ? 'Yes' : 'No'}</span>` : ''}
+                    </div>
+                </div>
+                <div class="buzzer-status">
+                    <div class="buzzer-status-dot"></div>
+                    <span>${statusText}</span>
+                </div>
+            `;
+            
+            container.appendChild(buzzerElement);
+        });
+    }
+
+    formatLastSeen(milliseconds) {
+        const seconds = Math.floor(milliseconds / 1000);
+        
+        if (seconds < 60) {
+            return `${seconds}s ago`;
+        } else if (seconds < 3600) {
+            return `${Math.floor(seconds / 60)}m ago`;
+        } else {
+            return `${Math.floor(seconds / 3600)}h ago`;
+        }
+    }
+
+    async refreshModalBuzzerStatus() {
+        try {
+            const response = await fetch('/api/buzzers/devices');
+            if (response.ok) {
+                const devices = await response.json();
+                const now = Date.now();
+                
+                // Update our device map with fresh data
+                this.buzzerDevices.clear();
+                devices.forEach(device => {
+                    this.buzzerDevices.set(device.device_id, {
+                        ...device,
+                        last_seen: device.last_seen || now
+                    });
+                });
+                
+                this.updateModalBuzzerStatusDisplay();
+            }
+        } catch (error) {
+            console.error('Failed to refresh buzzer status:', error);
+            this.showToast('Failed to refresh buzzer status', 'error');
+        }
+    }
+
+    async modalArmAllBuzzers() {
+        try {
+            const response = await fetch('/api/buzzers/arm', {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                this.showToast('All buzzers armed successfully', 'success');
+                this.refreshModalBuzzerStatus();
+            } else {
+                throw new Error('Failed to arm buzzers');
+            }
+        } catch (error) {
+            console.error('Failed to arm buzzers:', error);
+            this.showToast('Failed to arm all buzzers', 'error');
+        }
+    }
+
+    async modalDisarmAllBuzzers() {
+        try {
+            const response = await fetch('/api/buzzers/disarm', {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                this.showToast('All buzzers disarmed successfully', 'success');
+                this.refreshModalBuzzerStatus();
+            } else {
+                throw new Error('Failed to disarm buzzers');
+            }
+        } catch (error) {
+            console.error('Failed to disarm buzzers:', error);
+            this.showToast('Failed to disarm all buzzers', 'error');
+        }
     }
 }
 

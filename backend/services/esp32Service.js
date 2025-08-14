@@ -206,6 +206,39 @@ class ESP32Service {
     return [];
   }
 
+  async getDevices() {
+    // Return array of buzzer devices with their status and last seen time
+    const devices = [];
+    const now = Date.now();
+    
+    for (const [buzzerId, state] of this.buzzerStates) {
+      devices.push({
+        device_id: buzzerId,
+        name: `Buzzer ${buzzerId}`,
+        status: state.armed ? 'armed' : 'disarmed',
+        last_seen: now,
+        connected: this.isConnectedFlag,
+        ...state
+      });
+    }
+    
+    // If no devices found but we're connected, return default set
+    if (devices.length === 0 && this.isConnectedFlag) {
+      for (let i = 1; i <= 4; i++) {
+        devices.push({
+          device_id: `buzzer_${i}`,
+          name: `Buzzer ${i}`,
+          status: 'disarmed',
+          last_seen: now,
+          connected: this.isConnectedFlag,
+          armed: false
+        });
+      }
+    }
+    
+    return devices;
+  }
+
   updateBuzzerStates(statusData) {
     for (const [buzzerId, state] of Object.entries(statusData)) {
       this.buzzerStates.set(buzzerId, state);

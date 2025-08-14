@@ -13,6 +13,7 @@
             <h1>Admin Configuration</h1>
             <div class="nav-tabs">
                 <button class="tab-button active" data-tab="games">Games</button>
+                <button class="tab-button" data-tab="branding">Branding</button>
                 <button class="tab-button" data-tab="groups">Teams</button>
                 <button class="tab-button" data-tab="questions">Questions</button>
                 <button class="tab-button" data-tab="system">System</button>
@@ -60,6 +61,206 @@
                             </div>
                         </form>
                     </div>
+                </div>
+            </section>
+
+            <!-- Branding Tab -->
+            <section id="branding-tab" class="tab-content">
+                <div class="tab-header">
+                    <h2>Game Branding & Design</h2>
+                    <div class="game-selector">
+                        <select id="branding-game-select">
+                            <option value="">Select a game to customize...</option>
+                        </select>
+                        <button id="preview-branding-btn" class="btn btn-info" disabled>Preview Changes</button>
+                    </div>
+                </div>
+
+                <div class="branding-content" id="branding-content">
+                    <div class="branding-panels">
+                        <!-- Logo & Visual Identity -->
+                        <div class="panel">
+                            <h3>🎨 Visual Identity</h3>
+                            <div class="branding-section">
+                                <div class="form-group">
+                                    <label for="game-logo">Logo Upload:</label>
+                                    <input type="file" id="game-logo" accept="image/*">
+                                    <div class="file-info">
+                                        <small>Recommended: PNG with transparent background, max 200x200px</small>
+                                        <div id="current-logo-preview" class="logo-preview hidden">
+                                            <img id="logo-preview-img" src="" alt="Current Logo">
+                                            <button id="remove-logo-btn" class="btn btn-danger btn-small">Remove Logo</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="logo-position">Logo Position:</label>
+                                        <select id="logo-position">
+                                            <option value="top-left">Top Left</option>
+                                            <option value="top-center">Top Center</option>
+                                            <option value="top-right" selected>Top Right</option>
+                                            <option value="bottom-left">Bottom Left</option>
+                                            <option value="bottom-center">Bottom Center</option>
+                                            <option value="bottom-right">Bottom Right</option>
+                                            <option value="center">Center Overlay</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="logo-size">Logo Size:</label>
+                                        <select id="logo-size">
+                                            <option value="small">Small (80px)</option>
+                                            <option value="medium" selected>Medium (120px)</option>
+                                            <option value="large">Large (160px)</option>
+                                            <option value="x-large">Extra Large (200px)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Color Scheme -->
+                        <div class="panel">
+                            <h3>🌈 Color Scheme</h3>
+                            <div class="branding-section">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="primary-color">Primary Color:</label>
+                                        <input type="color" id="primary-color" value="#667eea">
+                                        <span class="color-preview" id="primary-preview">#667eea</span>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="secondary-color">Secondary Color:</label>
+                                        <input type="color" id="secondary-color" value="#764ba2">
+                                        <span class="color-preview" id="secondary-preview">#764ba2</span>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="accent-color">Accent Color:</label>
+                                        <input type="color" id="accent-color" value="#FFD700">
+                                        <span class="color-preview" id="accent-preview">#FFD700</span>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="background-style">Background Style:</label>
+                                        <select id="background-style">
+                                            <option value="gradient" selected>Gradient</option>
+                                            <option value="solid">Solid Color</option>
+                                            <option value="pattern">Pattern</option>
+                                            <option value="image">Custom Image</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="color-presets">
+                                    <label>Quick Presets:</label>
+                                    <div class="preset-buttons">
+                                        <button class="preset-btn" data-preset="default">Default Blue</button>
+                                        <button class="preset-btn" data-preset="corporate">Corporate Gray</button>
+                                        <button class="preset-btn" data-preset="energetic">Energetic Orange</button>
+                                        <button class="preset-btn" data-preset="nature">Nature Green</button>
+                                        <button class="preset-btn" data-preset="royal">Royal Purple</button>
+                                        <button class="preset-btn" data-preset="modern">Modern Dark</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Typography & Layout -->
+                        <div class="panel">
+                            <h3>📝 Typography & Layout</h3>
+                            <div class="branding-section">
+                                <div class="form-group">
+                                    <label for="font-family">Font Family:</label>
+                                    <select id="font-family">
+                                        <option value="Segoe UI" selected>Segoe UI (Modern)</option>
+                                        <option value="Arial">Arial (Classic)</option>
+                                        <option value="Roboto">Roboto (Clean)</option>
+                                        <option value="Open Sans">Open Sans (Friendly)</option>
+                                        <option value="Montserrat">Montserrat (Bold)</option>
+                                        <option value="Poppins">Poppins (Rounded)</option>
+                                        <option value="Playfair Display">Playfair Display (Elegant)</option>
+                                    </select>
+                                </div>
+
+                                <div class="display-options">
+                                    <label>Display Options:</label>
+                                    <div class="checkbox-group">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="show-timer" checked>
+                                            Show Question Timer
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="show-scores" checked>
+                                            Show Live Scores
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="auto-advance">
+                                            Auto-advance Questions
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Game Settings -->
+                        <div class="panel">
+                            <h3>⚙️ Game Settings</h3>
+                            <div class="branding-section">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="default-question-time">Default Question Time (seconds):</label>
+                                        <input type="number" id="default-question-time" value="30" min="5" max="300">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="max-groups">Maximum Groups:</label>
+                                        <input type="number" id="max-groups" value="8" min="2" max="15">
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="game-description">Game Description/Subtitle:</label>
+                                    <input type="text" id="game-description" placeholder="e.g., Waze Team Building Event 2024">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Preview -->
+                    <div class="panel preview-panel">
+                        <h3>🔍 Live Preview</h3>
+                        <div class="preview-container">
+                            <div id="game-preview" class="game-preview">
+                                <div class="preview-header">
+                                    <h1 id="preview-title">Game Title</h1>
+                                    <div id="preview-logo" class="preview-logo hidden"></div>
+                                </div>
+                                <div class="preview-content">
+                                    <div class="preview-question">
+                                        <div class="preview-timer">30</div>
+                                        <h2>Sample Question: What is the capital of France?</h2>
+                                    </div>
+                                    <div class="preview-scores">
+                                        <div class="preview-team">Team Red: 150</div>
+                                        <div class="preview-team">Team Blue: 100</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="branding-actions">
+                        <button id="save-branding-btn" class="btn btn-success" disabled>Save Branding</button>
+                        <button id="reset-branding-btn" class="btn btn-secondary" disabled>Reset to Defaults</button>
+                        <button id="export-theme-btn" class="btn btn-info" disabled>Export Theme</button>
+                        <input type="file" id="import-theme-input" accept=".json" style="display: none;">
+                        <button id="import-theme-btn" class="btn btn-info" disabled>Import Theme</button>
+                    </div>
+                </div>
+
+                <div class="no-game-selected" id="no-game-branding">
+                    <p>Please select a game to customize its branding and design.</p>
                 </div>
             </section>
 
@@ -208,6 +409,19 @@
                                 <button id="test-all-buzzers-btn" class="btn btn-info">Test All Buzzers</button>
                                 <button id="reset-buzzers-btn" class="btn btn-warning">Reset Buzzers</button>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Buzzer Status -->
+                    <div class="panel">
+                        <h3>Live Buzzer Status</h3>
+                        <div id="buzzer-status-list" class="buzzer-status-container">
+                            <div class="no-buzzers">No buzzers detected</div>
+                        </div>
+                        <div class="buzzer-actions">
+                            <button id="refresh-buzzers-btn" class="btn btn-secondary">Refresh Status</button>
+                            <button id="arm-all-buzzers-btn" class="btn btn-success">Arm All</button>
+                            <button id="disarm-all-buzzers-btn" class="btn btn-warning">Disarm All</button>
                         </div>
                     </div>
 

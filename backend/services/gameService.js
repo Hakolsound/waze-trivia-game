@@ -195,6 +195,67 @@ class GameService {
     
     return this.getGame(gameId);
   }
+
+  // Branding methods
+  async getGameBranding(gameId) {
+    const game = await this.db.get('SELECT * FROM games WHERE id = ?', [gameId]);
+    if (!game) throw new Error('Game not found');
+    return game;
+  }
+
+  async updateGameBranding(gameId, brandingData) {
+    const fields = [];
+    const values = [];
+    
+    const allowedFields = [
+      'logo_url', 'logo_position', 'logo_size', 'primary_color', 
+      'secondary_color', 'accent_color', 'background_style', 'font_family',
+      'default_question_time', 'max_groups', 'show_timer', 'show_scores', 
+      'auto_advance', 'game_description'
+    ];
+    
+    for (const field of allowedFields) {
+      if (brandingData.hasOwnProperty(field)) {
+        fields.push(`${field} = ?`);
+        values.push(brandingData[field]);
+      }
+    }
+    
+    if (fields.length === 0) {
+      throw new Error('No valid branding fields provided');
+    }
+    
+    fields.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(gameId);
+    
+    await this.db.run(
+      `UPDATE games SET ${fields.join(', ')} WHERE id = ?`,
+      values
+    );
+    
+    return this.getGameBranding(gameId);
+  }
+
+  async resetGameBranding(gameId) {
+    const defaultBranding = {
+      logo_url: null,
+      logo_position: 'top-right',
+      logo_size: 'medium',
+      primary_color: '#667eea',
+      secondary_color: '#764ba2',
+      accent_color: '#FFD700',
+      background_style: 'gradient',
+      font_family: 'Segoe UI',
+      default_question_time: 30,
+      max_groups: 8,
+      show_timer: 1,
+      show_scores: 1,
+      auto_advance: 0,
+      game_description: ''
+    };
+    
+    return this.updateGameBranding(gameId, defaultBranding);
+  }
 }
 
 module.exports = GameService;

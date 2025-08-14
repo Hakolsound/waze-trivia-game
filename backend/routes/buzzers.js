@@ -48,5 +48,25 @@ module.exports = (esp32Service) => {
     }
   });
 
+  // Get all buzzer devices and their status
+  router.get('/devices', async (req, res) => {
+    try {
+      const devices = await esp32Service.getDevices();
+      res.json(devices || []);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Arm all buzzers (without game ID)
+  router.post('/arm', async (req, res) => {
+    try {
+      const result = await esp32Service.armBuzzers();
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   return router;
 };

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trivia Game Host Control</title>
-    <link rel="stylesheet" href="control.css">
+    <link rel="stylesheet" href="/control/control.css">
     <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
@@ -75,6 +75,7 @@
                     <button id="arm-buzzers-btn" class="btn btn-warning" disabled>Arm Buzzers</button>
                     <button id="disarm-buzzers-btn" class="btn btn-secondary" disabled>Disarm Buzzers</button>
                     <button id="test-buzzers-btn" class="btn btn-info">Test All Buzzers</button>
+                    <button id="show-buzzer-status-btn" class="btn btn-info">Show Buzzer Status</button>
                 </div>
 
                 <div class="buzzer-results" id="buzzer-results">
@@ -136,8 +137,30 @@
 
         <!-- Toast Notifications -->
         <div id="toast-container" class="toast-container"></div>
+        
+        <!-- Buzzer Status Modal -->
+        <div id="buzzer-status-modal" class="modal hidden">
+            <div class="modal-content large">
+                <div class="modal-header">
+                    <h3>Live Buzzer Status</h3>
+                    <button id="close-buzzer-modal-btn" class="btn btn-secondary">Close</button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="buzzer-status-controls">
+                        <button id="modal-refresh-buzzers-btn" class="btn btn-secondary">Refresh Status</button>
+                        <button id="modal-arm-all-buzzers-btn" class="btn btn-warning">Arm All</button>
+                        <button id="modal-disarm-all-buzzers-btn" class="btn btn-secondary">Disarm All</button>
+                    </div>
+                    
+                    <div id="modal-buzzer-status-list" class="buzzer-status-container">
+                        <div class="no-buzzers">Loading buzzer status...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <script src="control.js"></script>
+    <script src="/control/control.js"></script>
 </body>
 </html>

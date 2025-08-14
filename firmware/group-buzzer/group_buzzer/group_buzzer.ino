@@ -8,11 +8,11 @@
 #define BUZZER_BUTTON_PIN 0
 
 // Device Configuration
-#define DEVICE_ID 1  // Change this for each group buzzer (1, 2, 3, etc.)
+#define DEVICE_ID 2  // Change this for each group buzzer (1, 2, 3, etc.)
 #define MAX_GROUPS 15
 
-// Central coordinator MAC address (update this with actual coordinator MAC)
-uint8_t coordinatorMAC[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+// Central coordinator MAC address
+uint8_t coordinatorMAC[] = {0x78, 0xE3, 0x6D, 0x1B, 0x13, 0x28};
 
 // State management
 bool isArmed = false;
@@ -38,19 +38,29 @@ typedef struct {
   uint32_t timestamp;
 } Command;
 
-// ESP-NOW callback for sending data
-void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
-  if (status != ESP_NOW_SEND_SUCCESS) {
-    Serial.println("ESP-NOW Send Failed");
-  }
+// ESP-NOW callback for sending data (ESP-IDF v5.x signature)
+void OnDataSent(const wifi_tx_info_t *tx_info, esp_now_send_status_t status) {
+  char macStr[18];
+  snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
+           tx_info->des_addr[0], tx_info->des_addr[1], tx_info->des_addr[2],
+           tx_info->des_addr[3], tx_info->des_addr[4], tx_info->des_addr[5]);
+
+  Serial.printf("ESP-NOW Send Status to %s: %s\n", macStr,
+                status == ESP_NOW_SEND_SUCCESS ? "Success" : "Fail");
 }
 
-// ESP-NOW callback for receiving data
-void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
+// ESP-NOW callback for receiving data (ESP-IDF v5.x signature)
+void OnDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *incomingData, int len) {
   Command cmd;
   memcpy(&cmd, incomingData, sizeof(cmd));
   
-  // Check if command is for this device or all devices
+  char macStr[18];
+  snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
+           recv_info->src_addr[0], recv_info->src_addr[1], recv_info->src_addr[2],
+           recv_info->src_addr[3], recv_info->src_addr[4], recv_info->src_addr[5]);
+
+  Serial.printf("Received %d bytes from %s\n", len, macStr);
+  
   if (cmd.targetDevice == 0 || cmd.targetDevice == DEVICE_ID) {
     handleCommand(cmd);
   }
@@ -58,6 +68,9 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
 
 void setup() {
   Serial.begin(115200);
+  delay(1000);  // Give serial time to initialize
+  
+  Serial.println("\n=== ESP32 Group Buzzer Starting ===");
   
   // Initialize hardware pins
   pinMode(BUZZER_PIN, OUTPUT);
@@ -68,39 +81,84 @@ void setup() {
   digitalWrite(LED_PIN, LOW);
   digitalWrite(BUZZER_PIN, LOW);
   
+  Serial.println("Hardware pins initialized");
+  
   // Initialize WiFi in station mode
   WiFi.mode(WIFI_STA);
+  Serial.println("WiFi set to Station mode");
+  
+  // Wait for WiFi to initialize and get MAC
+  delay(500);
   
   // Print MAC address for coordinator registration
+  String macAddress = WiFi.macAddress();
   Serial.print("Group Buzzer #");
   Serial.print(DEVICE_ID);
   Serial.print(" MAC Address: ");
-  Serial.println(WiFi.macAddress());
+  Serial.println(macAddress);
+  
+  // Verify MAC is valid
+  if (macAddress == "00:00:00:00:00:00") {
+    Serial.println("WARNING: Invalid MAC address detected!");
+    // Try restarting WiFi
+    WiFi.disconnect();
+    delay(100);
+    WiFi.mode(WIFI_STA);
+    delay(500);
+    macAddress = WiFi.macAddress();
+    Serial.print("Retry MAC: ");
+    Serial.println(macAddress);
+  }
   
   // Initialize ESP-NOW
+  Serial.println("Initializing ESP-NOW...");
   if (esp_now_init() != ESP_OK) {
-    Serial.println("Error initializing ESP-NOW");
+    Serial.println("ERROR: Failed to initialize ESP-NOW");
     return;
   }
+  Serial.println("ESP-NOW initialized successfully");
+  
+  // Print WiFi channel info
+  uint8_t primaryChan;
+  wifi_second_chan_t secondChan;
+  esp_wifi_get_channel(&primaryChan, &secondChan);
+  Serial.print("WiFi Channel: ");
+  Serial.println(primaryChan);
   
   // Register callbacks
   esp_now_register_send_cb(OnDataSent);
   esp_now_register_recv_cb(OnDataRecv);
+  Serial.println("ESP-NOW callbacks registered");
   
   // Add coordinator as peer
   esp_now_peer_info_t peerInfo;
+  memset(&peerInfo, 0, sizeof(peerInfo)); // Clear the structure
   memcpy(peerInfo.peer_addr, coordinatorMAC, 6);
   peerInfo.channel = 0;
   peerInfo.encrypt = false;
+  peerInfo.ifidx = WIFI_IF_STA; // Set the interface
   
-  if (esp_now_add_peer(&peerInfo) != ESP_OK) {
-    Serial.println("Failed to add coordinator peer");
+  esp_err_t addPeerResult = esp_now_add_peer(&peerInfo);
+  if (addPeerResult != ESP_OK) {
+    Serial.print("ERROR: Failed to add coordinator peer - Error: ");
+    Serial.println(addPeerResult);
+  } else {
+    Serial.println("Coordinator peer added successfully");
+    
+    // Print coordinator MAC for verification
+    Serial.print("Coordinator MAC: ");
+    for (int i = 0; i < 6; i++) {
+      if (coordinatorMAC[i] < 16) Serial.print("0");
+      Serial.print(coordinatorMAC[i], HEX);
+      if (i < 5) Serial.print(":");
+    }
+    Serial.println();
   }
   
   // Startup sequence - LED blink pattern
   startupSequence();
   
-  Serial.println("Group Buzzer initialized and ready");
+  Serial.println("=== Group Buzzer initialized and ready ===");
   sendHeartbeat();
 }
 
@@ -284,6 +342,8 @@ void playBuzzerPattern() {
 }
 
 void startupSequence() {
+  Serial.println("Running startup sequence");
+  
   // LED startup pattern
   for (int i = 0; i < 5; i++) {
     digitalWrite(LED_PIN, HIGH);
@@ -296,6 +356,8 @@ void startupSequence() {
   digitalWrite(BUZZER_PIN, HIGH);
   delay(200);
   digitalWrite(BUZZER_PIN, LOW);
+  
+  Serial.println("Startup sequence complete");
 }
 
 void sendHeartbeat() {
@@ -306,7 +368,14 @@ void sendHeartbeat() {
   msg.data[0] = isArmed ? 1 : 0;
   msg.data[1] = buzzerPressed ? 1 : 0;
   
-  esp_now_send(coordinatorMAC, (uint8_t*)&msg, sizeof(msg));
+  esp_err_t result = esp_now_send(coordinatorMAC, (uint8_t*)&msg, sizeof(msg));
+  Serial.print("Heartbeat sent to coordinator - Result: ");
+  Serial.println(result == ESP_OK ? "SUCCESS" : "FAILED");
+  
+  if (result != ESP_OK) {
+    Serial.print("Error code: ");
+    Serial.println(result);
+  }
 }
 
 void sendStatusUpdate() {

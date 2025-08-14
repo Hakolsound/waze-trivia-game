@@ -1,12 +1,11 @@
 #include <WiFi.h>
 #include <esp_now.h>
 #include <esp_wifi.h>
-#include <ArduinoJson.h>
 
 // Hardware Configuration
 #define STATUS_LED_PIN 2
 #define COMM_LED_PIN 4
-#define MAX_GROUPS 8
+#define MAX_GROUPS 15
 
 // GPIO Serial pins for direct Pi connection
 #define RX_PIN 16
@@ -15,7 +14,6 @@
 // Communication Configuration
 #define SERIAL_BAUD 115200
 #define HEARTBEAT_TIMEOUT 10000  // 10 seconds
-#define COMMAND_TIMEOUT 5000     // 5 seconds
 
 // Device state tracking
 typedef struct {
@@ -25,7 +23,6 @@ typedef struct {
   bool isArmed;
   bool isPressed;
   unsigned long lastHeartbeat;
-  unsigned long lastResponse;
   bool isOnline;
 } DeviceState;
 
@@ -63,59 +60,62 @@ BuzzerPress buzzerOrder[MAX_GROUPS];
 int buzzerPressCount = 0;
 
 // ESP-NOW callbacks
-void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
-  // Update device response tracking
-  for (int i = 0; i < registeredDeviceCount; i++) {
-    if (memcmp(devices[i].macAddress, mac_addr, 6) == 0) {
-      devices[i].lastResponse = millis();
-      break;
-    }
-  }
-  
-  // Brief comm LED flash
-  digitalWrite(COMM_LED_PIN, HIGH);
-  delay(50);
-  digitalWrite(COMM_LED_PIN, LOW);
+void OnDataSent(const wifi_tx_info_t *tx_info, esp_now_send_status_t status) {
+  char macStr[18];
+  snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
+           tx_info->des_addr[0], tx_info->des_addr[1], tx_info->des_addr[2],
+           tx_info->des_addr[3], tx_info->des_addr[4], tx_info->des_addr[5]);
+
+  Serial.printf("Send to %s: %s\n", macStr,
+                status == ESP_NOW_SEND_SUCCESS ? "Success" : "Fail");
 }
 
-void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
-  Message msg;
-  memcpy(&msg, incomingData, sizeof(msg));
+// Handle incoming messages
+void OnDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len) {
+  char macStr[18];
+  snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
+           recv_info->src_addr[0], recv_info->src_addr[1], recv_info->src_addr[2],
+           recv_info->src_addr[3], recv_info->src_addr[4], recv_info->src_addr[5]);
   
-  // Update device heartbeat
-  updateDeviceHeartbeat(mac, msg.deviceId);
+  Serial.printf("Received %d bytes from: %s\n", len, macStr);
   
-  // Handle different message types
-  switch (msg.messageType) {
-    case 1: // buzzer_press
-      handleBuzzerPress(msg);
-      break;
-      
-    case 2: // heartbeat
-      handleHeartbeat(msg);
-      break;
-      
-    case 3: // status_update
-      handleStatusUpdate(msg);
-      break;
-      
-    default:
-      Serial2.println("Unknown message type received");
-      break;
+  // Parse the message
+  if (len == sizeof(Message)) {
+    Message msg;
+    memcpy(&msg, data, sizeof(msg));
+    
+    Serial.printf("Message type: %d, Device ID: %d\n", msg.messageType, msg.deviceId);
+    
+    // Update device heartbeat first (registers device if new)
+    updateDeviceHeartbeat(recv_info->src_addr, msg.deviceId);
+    
+    // Handle different message types
+    switch (msg.messageType) {
+      case 1: // buzzer_press
+        handleBuzzerPress(msg);
+        break;
+      case 2: // heartbeat
+        handleHeartbeat(msg);
+        break;
+      case 3: // status_update
+        handleStatusUpdate(msg);
+        break;
+      default:
+        Serial.printf("Unknown message type: %d\n", msg.messageType);
+        break;
+    }
+  } else {
+    Serial.printf("Invalid message length: %d (expected %d)\n", len, sizeof(Message));
   }
-  
-  // Brief comm LED flash
-  digitalWrite(COMM_LED_PIN, HIGH);
-  delay(25);
-  digitalWrite(COMM_LED_PIN, LOW);
 }
 
 void setup() {
   // Initialize GPIO serial for Pi communication
   Serial2.begin(SERIAL_BAUD, SERIAL_8N1, RX_PIN, TX_PIN);
   
-  // Also initialize USB serial for debugging (optional)
+  // Also initialize USB serial for debugging
   Serial.begin(SERIAL_BAUD);
+  delay(1000);
   
   // Initialize hardware pins
   pinMode(STATUS_LED_PIN, OUTPUT);
@@ -133,43 +133,41 @@ void setup() {
     devices[i].isPressed = false;
     devices[i].deviceId = 0;
     devices[i].lastHeartbeat = 0;
-    devices[i].lastResponse = 0;
   }
   
   // Initialize WiFi in station mode
   WiFi.mode(WIFI_STA);
+  delay(500);
   
-  // Print coordinator MAC address to both serial ports
-  Serial2.println("=== ESP32 Central Coordinator (GPIO Serial) ===");
-  Serial2.print("Coordinator MAC Address: ");
+  // Print coordinator MAC address
+  Serial2.println("=== ESP32 Central Coordinator ===");
+  Serial2.print("MAC: ");
   Serial2.println(WiFi.macAddress());
-  Serial2.println("Waiting for group buzzers to connect...");
+  Serial2.println("Waiting for buzzers...");
   
-  Serial.println("=== ESP32 Central Coordinator (Debug) ===");
-  Serial.print("Coordinator MAC Address: ");
+  Serial.println("=== ESP32 Central Coordinator ===");
+  Serial.print("MAC: ");
   Serial.println(WiFi.macAddress());
   Serial.println("GPIO Serial: RX=16, TX=17");
   
   // Initialize ESP-NOW
   if (esp_now_init() != ESP_OK) {
-    Serial2.println("Error initializing ESP-NOW");
-    Serial.println("Error initializing ESP-NOW");
+    Serial2.println("ERROR: ESP-NOW init failed");
+    Serial.println("ERROR: ESP-NOW init failed");
     return;
   }
+  
+  Serial.println("ESP-NOW initialized successfully");
   
   // Register callbacks
   esp_now_register_send_cb(OnDataSent);
   esp_now_register_recv_cb(OnDataRecv);
   
-  // Set ESP-NOW to promiscuous mode to receive from any device
-  esp_wifi_set_promiscuous(true);
-  esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
-  
-  // Startup complete - status LED on
+  // Startup complete
   digitalWrite(STATUS_LED_PIN, HIGH);
   
-  Serial2.println("Central Coordinator initialized and ready");
-  Serial.println("Central Coordinator initialized and ready");
+  Serial2.println("READY");
+  Serial.println("Central Coordinator ready");
   sendStatusToSerial();
 }
 
@@ -201,8 +199,7 @@ void handleSerialCommand() {
   String command = Serial2.readStringUntil('\n');
   command.trim();
   
-  // Also log to debug serial
-  Serial.print("Command received: ");
+  Serial.print("Command: ");
   Serial.println(command);
   
   if (command == "STATUS") {
@@ -229,19 +226,19 @@ void handleSerialCommand() {
 
 void handleBuzzerPress(Message msg) {
   if (!gameActive) {
-    Serial2.println("ERROR:Buzzer press received but game not active");
-    Serial.println("ERROR:Buzzer press received but game not active");
+    Serial2.println("ERROR:Game not active");
+    Serial.println("ERROR:Game not active");
     return;
   }
   
-  // Check if this device already pressed
+  // Check if already pressed
   for (int i = 0; i < buzzerPressCount; i++) {
     if (buzzerOrder[i].deviceId == msg.deviceId) {
       return; // Already recorded
     }
   }
   
-  // Calculate delta time from game start
+  // Calculate delta time
   uint32_t deltaMs = msg.timestamp - gameStartTime;
   
   // Record buzzer press
@@ -261,27 +258,17 @@ void handleBuzzerPress(Message msg) {
     }
   }
   
-  // Send to Raspberry Pi (both formats for compatibility)
-  StaticJsonDocument<200> json;
-  json["type"] = "buzzer_press";
-  json["device_id"] = msg.deviceId;
-  json["timestamp"] = msg.timestamp;
-  json["delta_ms"] = deltaMs;
-  json["position"] = buzzerPressCount;
-  json["game_id"] = currentGameId;
-  
-  Serial2.print("BUZZER:");
-  serializeJson(json, Serial2);
-  Serial2.println();
-  
-  // Simple format as backup
+  // Send to Pi (simple format for now)
   Serial2.print("BUZZER:");
   Serial2.print(msg.deviceId);
   Serial2.print(",");
-  Serial2.println(msg.timestamp);
+  Serial2.print(msg.timestamp);
+  Serial2.print(",");
+  Serial2.print(deltaMs);
+  Serial2.print(",");
+  Serial2.println(buzzerPressCount);
   
-  // Debug output
-  Serial.print("Buzzer press: Device ");
+  Serial.print("BUZZER PRESS: Device ");
   Serial.print(msg.deviceId);
   Serial.print(" at ");
   Serial.print(deltaMs);
@@ -289,33 +276,31 @@ void handleBuzzerPress(Message msg) {
 }
 
 void handleHeartbeat(Message msg) {
-  // Update device state from heartbeat data
+  Serial.printf("Heartbeat from device %d\n", msg.deviceId);
+  
+  // Update device state
   for (int i = 0; i < registeredDeviceCount; i++) {
     if (devices[i].deviceId == msg.deviceId) {
       devices[i].lastHeartbeat = millis();
       devices[i].isOnline = true;
       devices[i].isArmed = (msg.data[0] == 1);
       devices[i].isPressed = (msg.data[1] == 1);
+      
+      // Flash comm LED
+      digitalWrite(COMM_LED_PIN, HIGH);
+      delay(10);
+      digitalWrite(COMM_LED_PIN, LOW);
       break;
     }
   }
 }
 
 void handleStatusUpdate(Message msg) {
-  // Similar to heartbeat but more detailed
-  for (int i = 0; i < registeredDeviceCount; i++) {
-    if (devices[i].deviceId == msg.deviceId) {
-      devices[i].lastHeartbeat = millis();
-      devices[i].isOnline = true;
-      devices[i].isArmed = (msg.data[0] == 1);
-      devices[i].isPressed = (msg.data[1] == 1);
-      break;
-    }
-  }
+  handleHeartbeat(msg); // Same logic for now
 }
 
 void updateDeviceHeartbeat(const uint8_t *mac, uint8_t deviceId) {
-  // Check if device is already registered
+  // Check if device already registered
   bool found = false;
   for (int i = 0; i < registeredDeviceCount; i++) {
     if (devices[i].deviceId == deviceId) {
@@ -327,7 +312,7 @@ void updateDeviceHeartbeat(const uint8_t *mac, uint8_t deviceId) {
     }
   }
   
-  // Register new device
+  // Register new device (don't add as peer yet - just track it)
   if (!found && registeredDeviceCount < MAX_GROUPS) {
     memcpy(devices[registeredDeviceCount].macAddress, mac, 6);
     devices[registeredDeviceCount].deviceId = deviceId;
@@ -335,25 +320,35 @@ void updateDeviceHeartbeat(const uint8_t *mac, uint8_t deviceId) {
     devices[registeredDeviceCount].isOnline = true;
     devices[registeredDeviceCount].lastHeartbeat = millis();
     
-    // Add as ESP-NOW peer
+    registeredDeviceCount++;
+    
+    char macStr[18];
+    snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
+             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    
+    Serial2.print("NEW_DEVICE:");
+    Serial2.print(deviceId);
+    Serial2.print(":");
+    Serial2.println(macStr);
+    
+    Serial.print("NEW DEVICE REGISTERED: ID=");
+    Serial.print(deviceId);
+    Serial.print(" MAC=");
+    Serial.println(macStr);
+    
+    // Try to add as peer (but don't fail if it doesn't work)
     esp_now_peer_info_t peerInfo;
+    memset(&peerInfo, 0, sizeof(peerInfo));
     memcpy(peerInfo.peer_addr, mac, 6);
     peerInfo.channel = 0;
     peerInfo.encrypt = false;
+    peerInfo.ifidx = WIFI_IF_STA;
     
-    if (esp_now_add_peer(&peerInfo) == ESP_OK) {
-      registeredDeviceCount++;
-      Serial2.print("NEW_DEVICE:");
-      Serial2.print(deviceId);
-      Serial2.print(":");
-      for (int j = 0; j < 6; j++) {
-        Serial2.print(mac[j], HEX);
-        if (j < 5) Serial2.print(":");
-      }
-      Serial2.println();
-      
-      Serial.print("New device registered: ");
-      Serial.println(deviceId);
+    esp_err_t addResult = esp_now_add_peer(&peerInfo);
+    if (addResult == ESP_OK) {
+      Serial.printf("Peer added successfully for device %d\n", deviceId);
+    } else {
+      Serial.printf("Warning: Could not add peer for device %d (error %d) - will use broadcast\n", deviceId, addResult);
     }
   }
 }
@@ -362,7 +357,7 @@ void checkDeviceTimeouts(unsigned long currentTime) {
   for (int i = 0; i < registeredDeviceCount; i++) {
     if (devices[i].isOnline && (currentTime - devices[i].lastHeartbeat > HEARTBEAT_TIMEOUT)) {
       devices[i].isOnline = false;
-      Serial2.print("DEVICE_TIMEOUT:");
+      Serial2.print("TIMEOUT:");
       Serial2.println(devices[i].deviceId);
       Serial.print("Device timeout: ");
       Serial.println(devices[i].deviceId);
@@ -373,14 +368,14 @@ void checkDeviceTimeouts(unsigned long currentTime) {
 void armAllBuzzers() {
   Command cmd;
   cmd.command = 1; // ARM
-  cmd.targetDevice = 0; // All devices
+  cmd.targetDevice = 0;
   cmd.timestamp = millis();
   
   gameStartTime = cmd.timestamp;
   systemArmed = true;
   buzzerPressCount = 0;
   
-  // Clear previous buzzer presses
+  // Clear previous presses
   for (int i = 0; i < MAX_GROUPS; i++) {
     buzzerOrder[i] = {0, 0, 0, 0};
     if (devices[i].isRegistered) {
@@ -388,27 +383,32 @@ void armAllBuzzers() {
     }
   }
   
-  // Broadcast command to all devices
+  // Use broadcast to reach all devices
   uint8_t broadcastMAC[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-  esp_now_send(broadcastMAC, (uint8_t*)&cmd, sizeof(cmd));
+  esp_err_t result = esp_now_send(broadcastMAC, (uint8_t*)&cmd, sizeof(cmd));
   
   Serial2.println("ACK:ARMED");
-  Serial.println("Buzzers armed");
+  Serial.print("Buzzers armed - Broadcast result: ");
+  Serial.println(result == ESP_OK ? "SUCCESS" : "FAILED");
 }
 
 void disarmAllBuzzers() {
   Command cmd;
   cmd.command = 2; // DISARM
-  cmd.targetDevice = 0; // All devices
+  cmd.targetDevice = 0;
   cmd.timestamp = millis();
   
   systemArmed = false;
   gameActive = false;
   currentGameId = "";
   
-  // Broadcast command to all devices
-  uint8_t broadcastMAC[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-  esp_now_send(broadcastMAC, (uint8_t*)&cmd, sizeof(cmd));
+  // Send to all devices
+  for (int i = 0; i < registeredDeviceCount; i++) {
+    if (devices[i].isOnline) {
+      esp_now_send(devices[i].macAddress, (uint8_t*)&cmd, sizeof(cmd));
+      delay(10);
+    }
+  }
   
   Serial2.println("ACK:DISARMED");
   Serial.println("Buzzers disarmed");
@@ -417,19 +417,23 @@ void disarmAllBuzzers() {
 void testBuzzer(uint8_t deviceId) {
   Command cmd;
   cmd.command = 3; // TEST
-  cmd.targetDevice = deviceId; // Specific device or 0 for all
+  cmd.targetDevice = deviceId;
   cmd.timestamp = millis();
   
   if (deviceId == 0) {
-    // Test all devices
-    uint8_t broadcastMAC[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-    esp_now_send(broadcastMAC, (uint8_t*)&cmd, sizeof(cmd));
+    // Test all
+    for (int i = 0; i < registeredDeviceCount; i++) {
+      if (devices[i].isOnline) {
+        esp_now_send(devices[i].macAddress, (uint8_t*)&cmd, sizeof(cmd));
+        delay(10);
+      }
+    }
     Serial2.println("ACK:TEST_ALL");
     Serial.println("Testing all buzzers");
   } else {
     // Test specific device
     for (int i = 0; i < registeredDeviceCount; i++) {
-      if (devices[i].deviceId == deviceId) {
+      if (devices[i].deviceId == deviceId && devices[i].isOnline) {
         esp_now_send(devices[i].macAddress, (uint8_t*)&cmd, sizeof(cmd));
         Serial2.print("ACK:TEST_");
         Serial2.println(deviceId);
@@ -438,11 +442,8 @@ void testBuzzer(uint8_t deviceId) {
         return;
       }
     }
-    Serial2.print("ERROR:Device ");
-    Serial2.print(deviceId);
-    Serial2.println(" not found");
-    Serial.print("Device not found: ");
-    Serial.println(deviceId);
+    Serial2.print("ERROR:Device not found ");
+    Serial2.println(deviceId);
   }
 }
 
@@ -467,57 +468,58 @@ void endGame() {
 }
 
 void resetSystem() {
-  // Reset all state
   systemArmed = false;
   gameActive = false;
   currentGameId = "";
   buzzerPressCount = 0;
   
-  // Send reset command to all devices
   Command cmd;
   cmd.command = 4; // RESET
-  cmd.targetDevice = 0; // All devices
+  cmd.targetDevice = 0;
   cmd.timestamp = millis();
   
-  uint8_t broadcastMAC[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-  esp_now_send(broadcastMAC, (uint8_t*)&cmd, sizeof(cmd));
+  for (int i = 0; i < registeredDeviceCount; i++) {
+    if (devices[i].isOnline) {
+      esp_now_send(devices[i].macAddress, (uint8_t*)&cmd, sizeof(cmd));
+      delay(10);
+    }
+  }
   
   Serial2.println("ACK:RESET");
   Serial.println("System reset");
 }
 
 void sendStatusToSerial() {
-  StaticJsonDocument<512> json;
-  
-  json["timestamp"] = millis();
-  json["system_armed"] = systemArmed;
-  json["game_active"] = gameActive;
-  json["game_id"] = currentGameId;
-  json["device_count"] = registeredDeviceCount;
-  json["buzzer_presses"] = buzzerPressCount;
-  json["connection"] = "GPIO";
-  json["pins"] = "RX=16,TX=17";
-  
-  JsonArray devicesArray = json.createNestedArray("devices");
-  for (int i = 0; i < registeredDeviceCount; i++) {
-    JsonObject device = devicesArray.createNestedObject();
-    device["id"] = devices[i].deviceId;
-    device["online"] = devices[i].isOnline;
-    device["armed"] = devices[i].isArmed;
-    device["pressed"] = devices[i].isPressed;
-    device["last_heartbeat"] = devices[i].lastHeartbeat;
-    
-    String macStr = "";
-    for (int j = 0; j < 6; j++) {
-      macStr += String(devices[i].macAddress[j], HEX);
-      if (j < 5) macStr += ":";
-    }
-    device["mac"] = macStr;
-  }
-  
+  // Simple status format (no JSON)
   Serial2.print("STATUS:");
-  serializeJson(json, Serial2);
-  Serial2.println();
+  Serial2.print(millis());
+  Serial2.print(",armed=");
+  Serial2.print(systemArmed);
+  Serial2.print(",game=");
+  Serial2.print(gameActive);
+  Serial2.print(",devices=");
+  Serial2.print(registeredDeviceCount);
+  Serial2.print(",presses=");
+  Serial2.println(buzzerPressCount);
+  
+  // Device details
+  for (int i = 0; i < registeredDeviceCount; i++) {
+    Serial2.print("DEVICE:");
+    Serial2.print(devices[i].deviceId);
+    Serial2.print(",online=");
+    Serial2.print(devices[i].isOnline);
+    Serial2.print(",armed=");
+    Serial2.print(devices[i].isArmed);
+    Serial2.print(",pressed=");
+    Serial2.print(devices[i].isPressed);
+    Serial2.print(",mac=");
+    for (int j = 0; j < 6; j++) {
+      if (devices[i].macAddress[j] < 16) Serial2.print("0");
+      Serial2.print(devices[i].macAddress[j], HEX);
+      if (j < 5) Serial2.print(":");
+    }
+    Serial2.println();
+  }
 }
 
 void updateStatusLED() {
@@ -533,7 +535,7 @@ void updateStatusLED() {
       lastLedUpdate = currentTime;
     }
   } else if (systemArmed) {
-    // Slow blink when armed but no game
+    // Slow blink when armed
     if (currentTime - lastLedUpdate > 1000) {
       ledState = !ledState;
       digitalWrite(STATUS_LED_PIN, ledState);

@@ -30,6 +30,11 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
+// Serve frontend static files
+app.use('/admin', express.static(path.join(__dirname, '../frontend/admin-config')));
+app.use('/display', express.static(path.join(__dirname, '../frontend/game-display')));
+app.use('/control', express.static(path.join(__dirname, '../frontend/host-control')));
+
 const db = new Database();
 const gameService = new GameService(db, io);
 const esp32Service = new ESP32Service(io);

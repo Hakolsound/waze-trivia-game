@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trivia Game Admin Configuration</title>
+    <link rel="stylesheet" href="admin.css">
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+    <div id="app">
+        <nav class="admin-nav">
+            <h1>Admin Configuration</h1>
+            <div class="nav-tabs">
+                <button class="tab-button active" data-tab="games">Games</button>
+                <button class="tab-button" data-tab="groups">Teams</button>
+                <button class="tab-button" data-tab="questions">Questions</button>
+                <button class="tab-button" data-tab="system">System</button>
+            </div>
+        </nav>
+
+        <main class="admin-main">
+            <!-- Games Tab -->
+            <section id="games-tab" class="tab-content active">
+                <div class="tab-header">
+                    <h2>Game Management</h2>
+                    <button id="create-game-btn" class="btn btn-primary">Create New Game</button>
+                </div>
+
+                <div class="games-list">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Status</th>
+                                <th>Teams</th>
+                                <th>Questions</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="games-table-body">
+                            <!-- Games will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Create/Edit Game Modal -->
+                <div id="game-modal" class="modal hidden">
+                    <div class="modal-content">
+                        <h3 id="game-modal-title">Create New Game</h3>
+                        <form id="game-form">
+                            <div class="form-group">
+                                <label for="game-name">Game Name:</label>
+                                <input type="text" id="game-name" required>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">Save Game</button>
+                                <button type="button" id="cancel-game-btn" class="btn btn-secondary">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Teams Tab -->
+            <section id="groups-tab" class="tab-content">
+                <div class="tab-header">
+                    <h2>Team Management</h2>
+                    <div class="game-selector">
+                        <select id="teams-game-select">
+                            <option value="">Select a game...</option>
+                        </select>
+                        <button id="add-team-btn" class="btn btn-primary" disabled>Add Team</button>
+                    </div>
+                </div>
+
+                <div class="teams-list">
+                    <div id="teams-container">
+                        <p>Select a game to manage teams</p>
+                    </div>
+                </div>
+
+                <!-- Team Modal -->
+                <div id="team-modal" class="modal hidden">
+                    <div class="modal-content">
+                        <h3 id="team-modal-title">Add New Team</h3>
+                        <form id="team-form">
+                            <div class="form-group">
+                                <label for="team-name">Team Name:</label>
+                                <input type="text" id="team-name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="team-color">Team Color:</label>
+                                <input type="color" id="team-color" value="#667eea">
+                            </div>
+                            <div class="form-group">
+                                <label for="buzzer-id">Buzzer ID:</label>
+                                <input type="text" id="buzzer-id" placeholder="buzzer_1">
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">Save Team</button>
+                                <button type="button" id="cancel-team-btn" class="btn btn-secondary">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Questions Tab -->
+            <section id="questions-tab" class="tab-content">
+                <div class="tab-header">
+                    <h2>Question Management</h2>
+                    <div class="game-selector">
+                        <select id="questions-game-select">
+                            <option value="">Select a game...</option>
+                        </select>
+                        <button id="add-question-btn" class="btn btn-primary" disabled>Add Question</button>
+                    </div>
+                </div>
+
+                <div class="questions-list">
+                    <div id="questions-container">
+                        <p>Select a game to manage questions</p>
+                    </div>
+                </div>
+
+                <!-- Question Modal -->
+                <div id="question-modal" class="modal hidden">
+                    <div class="modal-content large">
+                        <h3 id="question-modal-title">Add New Question</h3>
+                        <form id="question-form">
+                            <div class="form-group">
+                                <label for="question-text">Question:</label>
+                                <textarea id="question-text" required rows="3"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="correct-answer">Correct Answer:</label>
+                                <input type="text" id="correct-answer" required>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="time-limit">Time Limit (seconds):</label>
+                                    <input type="number" id="time-limit" value="30" min="5" max="300">
+                                </div>
+                                <div class="form-group">
+                                    <label for="question-points">Points:</label>
+                                    <input type="number" id="question-points" value="100" min="10" max="1000">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="media-url">Media URL (optional):</label>
+                                <input type="url" id="media-url" placeholder="https://example.com/image.jpg">
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">Save Question</button>
+                                <button type="button" id="cancel-question-btn" class="btn btn-secondary">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- System Tab -->
+            <section id="system-tab" class="tab-content">
+                <div class="tab-header">
+                    <h2>System Configuration</h2>
+                </div>
+
+                <div class="system-panels">
+                    <!-- System Status -->
+                    <div class="panel">
+                        <h3>System Status</h3>
+                        <div class="status-grid">
+                            <div class="status-item">
+                                <label>Server Status:</label>
+                                <span id="server-status" class="status-indicator">Unknown</span>
+                            </div>
+                            <div class="status-item">
+                                <label>Database:</label>
+                                <span id="system-db-status" class="status-indicator">Unknown</span>
+                            </div>
+                            <div class="status-item">
+                                <label>ESP32 Hardware:</label>
+                                <span id="system-esp32-status" class="status-indicator">Unknown</span>
+                            </div>
+                            <div class="status-item">
+                                <label>Firebase:</label>
+                                <span id="system-firebase-status" class="status-indicator">Unknown</span>
+                            </div>
+                        </div>
+                        <button id="refresh-system-status-btn" class="btn btn-secondary">Refresh Status</button>
+                    </div>
+
+                    <!-- Buzzer Configuration -->
+                    <div class="panel">
+                        <h3>Buzzer Configuration</h3>
+                        <div class="buzzer-config">
+                            <div class="form-group">
+                                <label>Serial Port:</label>
+                                <span id="serial-port-info">Loading...</span>
+                            </div>
+                            <div class="form-group">
+                                <label>Connection Status:</label>
+                                <span id="buzzer-connection-status">Unknown</span>
+                            </div>
+                            <div class="buzzer-actions">
+                                <button id="test-all-buzzers-btn" class="btn btn-info">Test All Buzzers</button>
+                                <button id="reset-buzzers-btn" class="btn btn-warning">Reset Buzzers</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Database Management -->
+                    <div class="panel">
+                        <h3>Database Management</h3>
+                        <div class="db-actions">
+                            <button id="backup-db-btn" class="btn btn-info">Backup Database</button>
+                            <button id="clear-history-btn" class="btn btn-warning">Clear Game History</button>
+                            <button id="reset-db-btn" class="btn btn-danger">Reset Database</button>
+                        </div>
+                        <div class="db-info">
+                            <p id="db-info-text">Database information will appear here</p>
+                        </div>
+                    </div>
+
+                    <!-- Application Logs -->
+                    <div class="panel">
+                        <h3>Application Logs</h3>
+                        <div class="logs-container">
+                            <pre id="logs-display">Logs will appear here...</pre>
+                        </div>
+                        <div class="logs-actions">
+                            <button id="refresh-logs-btn" class="btn btn-secondary">Refresh Logs</button>
+                            <button id="clear-logs-btn" class="btn btn-warning">Clear Logs</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Toast Container -->
+        <div id="toast-container" class="toast-container"></div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+const express = require('express');
+
+module.exports = (esp32Service) => {
+  const router = express.Router();
+
+  router.get('/status', async (req, res) => {
+    try {
+      const status = await esp32Service.getStatus();
+      res.json(status);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  router.post('/arm/:gameId', async (req, res) => {
+    try {
+      const result = await esp32Service.armBuzzers(req.params.gameId);
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  router.post('/disarm', async (req, res) => {
+    try {
+      const result = await esp32Service.disarmBuzzers();
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  router.post('/test/:buzzerId', async (req, res) => {
+    try {
+      const result = await esp32Service.testBuzzer(req.params.buzzerId);
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  router.get('/history/:gameId', async (req, res) => {
+    try {
+      const history = await esp32Service.getBuzzerHistory(req.params.gameId);
+      res.json(history);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  return router;
+};

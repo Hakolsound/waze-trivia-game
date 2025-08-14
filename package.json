@@ -1,0 +1,37 @@
+{
+  "name": "waze-trivia-game",
+  "version": "1.0.0",
+  "description": "Multi-group trivia game system with ESP32 buzzers and Raspberry Pi backend",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "nodemon backend/server.js",
+    "test": "jest",
+    "build": "npm run build:frontend",
+    "build:frontend": "npm run build:game-display && npm run build:host-control && npm run build:admin-config",
+    "build:game-display": "cd frontend/game-display && npm run build",
+    "build:host-control": "cd frontend/host-control && npm run build",
+    "build:admin-config": "cd frontend/admin-config && npm run build"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.4",
+    "sqlite3": "^5.1.6",
+    "cors": "^2.8.5",
+    "firebase-admin": "^12.0.0",
+    "serialport": "^12.0.0",
+    "uuid": "^9.0.1",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3"
+  },
+  "keywords": ["trivia", "esp32", "raspberry-pi", "websocket", "buzzer", "game"],
+  "author": "Ron Peer",
+  "license": "MIT",
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

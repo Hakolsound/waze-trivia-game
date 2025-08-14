@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trivia Game Display</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- Game Header -->
+        <header class="game-header">
+            <h1 id="game-title">Waze Trivia Game</h1>
+            <div class="game-status">
+                <span id="game-status">Loading...</span>
+                <span id="question-counter">Question 0 of 0</span>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="game-content">
+            <!-- Question Display -->
+            <section id="question-section" class="question-section hidden">
+                <div class="question-container">
+                    <div id="question-timer" class="timer">
+                        <div class="timer-circle">
+                            <span id="timer-text">30</span>
+                        </div>
+                    </div>
+                    
+                    <div class="question-content">
+                        <h2 id="question-text">Question will appear here...</h2>
+                        <div id="question-media" class="question-media hidden"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Buzzer Results -->
+            <section id="buzzer-results" class="buzzer-results hidden">
+                <h3>Buzzer Order</h3>
+                <div id="buzzer-list" class="buzzer-list"></div>
+            </section>
+
+            <!-- Answer Reveal -->
+            <section id="answer-section" class="answer-section hidden">
+                <div class="answer-container">
+                    <h3>Correct Answer:</h3>
+                    <p id="answer-text"></p>
+                </div>
+            </section>
+        </main>
+
+        <!-- Scoreboard Sidebar -->
+        <aside class="scoreboard">
+            <h3>Leaderboard</h3>
+            <div id="teams-list" class="teams-list">
+                <!-- Teams will be populated dynamically -->
+            </div>
+        </aside>
+
+        <!-- Waiting Screen -->
+        <div id="waiting-screen" class="waiting-screen">
+            <div class="waiting-content">
+                <h2>Game Starting Soon...</h2>
+                <p>Please wait for the host to begin the game.</p>
+                <div class="loading-spinner"></div>
+            </div>
+        </div>
+
+        <!-- Full Screen Message Overlay -->
+        <div id="message-overlay" class="message-overlay hidden">
+            <div class="message-content">
+                <h2 id="overlay-title"></h2>
+                <p id="overlay-message"></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="display.js"></script>
+</body>
+</html>

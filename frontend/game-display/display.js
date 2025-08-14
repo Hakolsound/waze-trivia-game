@@ -85,6 +85,12 @@ class GameDisplay {
                 
                 const gameResponse = await fetch(`/api/games/${this.gameId}/state`);
                 const gameState = await gameResponse.json();
+                
+                // If game has questions and teams, hide waiting screen
+                if (gameState && (gameState.questions?.length > 0 || gameState.groups?.length > 0)) {
+                    this.hideWaitingScreen();
+                }
+                
                 this.handleGameState(gameState);
             } else {
                 this.showWaitingScreen('No games available');
@@ -103,8 +109,10 @@ class GameDisplay {
         this.updateQuestionCounter(state.current_question_index, state.questions?.length || 0);
         this.updateTeamsList(state.groups || []);
 
-        if (state.status === 'setup') {
+        if (state.status === 'setup' || state.status === 'waiting') {
             this.showWaitingScreen('Game is being set up...');
+        } else if (state.status === 'active' || state.status === 'in_progress' || state.questions?.length > 0) {
+            this.hideWaitingScreen();
         } else {
             this.hideWaitingScreen();
         }
@@ -119,6 +127,7 @@ class GameDisplay {
         this.timeRemaining = data.question.time_limit;
         this.buzzerOrder = [];
 
+        this.hideWaitingScreen(); // Ensure waiting screen is hidden when question starts
         this.hideAllSections();
         this.elements.questionSection.classList.remove('hidden');
         

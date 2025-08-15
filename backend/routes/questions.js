@@ -12,6 +12,18 @@ module.exports = (gameService) => {
     }
   });
 
+  router.get('/:id', async (req, res) => {
+    try {
+      const question = await gameService.db.get('SELECT * FROM questions WHERE id = ?', [req.params.id]);
+      if (!question) {
+        return res.status(404).json({ error: 'Question not found' });
+      }
+      res.json(question);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   router.post('/game/:gameId', async (req, res) => {
     try {
       const { v4: uuidv4 } = require('uuid');

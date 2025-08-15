@@ -849,11 +849,44 @@ textarea {
     flex-direction: column;
 }
 
-.buzzer-sidebar.hidden {
-    width: 0;
+.buzzer-sidebar.collapsed {
+    width: 48px;
     overflow: hidden;
-    border: none;
-    box-shadow: none;
+}
+
+.buzzer-sidebar.collapsed .buzzer-sidebar-header {
+    padding: 12px 8px;
+    justify-content: center;
+}
+
+.buzzer-sidebar.collapsed .buzzer-sidebar-header h3,
+.buzzer-sidebar.collapsed .buzzer-counter {
+    display: none;
+}
+
+.collapsed-indicator {
+    display: none;
+    font-size: 18px;
+}
+
+.buzzer-sidebar.collapsed .collapsed-indicator {
+    display: block;
+}
+
+.buzzer-sidebar.collapsed .buzzer-sidebar-content {
+    display: none;
+}
+
+.buzzer-sidebar.collapsed #toggle-buzzer-sidebar {
+    transform: rotate(180deg);
+}
+
+#toggle-buzzer-sidebar {
+    transition: transform 0.3s ease;
+    font-family: monospace;
+    font-size: 14px;
+    line-height: 1;
+    padding: 4px 8px;
 }
 
 .buzzer-sidebar-header {

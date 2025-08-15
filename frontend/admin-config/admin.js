@@ -899,15 +899,15 @@ class AdminConfig {
     toggleBuzzerSidebar() {
         if (!this.elements.buzzerSidebar) return;
         
-        const isHidden = this.elements.buzzerSidebar.classList.contains('hidden');
+        const isCollapsed = this.elements.buzzerSidebar.classList.contains('collapsed');
         
-        if (isHidden) {
-            this.elements.buzzerSidebar.classList.remove('hidden');
-            this.elements.toggleBuzzerSidebarBtn.textContent = 'Hide';
+        if (isCollapsed) {
+            this.elements.buzzerSidebar.classList.remove('collapsed');
+            this.elements.toggleBuzzerSidebarBtn.textContent = '◀';
             this.refreshBuzzerStatus();
         } else {
-            this.elements.buzzerSidebar.classList.add('hidden');
-            this.elements.toggleBuzzerSidebarBtn.textContent = 'Show';
+            this.elements.buzzerSidebar.classList.add('collapsed');
+            this.elements.toggleBuzzerSidebarBtn.textContent = '▶';
         }
     }
 

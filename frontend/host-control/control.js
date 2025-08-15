@@ -41,6 +41,10 @@ class HostControl {
             timerCountdown: document.getElementById('timer-countdown'),
             timerLabel: document.getElementById('timer-label'),
             
+            // Correct answer elements
+            correctAnswerDisplay: document.getElementById('correct-answer-display'),
+            correctAnswerText: document.getElementById('correct-answer-text'),
+            
             // Current answerer elements
             currentAnswererHighlight: document.getElementById('current-answerer-highlight'),
             currentAnswererPosition: document.getElementById('current-answerer-position'),
@@ -381,14 +385,24 @@ class HostControl {
         if (this.questions.length > 0 && this.currentQuestionIndex < this.questions.length) {
             const question = this.questions[this.currentQuestionIndex];
             this.elements.questionText.textContent = question.text;
+            
+            // Show correct answer
+            if (this.elements.correctAnswerText && question.correct_answer) {
+                this.elements.correctAnswerText.textContent = question.correct_answer;
+                this.elements.correctAnswerDisplay.classList.remove('hidden');
+            }
+            
+            // Update meta info
             this.elements.questionMeta.innerHTML = `
-                <span>Points: ${question.points}</span>
-                <span>Time: ${question.time_limit}s</span>
-                <span>Question ${this.currentQuestionIndex + 1} of ${this.questions.length}</span>
+                <span class="points">${question.points || 100} pts</span>
+                <span class="time">${question.time_limit || 30}s</span>
             `;
         } else {
             this.elements.questionText.textContent = 'No question selected';
             this.elements.questionMeta.innerHTML = '';
+            if (this.elements.correctAnswerDisplay) {
+                this.elements.correctAnswerDisplay.classList.add('hidden');
+            }
         }
     }
 
@@ -1290,27 +1304,34 @@ class HostControl {
         }
 
         this.elements.buzzerResults.innerHTML = '';
+        const firstBuzzTime = this.buzzerOrder.length > 0 ? this.buzzerOrder[0].deltaMs : 0;
+        
         this.buzzerOrder.forEach((buzzer, index) => {
             const buzzerItem = document.createElement('div');
             buzzerItem.className = 'buzzer-item';
             
             const teamName = this.getTeamName(buzzer.groupId);
             const deltaTime = (buzzer.deltaMs / 1000).toFixed(2);
+            const deltaFromFirst = index === 0 ? 0 : ((buzzer.deltaMs - firstBuzzTime) / 1000).toFixed(2);
             
             // Add evaluation status if available
-            let statusIcon = '';
-            let statusClass = '';
             if (buzzer.evaluated) {
-                statusIcon = buzzer.isCorrect ? '✅' : '❌';
-                statusClass = buzzer.isCorrect ? 'correct' : 'incorrect';
-                buzzerItem.classList.add(`evaluated-${statusClass}`);
+                buzzerItem.classList.add(buzzer.isCorrect ? 'evaluated-correct' : 'evaluated-incorrect');
             }
             
             buzzerItem.innerHTML = `
-                <div class="buzzer-position">${index + 1}</div>
+                <div class="buzzer-rank ${index === 0 ? 'first' : ''}">${index + 1}</div>
                 <div class="buzzer-team-info">
-                    <span class="team-name">${teamName} ${statusIcon}</span>
-                    <span class="buzzer-time">${deltaTime}s</span>
+                    <div class="buzzer-team-name">
+                        ${teamName}
+                        ${buzzer.evaluated ? (buzzer.isCorrect ? ' ✅' : ' ❌') : ''}
+                    </div>
+                    <div class="buzzer-timing">
+                        ${index === 0 ? 
+                            `<span class="first-buzz">First: ${deltaTime}s</span>` : 
+                            `<span class="delta-time">+${deltaFromFirst}s</span>`
+                        }
+                    </div>
                 </div>
                 <div class="buzzer-status">
                     ${buzzer.evaluated ? 

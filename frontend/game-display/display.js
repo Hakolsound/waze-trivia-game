@@ -371,7 +371,8 @@ class GameDisplay {
         this.timeRemaining = timeRemaining;
         this.totalTime = totalTime;
         
-        const percentage = Math.max(0, (timeRemaining / totalTime) * 100);
+        // Ensure timer bar is completely empty when time is up
+        const percentage = timeRemaining <= 0 ? 0 : Math.max(0, (timeRemaining / totalTime) * 100);
         this.elements.timerProgress.style.width = `${percentage}%`;
         
         const seconds = Math.max(0, Math.ceil(timeRemaining)); // Round up to show whole seconds

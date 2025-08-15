@@ -237,22 +237,24 @@ body::before {
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
 }
 
-.question-text {
+h1.question-text, 
+#question-text {
   font-size: 72rem !important;
   font-weight: 900 !important;
   line-height: 0.85 !important;
-  letter-spacing: -0.03em;
-  color: var(--md-sys-color-on-surface);
-  text-align: center;
-  margin: 0;
-  background: linear-gradient(135deg, #ffffff 0%, rgba(255, 255, 255, 0.9) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  text-shadow: 0 0 200px rgba(99, 102, 241, 0.5);
-  animation: textGlow 3s ease-in-out infinite alternate;
-  word-wrap: break-word;
-  hyphens: auto;
+  letter-spacing: -0.03em !important;
+  color: var(--md-sys-color-on-surface) !important;
+  text-align: center !important;
+  margin: 0 !important;
+  background: linear-gradient(135deg, #ffffff 0%, rgba(255, 255, 255, 0.9) 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+  text-shadow: 0 0 200px rgba(99, 102, 241, 0.5) !important;
+  animation: textGlow 3s ease-in-out infinite alternate !important;
+  word-wrap: break-word !important;
+  hyphens: auto !important;
+  font-family: inherit !important;
 }
 
 @keyframes textGlow {
@@ -283,17 +285,19 @@ body::before {
 .question-points {
   background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
   color: white;
-  padding: 8px 12px;
+  padding: 12px 18px;
   border-radius: 100px;
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: 1.35rem;
+  font-weight: 700;
   box-shadow: var(--md-sys-elevation-level2);
   backdrop-filter: blur(15px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   animation: pointsPulse 2s ease-in-out infinite;
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.4);
   white-space: nowrap;
   flex-shrink: 0;
+  height: fit-content;
+  align-self: flex-start;
 }
 
 @keyframes pointsPulse {
@@ -304,7 +308,7 @@ body::before {
 /* Timer Progress Bar */
 .question-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   width: 75vw;
   margin-bottom: 20px;
@@ -607,7 +611,8 @@ body::before {
     padding: 32px;
   }
   
-  .question-text {
+  h1.question-text, 
+  #question-text {
     font-size: 50rem !important; /* Still massive for smaller projectors */
   }
 }

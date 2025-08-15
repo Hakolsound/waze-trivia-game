@@ -391,7 +391,7 @@ class GameDisplay {
         if (this.buzzerQueue.length === 0) {
             container.innerHTML = `
                 <div class="buzzer-item">
-                    <div class="buzzer-team">Waiting for buzzers...</div>
+                    <div class="buzzer-team"></div>
                     <div class="buzzer-details">
                         <span class="buzzer-order">-</span>
                         <span class="buzzer-time">-</span>

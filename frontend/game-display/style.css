@@ -239,9 +239,9 @@ body::before {
 
 h1.question-text, 
 #question-text {
-  font-size: 72rem !important;
+  font-size: 8rem !important;
   font-weight: 900 !important;
-  line-height: 0.85 !important;
+  line-height: 0.9 !important;
   letter-spacing: -0.03em !important;
   color: var(--md-sys-color-on-surface) !important;
   text-align: center !important;
@@ -367,13 +367,17 @@ h1.question-text,
   background: rgba(25, 25, 40, 0.9);
   backdrop-filter: blur(20px);
   border-left: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 24px 16px;
+  padding: 20px;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .buzzer-sidebar-header {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   text-align: center;
+  flex-shrink: 0;
 }
 
 .buzzer-sidebar h3 {
@@ -382,15 +386,18 @@ h1.question-text,
   margin-bottom: 8px;
 }
 
-.buzzer-subtitle {
-  font: var(--md-sys-typescale-body-medium);
-  color: var(--md-sys-color-on-surface-variant);
-}
+/* Removed buzzer-subtitle */
 
 .buzzer-queue {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  flex: 1;
+  min-height: 0;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .buzzer-item {
@@ -399,7 +406,8 @@ h1.question-text,
   padding: 16px;
   border-left: 4px solid transparent;
   transition: all 0.3s ease;
-  opacity: 0.6;
+  opacity: 0.3;
+  min-height: 60px;
 }
 
 .buzzer-item.active {
@@ -613,7 +621,7 @@ h1.question-text,
   
   h1.question-text, 
   #question-text {
-    font-size: 50rem !important; /* Still massive for smaller projectors */
+    font-size: 6rem !important; /* Smaller screens get proportionally smaller text */
   }
 }
 

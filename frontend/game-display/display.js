@@ -222,8 +222,10 @@ class GameDisplay {
 
     handleQuestionEnded(data) {
         this.clearTimer();
-        this.showIdleState();
-        this.currentQuestion = null;
+        // Keep question visible instead of returning to idle state
+        // The question will be hidden when a correct answer is given or host manually advances
+        this.updateGameStatus('Time up - Waiting for answer');
+        this.elements.timerText.textContent = 'Time up!';
     }
 
     handleBuzzerPressed(data) {
@@ -279,6 +281,7 @@ class GameDisplay {
         setTimeout(() => {
             if (data.isCorrect) {
                 this.showIdleState();
+                this.currentQuestion = null;
             } else {
                 // Remove the incorrect team from queue and continue
                 this.removeFromBuzzerQueue(data.groupId);
@@ -340,14 +343,19 @@ class GameDisplay {
     // Timer Methods
     startTimer() {
         this.clearTimer();
+        const updateInterval = 1000 / 50; // 50 FPS = 20ms intervals
+        const decrementPerUpdate = 1 / 50; // Decrease by 1/50th of a second each update
+        
         this.questionTimer = setInterval(() => {
-            this.timeRemaining--;
+            this.timeRemaining -= decrementPerUpdate;
             this.updateTimer(this.timeRemaining, this.totalTime);
             
             if (this.timeRemaining <= 0) {
                 this.clearTimer();
+                this.timeRemaining = 0;
+                this.updateTimer(0, this.totalTime);
             }
-        }, 1000);
+        }, updateInterval);
     }
 
     clearTimer() {
@@ -364,8 +372,12 @@ class GameDisplay {
         const percentage = Math.max(0, (timeRemaining / totalTime) * 100);
         this.elements.timerProgress.style.width = `${percentage}%`;
         
-        const seconds = Math.max(0, timeRemaining);
-        this.elements.timerText.textContent = `${seconds} second${seconds !== 1 ? 's' : ''} remaining`;
+        const seconds = Math.max(0, Math.ceil(timeRemaining)); // Round up to show whole seconds
+        if (seconds > 0) {
+            this.elements.timerText.textContent = `${seconds} second${seconds !== 1 ? 's' : ''} remaining`;
+        } else {
+            this.elements.timerText.textContent = 'Time up!';
+        }
     }
 
     // Buzzer Queue Methods

@@ -38,9 +38,19 @@
                 <div class="question-card">
                     <div class="card-header">
                         <h2>📝 Current Question</h2>
-                        <div class="question-meta" id="question-meta">
-                            <span class="points">100 pts</span>
-                            <span class="time">30s</span>
+                        <div class="question-meta-container">
+                            <div class="question-meta" id="question-meta">
+                                <span class="points">100 pts</span>
+                                <span class="time">30s</span>
+                            </div>
+                            <div class="live-timer hidden" id="live-timer">
+                                <div class="timer-circle">
+                                    <span id="timer-countdown">30</span>
+                                </div>
+                                <div class="timer-status">
+                                    <span id="timer-label">Time Remaining</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="question-content">
@@ -108,6 +118,22 @@
                         <button id="arm-buzzers-btn" class="btn btn-warning" disabled>Arm Buzzers</button>
                         <button id="disarm-buzzers-btn" class="btn btn-secondary" disabled>Disarm</button>
                     </div>
+                    
+                    <!-- Current Answering Team Highlight -->
+                    <div id="current-answerer-highlight" class="current-answerer-highlight hidden">
+                        <div class="answerer-badge">
+                            <span class="position" id="current-answerer-position">1st</span>
+                            <div class="answerer-info">
+                                <strong id="current-answerer-name">Team Alpha</strong>
+                                <small id="current-answerer-time">2.3s</small>
+                            </div>
+                        </div>
+                        <div class="answerer-status" id="current-answerer-status">
+                            <span class="status-text">Answering...</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Live Buzzer Rankings -->
                     <div id="buzzer-results" class="buzzer-results">
                         <div class="no-buzzes">No buzzer presses yet</div>
                     </div>

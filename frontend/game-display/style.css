@@ -716,6 +716,262 @@ body {
   }
 }
 
+/* Current Answering Team Display */
+.current-answerer-display {
+  background: linear-gradient(135deg, rgba(103, 80, 164, 0.15), rgba(121, 85, 72, 0.15));
+  border: 3px solid var(--md-sys-color-primary);
+  border-radius: 28px;
+  padding: 32px;
+  margin: 24px 0;
+  backdrop-filter: blur(20px);
+  box-shadow: var(--md-sys-elevation-level4);
+  animation: answeringPulse 2s ease-in-out infinite;
+}
+
+.answerer-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.answerer-badge {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.position-badge {
+  background: linear-gradient(135deg, var(--md-sys-color-tertiary), #A855F7);
+  color: white;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: var(--md-sys-typescale-title-large);
+  font-weight: 700;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  box-shadow: var(--md-sys-elevation-level3);
+}
+
+.answerer-info {
+  text-align: center;
+}
+
+.answerer-info h3 {
+  font: var(--md-sys-typescale-headline-medium);
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface);
+  margin: 0 0 8px 0;
+}
+
+.buzz-time {
+  font: var(--md-sys-typescale-title-medium);
+  color: var(--md-sys-color-on-surface-variant);
+  font-weight: 500;
+}
+
+.answerer-status {
+  text-align: center;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 16px 32px;
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+  box-shadow: var(--md-sys-elevation-level2);
+}
+
+.answerer-status .status-text {
+  font: var(--md-sys-typescale-title-medium);
+  font-weight: 600;
+  color: var(--md-sys-color-primary);
+}
+
+/* Answer Result Feedback */
+.current-answerer-display.correct {
+  border-color: var(--md-sys-color-success);
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(102, 187, 106, 0.15));
+  animation: correctPulse 1.5s ease-in-out infinite;
+}
+
+.current-answerer-display.correct .status-text {
+  color: var(--md-sys-color-success);
+  font-weight: 700;
+}
+
+.current-answerer-display.incorrect {
+  border-color: var(--md-sys-color-error);
+  background: linear-gradient(135deg, rgba(186, 26, 26, 0.2), rgba(239, 83, 80, 0.15));
+  animation: incorrectShake 1.5s ease-in-out infinite;
+}
+
+.current-answerer-display.incorrect .status-text {
+  color: var(--md-sys-color-error);
+  font-weight: 700;
+}
+
+@keyframes answeringPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.02); opacity: 0.95; }
+}
+
+@keyframes correctPulse {
+  0%, 100% { transform: scale(1); box-shadow: var(--md-sys-elevation-level4); }
+  50% { transform: scale(1.03); box-shadow: 0 8px 25px rgba(76, 175, 80, 0.4); }
+}
+
+@keyframes incorrectShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+/* Enhanced Buzzer Results with Live Rankings */
+.buzzer-results h3 {
+  font: var(--md-sys-typescale-title-large);
+  color: var(--md-sys-color-on-surface);
+  text-align: center;
+  margin: 0 0 24px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.buzzer-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  margin-bottom: 16px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  border-left: 6px solid var(--md-sys-color-primary);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--md-sys-elevation-level2);
+  transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard);
+  animation: slideInFromLeft 0.5s var(--md-sys-motion-easing-emphasized);
+}
+
+.buzzer-item.evaluated-correct {
+  background: rgba(76, 175, 80, 0.15);
+  border-left-color: var(--md-sys-color-success);
+  box-shadow: var(--md-sys-elevation-level3);
+}
+
+.buzzer-item.evaluated-incorrect {
+  background: rgba(186, 26, 26, 0.15);
+  border-left-color: var(--md-sys-color-error);
+  box-shadow: var(--md-sys-elevation-level3);
+}
+
+.buzzer-rank {
+  background: linear-gradient(135deg, var(--md-sys-color-tertiary), #A855F7);
+  color: white;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: var(--md-sys-typescale-title-medium);
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  box-shadow: var(--md-sys-elevation-level2);
+  margin-right: 20px;
+}
+
+.buzzer-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.buzzer-team {
+  font: var(--md-sys-typescale-body-large);
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.buzzer-time {
+  font: var(--md-sys-typescale-body-medium);
+  color: var(--md-sys-color-on-surface-variant);
+  font-weight: 500;
+}
+
+.buzzer-status {
+  display: flex;
+  align-items: center;
+  min-width: 80px;
+  justify-content: center;
+}
+
+.points-awarded {
+  background: linear-gradient(135deg, var(--md-sys-color-success), #66BB6A);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 12px;
+  font: var(--md-sys-typescale-label-medium);
+  font-weight: 600;
+  box-shadow: var(--md-sys-elevation-level1);
+}
+
+.points-deducted {
+  background: linear-gradient(135deg, var(--md-sys-color-error), #EF5350);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 12px;
+  font: var(--md-sys-typescale-label-medium);
+  font-weight: 600;
+  box-shadow: var(--md-sys-elevation-level1);
+}
+
+.waiting-evaluation {
+  color: var(--md-sys-color-outline);
+  font: var(--md-sys-typescale-body-medium);
+  font-style: italic;
+  font-weight: 500;
+}
+
+@keyframes slideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Enhanced Timer with Better Visual Feedback */
+.timer-circle {
+  position: relative;
+  overflow: hidden;
+}
+
+.timer-circle::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: conic-gradient(from 0deg, transparent 0%, var(--md-sys-color-tertiary) var(--timer-progress, 0%), transparent var(--timer-progress, 0%));
+  border-radius: 50%;
+  mask: radial-gradient(circle at center, transparent 60%, white 60%);
+  transition: all var(--md-sys-motion-duration-short2) ease-in-out;
+}
+
+.timer.critical .timer-circle::before {
+  background: conic-gradient(from 0deg, transparent 0%, var(--md-sys-color-error) var(--timer-progress, 0%), transparent var(--timer-progress, 0%));
+}
+
 /* Responsive Design */
 @media (max-width: 1200px) {
   #app {

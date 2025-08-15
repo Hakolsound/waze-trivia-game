@@ -22,6 +22,15 @@ class GameDisplay {
             questionMedia: document.getElementById('question-media'),
             timerText: document.getElementById('timer-text'),
             timerCircle: document.querySelector('.timer-circle'),
+            timer: document.getElementById('question-timer'),
+            
+            // Current answerer display elements
+            currentAnswererDisplay: document.getElementById('current-answerer-display'),
+            currentAnswererPosition: document.getElementById('current-answerer-position'),
+            currentAnswererName: document.getElementById('current-answerer-name'),
+            currentAnswererTime: document.getElementById('current-answerer-time'),
+            currentAnswererStatus: document.getElementById('current-answerer-status'),
+            
             buzzerResults: document.getElementById('buzzer-results'),
             buzzerList: document.getElementById('buzzer-list'),
             answerSection: document.getElementById('answer-section'),
@@ -32,6 +41,9 @@ class GameDisplay {
             overlayTitle: document.getElementById('overlay-title'),
             overlayMessage: document.getElementById('overlay-message')
         };
+        
+        // Initialize team name mapping
+        this.teamNames = new Map();
     }
 
     setupSocketListeners() {
@@ -72,6 +84,19 @@ class GameDisplay {
         this.socket.on('game-reset', () => {
             this.resetDisplay();
         });
+
+        // Answer evaluation listeners
+        this.socket.on('answer-evaluated', (data) => {
+            this.handleAnswerEvaluated(data);
+        });
+
+        this.socket.on('question-prepared', (data) => {
+            this.handleQuestionPrepared(data);
+        });
+
+        this.socket.on('game-completed', (data) => {
+            this.handleGameCompleted(data);
+        });
     }
 
     async connectToGame() {
@@ -108,6 +133,13 @@ class GameDisplay {
         this.updateGameStatus(state.status);
         this.updateQuestionCounter(state.current_question_index, state.questions?.length || 0);
         this.updateTeamsList(state.groups || []);
+        
+        // Update team names mapping
+        if (state.groups) {
+            state.groups.forEach(team => {
+                this.teamNames.set(team.id, team.name);
+            });
+        }
 
         if (state.status === 'setup' || state.status === 'waiting') {
             this.showWaitingScreen('Game is being set up...');
@@ -125,10 +157,12 @@ class GameDisplay {
     handleQuestionStart(data) {
         this.currentQuestion = data.question;
         this.timeRemaining = data.question.time_limit;
+        this.questionStartTime = data.startTime;
         this.buzzerOrder = [];
 
         this.hideWaitingScreen(); // Ensure waiting screen is hidden when question starts
         this.hideAllSections();
+        this.hideCurrentAnswererDisplay();
         
         // Add smooth reveal animation
         this.elements.questionSection.classList.remove('hidden');
@@ -142,7 +176,7 @@ class GameDisplay {
             this.elements.questionMedia.classList.add('hidden');
         }
 
-        this.startTimer();
+        this.startLiveTimer();
         this.updateQuestionCounter(data.questionIndex + 1, this.getTotalQuestions());
         this.updateGameStatus('Question Active');
     }
@@ -159,6 +193,7 @@ class GameDisplay {
         this.updateBuzzerResults();
         
         if (this.buzzerOrder.length === 1) {
+            this.showCurrentAnswererDisplay(data);
             this.showMessage('⚡ First Buzzer!', `${this.getTeamName(data.groupId)} buzzed in first!`, 2000);
             
             // Add visual feedback with screen flash effect
@@ -471,6 +506,210 @@ class GameDisplay {
         }
         
         this.showWaitingScreen('🔄 Game has been reset');
+    }
+
+    // Live Timer Methods
+    startLiveTimer() {
+        if (!this.questionStartTime || !this.currentQuestion) return;
+
+        this.stopTimer(); // Clear any existing timer
+        
+        const totalTime = this.currentQuestion.time_limit;
+        
+        const updateTimer = () => {
+            const elapsed = Math.floor((Date.now() - this.questionStartTime) / 1000);
+            const remaining = Math.max(0, totalTime - elapsed);
+            
+            this.elements.timerText.textContent = remaining;
+            
+            // Update progress indicator
+            const progress = Math.min(100, (elapsed / totalTime) * 100);
+            if (this.elements.timerCircle) {
+                this.elements.timerCircle.style.setProperty('--timer-progress', `${progress}%`);
+            }
+            
+            // Change style based on remaining time
+            if (this.elements.timer) {
+                this.elements.timer.classList.remove('warning', 'danger', 'critical');
+                if (remaining <= 5) {
+                    this.elements.timer.classList.add('critical');
+                } else if (remaining <= 10) {
+                    this.elements.timer.classList.add('warning');
+                }
+            }
+            
+            if (remaining <= 0) {
+                this.stopTimer();
+            }
+        };
+        
+        updateTimer();
+        this.questionTimer = setInterval(updateTimer, 1000);
+    }
+
+    // Current Answerer Display Methods
+    showCurrentAnswererDisplay(buzzerData) {
+        if (!this.elements.currentAnswererDisplay || !buzzerData) return;
+
+        const teamName = this.getTeamName(buzzerData.groupId);
+        const deltaTime = (buzzerData.deltaMs / 1000).toFixed(2);
+        const position = this.buzzerOrder.findIndex(b => b.groupId === buzzerData.groupId) + 1;
+        const positionText = position === 1 ? '1st' : position === 2 ? '2nd' : position === 3 ? '3rd' : `${position}th`;
+
+        // Update display elements
+        if (this.elements.currentAnswererPosition) {
+            this.elements.currentAnswererPosition.textContent = positionText;
+        }
+        if (this.elements.currentAnswererName) {
+            this.elements.currentAnswererName.textContent = teamName;
+        }
+        if (this.elements.currentAnswererTime) {
+            this.elements.currentAnswererTime.textContent = `${deltaTime}s`;
+        }
+        if (this.elements.currentAnswererStatus) {
+            const statusText = this.elements.currentAnswererStatus.querySelector('.status-text');
+            if (statusText) {
+                statusText.textContent = 'Answering...';
+            }
+        }
+
+        // Show the display
+        this.elements.currentAnswererDisplay.classList.remove('hidden', 'correct', 'incorrect');
+        this.elements.currentAnswererDisplay.classList.add('animate-slide-up');
+    }
+
+    hideCurrentAnswererDisplay() {
+        if (this.elements.currentAnswererDisplay) {
+            this.elements.currentAnswererDisplay.classList.add('hidden');
+            this.elements.currentAnswererDisplay.classList.remove('correct', 'incorrect');
+        }
+    }
+
+    showAnswerFeedback(isCorrect, teamName) {
+        if (!this.elements.currentAnswererDisplay) return;
+
+        const statusText = this.elements.currentAnswererStatus?.querySelector('.status-text');
+        if (statusText) {
+            statusText.textContent = isCorrect ? 'CORRECT! ✅' : 'INCORRECT ❌';
+            statusText.style.fontSize = '1.2rem';
+            statusText.style.fontWeight = '700';
+        }
+
+        // Add result class
+        this.elements.currentAnswererDisplay.classList.remove('correct', 'incorrect');
+        this.elements.currentAnswererDisplay.classList.add(isCorrect ? 'correct' : 'incorrect');
+
+        // Show full-screen feedback message
+        const resultMessage = isCorrect ? 
+            `🎉 ${teamName} is CORRECT!` : 
+            `❌ ${teamName} is incorrect...`;
+        
+        this.showMessage(isCorrect ? 'Correct!' : 'Incorrect!', resultMessage, 3000);
+
+        // Hide after 4 seconds
+        setTimeout(() => {
+            this.hideCurrentAnswererDisplay();
+        }, 4000);
+    }
+
+    // Enhanced Buzzer Results Display
+    updateBuzzerResults() {
+        if (this.buzzerOrder.length === 0) {
+            this.elements.buzzerResults.classList.add('hidden');
+            return;
+        }
+
+        this.elements.buzzerResults.classList.remove('hidden');
+        this.elements.buzzerList.innerHTML = '';
+
+        this.buzzerOrder.forEach((buzzer, index) => {
+            const buzzerItem = document.createElement('div');
+            buzzerItem.className = 'buzzer-item';
+            
+            const teamName = this.getTeamName(buzzer.groupId);
+            const deltaTime = (buzzer.deltaMs / 1000).toFixed(2);
+            
+            // Add evaluation status if available
+            let statusElement = '';
+            if (buzzer.evaluated) {
+                const statusClass = buzzer.isCorrect ? 'evaluated-correct' : 'evaluated-incorrect';
+                buzzerItem.classList.add(statusClass);
+                
+                if (buzzer.pointsAwarded !== undefined) {
+                    if (buzzer.pointsAwarded > 0) {
+                        statusElement = `<div class="buzzer-status"><span class="points-awarded">+${buzzer.pointsAwarded}</span></div>`;
+                    } else if (buzzer.pointsAwarded < 0) {
+                        statusElement = `<div class="buzzer-status"><span class="points-deducted">${buzzer.pointsAwarded}</span></div>`;
+                    }
+                }
+            } else {
+                statusElement = '<div class="buzzer-status"><span class="waiting-evaluation">Waiting...</span></div>';
+            }
+            
+            buzzerItem.innerHTML = `
+                <div class="buzzer-rank">${index + 1}</div>
+                <div class="buzzer-info">
+                    <div class="buzzer-team">
+                        ${teamName}
+                        ${buzzer.evaluated ? (buzzer.isCorrect ? ' ✅' : ' ❌') : ''}
+                    </div>
+                    <div class="buzzer-time">${deltaTime}s</div>
+                </div>
+                ${statusElement}
+            `;
+            
+            this.elements.buzzerList.appendChild(buzzerItem);
+        });
+    }
+
+    // Answer Evaluation Event Handlers
+    handleAnswerEvaluated(data) {
+        const teamName = this.getTeamName(data.groupId);
+        
+        // Show visual feedback for the current answerer
+        this.showAnswerFeedback(data.isCorrect, teamName);
+        
+        // Update the buzzer order with evaluation results
+        const buzzerIndex = this.buzzerOrder.findIndex(b => b.groupId === data.groupId);
+        if (buzzerIndex !== -1) {
+            this.buzzerOrder[buzzerIndex].evaluated = true;
+            this.buzzerOrder[buzzerIndex].isCorrect = data.isCorrect;
+            this.buzzerOrder[buzzerIndex].pointsAwarded = data.pointsAwarded;
+        }
+        
+        // Update buzzer results display
+        this.updateBuzzerResults();
+        
+        // Show next answerer if available and answer was incorrect
+        if (!data.isCorrect && data.nextInLine) {
+            setTimeout(() => {
+                this.showCurrentAnswererDisplay(data.nextInLine);
+            }, 3000);
+        }
+    }
+
+    handleQuestionPrepared(data) {
+        this.showMessage('📝 Next Question Ready', `Question ${data.nextQuestionIndex + 1}: ${data.question.text.substring(0, 60)}...`, 4000);
+        this.hideCurrentAnswererDisplay();
+    }
+
+    handleGameCompleted(data) {
+        this.hideCurrentAnswererDisplay();
+        this.stopTimer();
+        
+        // Find the winner
+        const winner = data.finalScores && data.finalScores.length > 0 ? data.finalScores[0] : null;
+        const winnerMessage = winner ? `🏆 ${winner.name} wins with ${winner.score} points!` : 'Game completed!';
+        
+        this.showMessage('🎉 Game Over!', winnerMessage, 8000);
+        
+        // Update final scores
+        this.updateTeamsList(data.finalScores || []);
+    }
+
+    // Helper method to get team name
+    getTeamName(groupId) {
+        return this.teamNames.get(groupId) || `Team ${groupId.substring(0, 8)}`;
     }
 }
 

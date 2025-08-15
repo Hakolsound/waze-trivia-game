@@ -311,10 +311,12 @@ class GameDisplay {
         }
         
         // Handle description
-        if (game.game_description) {
-            this.elements.gameDescriptionDisplay.textContent = game.game_description;
+        if (game.game_description || game.description) {
+            this.elements.gameDescriptionDisplay.textContent = game.game_description || game.description;
+        } else if (game.name) {
+            this.elements.gameDescriptionDisplay.textContent = game.name;
         } else {
-            this.elements.gameDescriptionDisplay.textContent = game.name || 'Hakol Trivia Game';
+            this.elements.gameDescriptionDisplay.textContent = 'Hakol Trivia Game';
         }
         
         // Handle logo

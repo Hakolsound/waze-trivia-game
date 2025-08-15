@@ -187,6 +187,7 @@ class AdminConfig {
             secondaryColor: document.getElementById('secondary-color'),
             gameLogo: document.getElementById('game-logo'),
             gameDescription: document.getElementById('game-description'),
+            saveBrandingBtn: document.getElementById('save-branding-btn'),
             
             // System elements
             dbStatus: document.getElementById('db-status'),
@@ -255,6 +256,12 @@ class AdminConfig {
         if (this.elements.saveAllBtn) {
             this.elements.saveAllBtn.addEventListener('click', () => {
                 this.saveAllGameData();
+            });
+        }
+
+        if (this.elements.saveBrandingBtn) {
+            this.elements.saveBrandingBtn.addEventListener('click', () => {
+                this.saveBrandingDataWithToast();
             });
         }
 
@@ -1913,6 +1920,22 @@ class AdminConfig {
         }
         
         return brandingData;
+    }
+    
+    // Save branding data with toast notification
+    async saveBrandingDataWithToast() {
+        if (!this.currentGame) {
+            this.showToast('No game selected', 'error');
+            return;
+        }
+        
+        try {
+            await this.saveBrandingData();
+            this.showToast('Branding data saved successfully', 'success');
+        } catch (error) {
+            console.error('Failed to save branding data:', error);
+            this.showToast('Failed to save branding data', 'error');
+        }
     }
     
     // Upload game logo file

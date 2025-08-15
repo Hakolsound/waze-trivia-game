@@ -4,41 +4,42 @@
 @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
 
 :root {
-  /* Dark Theme Brand Colors */
-  --hakol-primary: #4A9EBF;
-  --hakol-primary-dark: #396B7D;
-  --hakol-secondary: #B8735A;
-  --hakol-accent: #C4B050;
-  --hakol-success: #6B9B6E;
-  --hakol-warning: #C18B47;
-  --hakol-error: #B85C5C;
-  --hakol-purple: #8A7BA8;
+  /* Modern 2025 Brand Colors */
+  --primary: #6366f1;
+  --primary-light: #818cf8;
+  --primary-dark: #4f46e5;
+  --secondary: #ec4899;
+  --accent: #06b6d4;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --purple: #a855f7;
   
-  /* Dark Material Design 3 Color System */
-  --md-sys-color-primary: var(--hakol-primary);
+  /* Modern Color System */
+  --md-sys-color-primary: var(--primary);
   --md-sys-color-on-primary: #ffffff;
-  --md-sys-color-primary-container: rgba(74, 158, 191, 0.2);
-  --md-sys-color-secondary: var(--hakol-secondary);
-  --md-sys-color-tertiary: var(--hakol-purple);
-  --md-sys-color-success: var(--hakol-success);
-  --md-sys-color-warning: var(--hakol-warning);
-  --md-sys-color-error: var(--hakol-error);
+  --md-sys-color-primary-container: rgba(99, 102, 241, 0.1);
+  --md-sys-color-secondary: var(--secondary);
+  --md-sys-color-tertiary: var(--purple);
+  --md-sys-color-success: var(--success);
+  --md-sys-color-warning: var(--warning);
+  --md-sys-color-error: var(--error);
   
-  /* Dark Theme Surfaces */
-  --md-sys-color-background: #0f0f1a;
+  /* Modern Glass Surfaces */
+  --md-sys-color-background: #0a0a0f;
   --md-sys-color-on-background: #ffffff;
-  --md-sys-color-surface: rgba(25, 25, 40, 0.95);
+  --md-sys-color-surface: rgba(255, 255, 255, 0.03);
   --md-sys-color-on-surface: #ffffff;
-  --md-sys-color-surface-variant: rgba(255, 255, 255, 0.1);
-  --md-sys-color-on-surface-variant: rgba(255, 255, 255, 0.7);
-  --md-sys-color-outline: rgba(255, 255, 255, 0.2);
-  --md-sys-color-shadow: rgba(0, 0, 0, 0.5);
+  --md-sys-color-surface-variant: rgba(255, 255, 255, 0.06);
+  --md-sys-color-on-surface-variant: rgba(255, 255, 255, 0.8);
+  --md-sys-color-outline: rgba(255, 255, 255, 0.15);
+  --md-sys-color-shadow: rgba(0, 0, 0, 0.8);
   
-  /* Elevations */
-  --md-sys-elevation-level1: 0px 4px 12px rgba(0, 0, 0, 0.4);
-  --md-sys-elevation-level2: 0px 6px 16px rgba(0, 0, 0, 0.5);
-  --md-sys-elevation-level3: 0px 8px 20px rgba(0, 0, 0, 0.6);
-  --md-sys-elevation-level4: 0px 12px 28px rgba(0, 0, 0, 0.7);
+  /* Modern Elevations with Glass Effect */
+  --md-sys-elevation-level1: 0px 8px 32px rgba(0, 0, 0, 0.12), 0px 0px 0px 1px rgba(255, 255, 255, 0.05);
+  --md-sys-elevation-level2: 0px 16px 64px rgba(0, 0, 0, 0.16), 0px 0px 0px 1px rgba(255, 255, 255, 0.1);
+  --md-sys-elevation-level3: 0px 24px 80px rgba(0, 0, 0, 0.24), 0px 0px 0px 1px rgba(255, 255, 255, 0.12);
+  --md-sys-elevation-level4: 0px 32px 120px rgba(0, 0, 0, 0.32), 0px 0px 0px 1px rgba(255, 255, 255, 0.15);
   
   /* Typography Scale */
   --md-sys-typescale-display-large: 700 4rem/4.5rem 'Google Sans';
@@ -58,12 +59,14 @@
 }
 
 body {
-  font-family: 'Google Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+  background: radial-gradient(ellipse at top, #1a1a2e 0%, #0f0f23 100%);
   color: var(--md-sys-color-on-background);
   min-height: 100vh;
   overflow: hidden;
   position: relative;
+  font-optical-sizing: auto;
+  font-variation-settings: 'wght' 400;
 }
 
 body::before {
@@ -73,10 +76,17 @@ body::before {
   left: 0;
   width: 100%;
   height: 100%;
-  background: radial-gradient(circle at 30% 80%, rgba(74, 158, 191, 0.1) 0%, transparent 50%),
-              radial-gradient(circle at 80% 20%, rgba(138, 123, 168, 0.1) 0%, transparent 50%),
-              radial-gradient(circle at 40% 40%, rgba(196, 176, 80, 0.05) 0%, transparent 50%);
+  background: 
+    radial-gradient(circle at 20% 80%, rgba(99, 102, 241, 0.15) 0%, transparent 60%),
+    radial-gradient(circle at 80% 20%, rgba(168, 85, 247, 0.12) 0%, transparent 60%),
+    radial-gradient(circle at 40% 40%, rgba(6, 182, 212, 0.08) 0%, transparent 60%);
   z-index: -1;
+  animation: float 20s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-20px) rotate(1deg); }
 }
 
 #app {
@@ -189,7 +199,9 @@ body::before {
   height: 100%;
   opacity: 0;
   transform: translateY(20px);
-  transition: all 0.5s ease;
+  transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  padding: 80px 40px;
 }
 
 .question-section.active {
@@ -198,29 +210,50 @@ body::before {
 }
 
 .question-container {
-  background: var(--md-sys-color-surface);
-  border-radius: 32px;
-  padding: 64px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 40px;
+  padding: 80px 60px;
   box-shadow: var(--md-sys-elevation-level4);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  margin-bottom: 40px;
-  min-height: 400px;
+  backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
   justify-content: center;
   width: 100%;
-  max-width: 1000px;
+  max-width: 1400px;
+  position: relative;
+  overflow: hidden;
+}
+
+.question-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
 }
 
 .question-text {
-  font: var(--md-sys-typescale-display-large);
+  font-size: 18rem;
+  font-weight: 800;
+  line-height: 0.9;
+  letter-spacing: -0.02em;
   color: var(--md-sys-color-on-surface);
-  line-height: 1.1;
-  margin-bottom: 32px;
   text-align: center;
-  font-size: 4.5rem;
-  font-weight: 700;
+  margin: 0;
+  background: linear-gradient(135deg, #ffffff 0%, rgba(255, 255, 255, 0.8) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 0 80px rgba(99, 102, 241, 0.3);
+  animation: textGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes textGlow {
+  from { text-shadow: 0 0 80px rgba(99, 102, 241, 0.3); }
+  to { text-shadow: 0 0 120px rgba(99, 102, 241, 0.5), 0 0 160px rgba(168, 85, 247, 0.3); }
 }
 
 .question-media {
@@ -240,38 +273,57 @@ body::before {
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.question-points-overlay {
+  position: absolute;
+  top: 40px;
+  right: 40px;
+  z-index: 10;
+}
+
 .question-points {
-  background: linear-gradient(135deg, var(--hakol-accent), #FFB74D);
-  color: #000;
-  padding: 8px 16px;
-  border-radius: 16px;
-  font: var(--md-sys-typescale-body-large);
-  font-weight: 500;
-  box-shadow: var(--md-sys-elevation-level1);
-  font-size: 1rem;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  color: white;
+  padding: 20px 32px;
+  border-radius: 100px;
+  font-size: 2rem;
+  font-weight: 700;
+  box-shadow: var(--md-sys-elevation-level3);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  animation: pointsPulse 2s ease-in-out infinite;
+}
+
+@keyframes pointsPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
 }
 
 /* Timer Progress Bar */
 .timer-container {
   width: 100%;
-  max-width: 800px;
+  max-width: 1200px;
+  margin-bottom: 60px;
+  position: relative;
 }
 
 .timer-bar {
   width: 100%;
-  height: 8px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 100px;
   overflow: hidden;
   position: relative;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .timer-progress {
   height: 100%;
-  background: linear-gradient(90deg, var(--hakol-success), var(--hakol-warning), var(--hakol-error));
-  border-radius: 4px;
-  transition: width 0.1s linear;
+  background: linear-gradient(90deg, var(--success), var(--warning), var(--error));
+  border-radius: 100px;
+  transition: width 0.02s linear;
   position: relative;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
 }
 
 .timer-progress::after {
@@ -287,9 +339,11 @@ body::before {
 
 .timer-text {
   text-align: center;
-  margin-top: 12px;
-  font: var(--md-sys-typescale-body-large);
+  margin-top: 20px;
+  font-size: 1.5rem;
+  font-weight: 600;
   color: var(--md-sys-color-on-surface-variant);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 }
 
 /* Buzzer Sidebar */

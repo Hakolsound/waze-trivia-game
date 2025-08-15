@@ -37,22 +37,24 @@
 
             <!-- Question Display -->
             <section id="question-section" class="question-section hidden">
-                <div class="question-container">
-                    <div class="question-content">
-                        <h2 id="question-text">Question will appear here...</h2>
-                        <img id="question-media" class="question-media hidden" alt="Question media">
-                    </div>
-                    <div class="question-meta">
-                        <div class="question-points" id="question-points">100 Points</div>
-                    </div>
+                <!-- Points Display - Top Right -->
+                <div class="question-points-overlay">
+                    <div class="question-points" id="question-points">100 Points</div>
                 </div>
                 
-                <!-- Timer Progress Bar -->
+                <!-- Timer Progress Bar - Above Question -->
                 <div class="timer-container">
                     <div class="timer-bar">
                         <div id="timer-progress" class="timer-progress" style="width: 100%"></div>
                     </div>
                     <div id="timer-text" class="timer-text">30 seconds remaining</div>
+                </div>
+                
+                <div class="question-container">
+                    <div class="question-content">
+                        <h1 id="question-text">Who was the first to walk on the moon?</h1>
+                        <img id="question-media" class="question-media hidden" alt="Question media">
+                    </div>
                 </div>
             </section>
         </main>

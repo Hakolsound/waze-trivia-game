@@ -30,6 +30,7 @@ class AdminConfig {
     }
 
     onGameChanged(game) {
+        console.log('Game changed:', game);
         const indicator = document.getElementById('current-game-indicator');
         
         if (game) {
@@ -37,6 +38,7 @@ class AdminConfig {
             indicator.style.display = 'block';
             
             // Show admin configuration interface
+            console.log('Showing admin interface');
             this.showAdminInterface();
             
             // Load game-specific data
@@ -46,6 +48,7 @@ class AdminConfig {
             indicator.style.display = 'block';
             
             // Hide admin configuration interface
+            console.log('Hiding admin interface');
             this.hideAdminInterface();
         }
     }
@@ -59,16 +62,33 @@ class AdminConfig {
         const gameSelection = document.getElementById('games-selection');
         const gameConfiguration = document.getElementById('game-configuration');
         
-        if (gameSelection) gameSelection.classList.remove('active');
-        if (gameConfiguration) gameConfiguration.classList.add('active');
+        console.log('gameSelection element:', gameSelection);
+        console.log('gameConfiguration element:', gameConfiguration);
+        
+        if (gameSelection) {
+            gameSelection.classList.remove('active');
+            gameSelection.classList.add('hidden');
+            console.log('Hidden games-selection');
+        }
+        if (gameConfiguration) {
+            gameConfiguration.classList.remove('hidden');
+            gameConfiguration.classList.add('active');
+            console.log('Showed game-configuration');
+        }
     }
 
     hideAdminInterface() {
         const gameSelection = document.getElementById('games-selection');
         const gameConfiguration = document.getElementById('game-configuration');
         
-        if (gameSelection) gameSelection.classList.add('active');
-        if (gameConfiguration) gameConfiguration.classList.remove('active');
+        if (gameSelection) {
+            gameSelection.classList.add('active');
+            gameSelection.classList.remove('hidden');
+        }
+        if (gameConfiguration) {
+            gameConfiguration.classList.add('hidden');
+            gameConfiguration.classList.remove('active');
+        }
     }
 
     async loadGameData(game) {

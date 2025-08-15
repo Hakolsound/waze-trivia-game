@@ -16,11 +16,15 @@ class AdminConfig {
             this.refreshBuzzerStatus();
         }, 1000);
         
-        // Set up periodic status updates to handle stale devices and refresh from server
+        // Set up periodic status updates to handle stale devices
         setInterval(() => {
-            this.refreshBuzzerStatus(); // Fetch fresh data from server
-            this.updateBuzzerSidebar();
+            this.updateBuzzerSidebar(); // Check for stale devices based on timestamps
         }, 5000); // Check every 5 seconds
+        
+        // Refresh from server less frequently to avoid wiping real-time data
+        setInterval(() => {
+            this.refreshBuzzerStatus(); // Get baseline device list from server
+        }, 30000); // Every 30 seconds
     }
 
     initializeGameSelector() {
@@ -1117,18 +1121,23 @@ class AdminConfig {
                 const devices = await response.json();
                 const now = Date.now();
                 
-                // Clear all existing devices to prevent duplicates
-                this.buzzerDevices.clear();
+                // Don't clear the map - instead update existing entries or add new ones
+                // Mark all existing devices as potentially offline first
+                this.buzzerDevices.forEach(device => {
+                    device.server_reported = false;
+                });
                 
-                // Only add devices that have valid numeric IDs (filter out false devices)
+                // Update with server data
                 if (Array.isArray(devices)) {
                     devices.forEach(device => {
                         const deviceId = device.device_id;
                         // Only accept numeric device IDs (1, 2, 3, 4) not text ones (buzzer_1, etc)
                         if (deviceId && /^\d+$/.test(deviceId.toString())) {
+                            const existingDevice = this.buzzerDevices.get(deviceId);
                             this.buzzerDevices.set(deviceId, {
-                                ...device,
-                                last_seen: device.last_seen || now,
+                                ...existingDevice, // Keep existing data (like last_seen from ESP32)
+                                ...device, // Overlay server data
+                                server_reported: true,
                                 teamName: this.getTeamNameByBuzzerId(deviceId)
                             });
                         }

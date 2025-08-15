@@ -105,6 +105,7 @@ class ESP32Service {
       } else if (data.startsWith('DEVICE:')) {
         // Parse DEVICE:1,online=1,armed=0,pressed=0,mac=EC:62:60:1D:E8:D4 format
         console.log('ESP32 Device Data:', data);
+        this.parseDeviceData(data);
         this.io.emit('esp32-device-data', {
           esp32_data: data,
           timestamp: new Date().toISOString()
@@ -225,36 +226,63 @@ class ESP32Service {
   }
 
   async getDevices() {
-    // Return array of buzzer devices with their status and last seen time
+    // Return array of buzzer devices with their actual status from ESP32 data
     const devices = [];
     const now = Date.now();
+    const staleThreshold = 60000; // 60 seconds
     
-    for (const [buzzerId, state] of this.buzzerStates) {
+    for (const [deviceId, state] of this.buzzerStates) {
+      // Only include numeric device IDs (filter out false entries)
+      if (!/^\d+$/.test(deviceId.toString())) continue;
+      
+      const timeSinceLastSeen = now - (state.last_seen || 0);
+      const isOnline = state.online === true && timeSinceLastSeen < staleThreshold;
+      
       devices.push({
-        device_id: buzzerId,
-        name: `Buzzer ${buzzerId}`,
-        status: state.armed ? 'armed' : 'disarmed',
-        last_seen: now,
-        connected: this.isConnectedFlag,
-        ...state
+        device_id: deviceId,
+        name: `Buzzer ${deviceId}`,
+        status: isOnline ? 'online' : 'offline',
+        last_seen: state.last_seen || now,
+        online: isOnline,
+        armed: state.armed === true,
+        pressed: state.pressed === true,
+        mac: state.mac || '',
+        time_since_last_seen: timeSinceLastSeen
       });
     }
     
-    // If no devices found but we're connected, return default set
-    if (devices.length === 0 && this.isConnectedFlag) {
-      for (let i = 1; i <= 4; i++) {
-        devices.push({
-          device_id: `buzzer_${i}`,
-          name: `Buzzer ${i}`,
-          status: 'disarmed',
-          last_seen: now,
-          connected: this.isConnectedFlag,
-          armed: false
-        });
-      }
-    }
-    
+    // Don't create fake devices - only return actual ones from ESP32
     return devices;
+  }
+
+  parseDeviceData(deviceString) {
+    try {
+      const parts = deviceString.split(',');
+      if (parts.length < 2) return;
+      
+      // Extract device ID
+      const devicePart = parts[0];
+      if (!devicePart.startsWith('DEVICE:')) return;
+      const deviceId = devicePart.split(':')[1];
+      
+      if (!deviceId || !/^\d+$/.test(deviceId)) return;
+      
+      // Parse parameters
+      const params = { last_seen: Date.now() };
+      for (let i = 1; i < parts.length; i++) {
+        const [key, value] = parts[i].split('=');
+        if (key && value !== undefined) {
+          params[key] = value === '1' ? true : value === '0' ? false : value;
+        }
+      }
+      
+      // Store device state
+      this.buzzerStates.set(deviceId, params);
+      console.log(`Updated device ${deviceId}:`, params);
+      
+    } catch (error) {
+      console.error('Error parsing device data:', error);
+    }
   }
 
   updateBuzzerStates(statusData) {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trivia Game Display</title>
+    <title>Hakol Trivia Game Display</title>
     <link rel="stylesheet" href="/display/style.css">
     <link rel="stylesheet" href="/shared/gameSelector.css">
     <script src="/socket.io/socket.io.js"></script>
@@ -14,86 +14,80 @@
         <!-- Game Selector Container -->
         <div id="game-selector-container"></div>
         
-        <!-- Game Header -->
+        <!-- Minimized Header -->
         <header class="game-header">
             <h1 id="game-title">Hakol Trivia Game</h1>
             <div class="game-status">
-                <span id="game-status">Loading...</span>
-                <span id="question-counter">Question 0 of 0</span>
+                <span id="game-status">Waiting for game...</span>
+                <span id="question-counter">Ready to start</span>
             </div>
         </header>
 
         <!-- Main Content Area -->
         <main class="game-content">
+            <!-- Idle State with Logo -->
+            <section id="idle-state" class="idle-state active">
+                <div class="logo-container">
+                    <img id="game-logo" src="" alt="Game Logo" class="hidden">
+                    <div id="logo-placeholder" class="logo-placeholder">🏆</div>
+                </div>
+                <h2 class="idle-title">Hakol Trivia Game</h2>
+                <p class="idle-subtitle">Waiting for the next question...</p>
+            </section>
+
             <!-- Question Display -->
             <section id="question-section" class="question-section hidden">
                 <div class="question-container">
-                    <div id="question-timer" class="timer">
-                        <div class="timer-circle">
-                            <span id="timer-text">30</span>
-                        </div>
-                    </div>
-                    
                     <div class="question-content">
                         <h2 id="question-text">Question will appear here...</h2>
-                        <div id="question-media" class="question-media hidden"></div>
+                        <img id="question-media" class="question-media hidden" alt="Question media">
+                    </div>
+                    <div class="question-meta">
+                        <div class="question-points" id="question-points">100 Points</div>
                     </div>
                 </div>
-            </section>
-
-            <!-- Current Answering Team Display -->
-            <section id="current-answerer-display" class="current-answerer-display hidden">
-                <div class="answerer-card">
-                    <div class="answerer-badge">
-                        <span id="current-answerer-position" class="position-badge">1st</span>
-                        <div class="answerer-info">
-                            <h3 id="current-answerer-name">Team Alpha</h3>
-                            <span id="current-answerer-time" class="buzz-time">2.3s</span>
-                        </div>
+                
+                <!-- Timer Progress Bar -->
+                <div class="timer-container">
+                    <div class="timer-bar">
+                        <div id="timer-progress" class="timer-progress" style="width: 100%"></div>
                     </div>
-                    <div id="current-answerer-status" class="answerer-status">
-                        <span class="status-text">Answering...</span>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Live Buzzer Rankings -->
-            <section id="buzzer-results" class="buzzer-results hidden">
-                <h3>🔔 Live Buzzer Rankings</h3>
-                <div id="buzzer-list" class="buzzer-list"></div>
-            </section>
-
-            <!-- Answer Reveal -->
-            <section id="answer-section" class="answer-section hidden">
-                <div class="answer-container">
-                    <h3>Correct Answer:</h3>
-                    <p id="answer-text"></p>
+                    <div id="timer-text" class="timer-text">30 seconds remaining</div>
                 </div>
             </section>
         </main>
 
-        <!-- Scoreboard Sidebar -->
-        <aside class="scoreboard">
-            <h3>Leaderboard</h3>
-            <div id="teams-list" class="teams-list">
-                <!-- Teams will be populated dynamically -->
+        <!-- Buzzer Sidebar -->
+        <aside class="buzzer-sidebar">
+            <div class="buzzer-sidebar-header">
+                <h3>🔔 Team Buzzers</h3>
+                <p class="buzzer-subtitle">Live buzzer queue</p>
+            </div>
+            <div id="buzzer-queue" class="buzzer-queue">
+                <!-- Buzzer items will be populated dynamically -->
+                <div class="buzzer-item">
+                    <div class="buzzer-team">Waiting for buzzers...</div>
+                    <div class="buzzer-details">
+                        <span class="buzzer-order">-</span>
+                        <span class="buzzer-time">-</span>
+                    </div>
+                </div>
             </div>
         </aside>
 
-        <!-- Waiting Screen -->
-        <div id="waiting-screen" class="waiting-screen">
-            <div class="waiting-content">
-                <h2>Game Starting Soon...</h2>
-                <p>Please wait for the host to begin the game.</p>
-                <div class="loading-spinner"></div>
-            </div>
+        <!-- Answer Feedback Overlay -->
+        <div id="answer-feedback" class="answer-feedback hidden">
+            <div class="feedback-icon correct">✓</div>
+            <div class="feedback-team">Team Alpha</div>
+            <div class="feedback-points positive">+100</div>
+            <div class="feedback-message">Correct answer!</div>
         </div>
 
         <!-- Full Screen Message Overlay -->
         <div id="message-overlay" class="message-overlay hidden">
             <div class="message-content">
-                <h2 id="overlay-title"></h2>
-                <p id="overlay-message"></p>
+                <h2 id="overlay-title">Game Message</h2>
+                <p id="overlay-message">Message content here</p>
             </div>
         </div>
     </div>

@@ -175,6 +175,11 @@ class HostControl {
             teamSelect: document.getElementById('team-select'),
             awardPointsSubmitBtn: document.getElementById('award-points-submit-btn'),
             
+            // Game actions modal
+            showGameActionsBtn: document.getElementById('show-game-actions-btn'),
+            gameActionsModal: document.getElementById('game-actions-modal'),
+            closeGameActionsModalBtn: document.getElementById('close-game-actions-modal-btn'),
+            
             // Toast container
             toastContainer: document.getElementById('toast-container'),
             
@@ -318,6 +323,10 @@ class HostControl {
         if (this.elements.closePointsModalBtn) this.elements.closePointsModalBtn.addEventListener('click', () => this.hideManualPointsModal());
         if (this.elements.awardPointsSubmitBtn) this.elements.awardPointsSubmitBtn.addEventListener('click', () => this.awardManualPoints());
         
+        // Game actions modal
+        if (this.elements.showGameActionsBtn) this.elements.showGameActionsBtn.addEventListener('click', () => this.showGameActionsModal());
+        if (this.elements.closeGameActionsModalBtn) this.elements.closeGameActionsModalBtn.addEventListener('click', () => this.hideGameActionsModal());
+        
         // Close modals when clicking outside
         this.elements.answerEvaluationModal.addEventListener('click', (e) => {
             if (e.target === this.elements.answerEvaluationModal) {
@@ -334,6 +343,12 @@ class HostControl {
         this.elements.manualPointsModal.addEventListener('click', (e) => {
             if (e.target === this.elements.manualPointsModal) {
                 this.hideManualPointsModal();
+            }
+        });
+        
+        this.elements.gameActionsModal.addEventListener('click', (e) => {
+            if (e.target === this.elements.gameActionsModal) {
+                this.hideGameActionsModal();
             }
         });
         
@@ -398,11 +413,23 @@ class HostControl {
         }
     }
 
-    updateTeamDisplay() {
+    updateTeamDisplay(preserveUserInput = false) {
         if (this.teams.length === 0) {
             this.elements.teamsScoring.innerHTML = '<div class="no-teams">No teams loaded</div>';
             this.elements.teamSelect.innerHTML = '<option value="">No teams available</option>';
             return;
+        }
+        
+        // Store current user input values if preserving
+        const currentInputValues = {};
+        if (preserveUserInput) {
+            const existingInputs = this.elements.teamsScoring.querySelectorAll('.team-score');
+            existingInputs.forEach(input => {
+                const teamId = input.getAttribute('data-team-id');
+                if (teamId) {
+                    currentInputValues[teamId] = input.value;
+                }
+            });
         }
         
         this.elements.teamsScoring.innerHTML = '';
@@ -416,7 +443,8 @@ class HostControl {
             const scoreInput = document.createElement('input');
             scoreInput.type = 'number';
             scoreInput.className = 'team-score';
-            scoreInput.value = team.score || 0;
+            // Use preserved user input or current team score
+            scoreInput.value = preserveUserInput && currentInputValues[team.id] ? currentInputValues[team.id] : (team.score || 0);
             scoreInput.setAttribute('data-team-id', team.id);
             
             // Add event listener for score changes
@@ -1192,6 +1220,14 @@ class HostControl {
         this.elements.manualPointsModal.classList.add('hidden');
     }
 
+    showGameActionsModal() {
+        this.elements.gameActionsModal.classList.remove('hidden');
+    }
+
+    hideGameActionsModal() {
+        this.elements.gameActionsModal.classList.add('hidden');
+    }
+
     async awardManualPoints() {
         const teamId = this.elements.teamSelect.value;
         const points = parseInt(this.elements.pointsInput.value) || 0;
@@ -1495,8 +1531,8 @@ class HostControl {
             this.showToast(`Score updated: ${pointsDifference > 0 ? '+' : ''}${pointsDifference} points`, 'success');
         } catch (error) {
             this.showToast('Failed to update score', 'error');
-            // Revert the display
-            this.updateTeamDisplay();
+            // Revert the display but preserve user input
+            this.updateTeamDisplay(true);
         }
     }
 

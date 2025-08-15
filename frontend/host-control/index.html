@@ -118,48 +118,36 @@
                     </div>
                 </div>
 
-                <!-- Buzzer Status -->
-                <div class="panel buzzer-panel">
+                <!-- Current Answering Team Highlight -->
+                <div id="current-answerer-highlight" class="current-answerer-highlight hidden">
+                    <div class="answerer-badge">
+                        <span class="position" id="current-answerer-position">1st</span>
+                        <div class="answerer-info">
+                            <strong id="current-answerer-name">Team Alpha</strong>
+                            <small id="current-answerer-time">2.3s</small>
+                        </div>
+                    </div>
+                    <div class="answerer-status" id="current-answerer-status">
+                        <span class="status-text">Answering...</span>
+                    </div>
+                </div>
+                
+                <!-- Live Buzzer Rankings -->
+                <div class="panel buzzer-results-panel">
                     <div class="panel-header">
-                        <h3>🔔 Buzzer Control</h3>
-                        <div class="buzzer-status-indicator">
-                            <span id="buzzers-armed-status">Disarmed</span>
-                        </div>
+                        <h3>🔔 Live Buzzer Results</h3>
                     </div>
-                    <div class="buzzer-controls">
-                        <button id="arm-buzzers-btn" class="btn btn-warning" disabled>Arm Buzzers</button>
-                        <button id="disarm-buzzers-btn" class="btn btn-secondary" disabled>Disarm</button>
-                    </div>
-                    
-                    <!-- Current Answering Team Highlight -->
-                    <div id="current-answerer-highlight" class="current-answerer-highlight hidden">
-                        <div class="answerer-badge">
-                            <span class="position" id="current-answerer-position">1st</span>
-                            <div class="answerer-info">
-                                <strong id="current-answerer-name">Team Alpha</strong>
-                                <small id="current-answerer-time">2.3s</small>
-                            </div>
-                        </div>
-                        <div class="answerer-status" id="current-answerer-status">
-                            <span class="status-text">Answering...</span>
-                        </div>
-                    </div>
-                    
-                    <!-- Live Buzzer Rankings -->
                     <div id="buzzer-results" class="buzzer-results">
                         <div class="no-buzzes">No buzzer presses yet</div>
                     </div>
                 </div>
 
-                <!-- Game Actions -->
-                <div class="panel game-panel">
-                    <div class="panel-header">
-                        <h3>⚙️ Game Actions</h3>
-                    </div>
-                    <div class="game-actions">
-                        <button id="reset-game-btn" class="btn btn-danger">Reset Game</button>
-                        <button id="end-game-btn" class="btn btn-warning">End Game</button>
-                    </div>
+                <!-- Game Actions Icon -->
+                <div class="panel game-icon-panel">
+                    <button id="show-game-actions-btn" class="game-actions-icon" title="Game Actions">
+                        <span class="material-icons">⚙️</span>
+                        <span class="icon-label">Game</span>
+                    </button>
                 </div>
             </div>
         </main>
@@ -311,6 +299,22 @@
                             </select>
                         </div>
                         <button id="award-points-submit-btn" class="btn btn-success btn-large">Award Points</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Actions Modal -->
+        <div id="game-actions-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>⚙️ Game Actions</h3>
+                    <button id="close-game-actions-modal-btn" class="btn btn-secondary">Close</button>
+                </div>
+                <div class="modal-body">
+                    <div class="game-actions">
+                        <button id="reset-game-btn" class="btn btn-danger">Reset Game</button>
+                        <button id="end-game-btn" class="btn btn-warning">End Game</button>
                     </div>
                 </div>
             </div>

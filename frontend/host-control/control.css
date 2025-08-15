@@ -2,20 +2,20 @@
 @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
 
 :root {
-  /* Waze Brand Colors */
-  --waze-primary: #00D4FF;
-  --waze-primary-dark: #0088CC;
-  --waze-secondary: #FF6B35;
-  --waze-accent: #FFD23F;
-  --waze-success: #4CAF50;
-  --waze-warning: #FF9800;
-  --waze-error: #F44336;
-  --waze-purple: #8A2BE2;
+  /* Quieter Waze Brand Colors */
+  --waze-primary: #4A9EBF;
+  --waze-primary-dark: #396B7D;
+  --waze-secondary: #B8735A;
+  --waze-accent: #C4B050;
+  --waze-success: #6B9B6E;
+  --waze-warning: #C18B47;
+  --waze-error: #B85C5C;
+  --waze-purple: #8A7BA8;
 
   /* Material Design 3 Colors adapted for Waze */
   --md-sys-color-primary: var(--waze-primary);
   --md-sys-color-on-primary: #FFFFFF;
-  --md-sys-color-primary-container: rgba(0, 212, 255, 0.1);
+  --md-sys-color-primary-container: rgba(74, 158, 191, 0.15);
   --md-sys-color-secondary: var(--waze-secondary);
   --md-sys-color-tertiary: var(--waze-purple);
   --md-sys-color-success: var(--waze-success);
@@ -1336,6 +1336,47 @@ body {
     flex: 1;
     width: 100%;
     min-height: calc(100vh - 120px);
+}
+
+/* Game Actions Icon */
+.game-icon-panel {
+    padding: 16px;
+    text-align: center;
+}
+
+.game-actions-icon {
+    background: var(--md-sys-color-primary-container);
+    border: 2px solid var(--md-sys-color-primary);
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--md-sys-motion-duration-medium) var(--md-sys-motion-easing-standard);
+    font-size: 20px;
+    color: var(--md-sys-color-primary);
+}
+
+.game-actions-icon:hover {
+    background: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+    transform: translateY(-2px);
+    box-shadow: var(--md-sys-elevation-level3);
+}
+
+.game-actions-icon .material-icons {
+    font-size: 24px;
+    margin-bottom: 2px;
+}
+
+.game-actions-icon .icon-label {
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 /* Buzzer Sidebar */

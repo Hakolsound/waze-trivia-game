@@ -7,10 +7,10 @@
 }
 
 :root {
-    --waze-blue: #00D4FF;
-    --waze-orange: #FF6B35;
-    --waze-yellow: #FFD23F;
-    --waze-purple: #8A2BE2;
+    --waze-blue: #4A9EBF;
+    --waze-orange: #B8735A;
+    --waze-yellow: #C4B050;
+    --waze-purple: #8A7BA8;
     --gray-50: #f9fafb;
     --gray-100: #f3f4f6;
     --gray-200: #e5e7eb;
@@ -328,13 +328,13 @@ body {
 
 /* Alternating colors for question tabs */
 .question-tab:nth-child(odd) {
-    background: rgba(0, 212, 255, 0.15);
-    border-bottom: 2px solid rgba(0, 212, 255, 0.3);
+    background: rgba(74, 158, 191, 0.15);
+    border-bottom: 2px solid rgba(74, 158, 191, 0.3);
 }
 
 .question-tab:nth-child(even) {
-    background: rgba(138, 43, 226, 0.15);
-    border-bottom: 2px solid rgba(138, 43, 226, 0.3);
+    background: rgba(138, 123, 168, 0.15);
+    border-bottom: 2px solid rgba(138, 123, 168, 0.3);
 }
 
 .question-tab:hover {
@@ -343,12 +343,12 @@ body {
 }
 
 .question-tab:nth-child(odd):hover {
-    background: rgba(0, 212, 255, 0.25);
+    background: rgba(74, 158, 191, 0.25);
     color: var(--gray-800);
 }
 
 .question-tab:nth-child(even):hover {
-    background: rgba(138, 43, 226, 0.25);
+    background: rgba(138, 123, 168, 0.25);
     color: var(--gray-800);
 }
 
@@ -415,7 +415,7 @@ body {
 .add-question-tab:hover {
     border-color: var(--waze-blue);
     color: var(--waze-blue);
-    background: rgba(0, 212, 255, 0.1);
+    background: rgba(74, 158, 191, 0.1);
 }
 
 .question-editor {

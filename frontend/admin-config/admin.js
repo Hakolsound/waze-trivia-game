@@ -43,7 +43,8 @@ class AdminConfig {
             showIfNoGame: true,
             allowGameChange: true,
             showCreateGame: true,
-            autoShow: true
+            autoShow: true,
+            showCurrentGameIndicator: false  // Disable built-in indicator, we have our own
         });
 
         // Listen for game changes

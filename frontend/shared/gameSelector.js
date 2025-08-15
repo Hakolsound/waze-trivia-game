@@ -16,6 +16,7 @@ class GlobalGameSelector {
         this.containerSelector = options.containerSelector || '#game-selector-container';
         this.showIfNoGame = options.showIfNoGame !== false; // Default to true
         this.allowGameChange = options.allowGameChange !== false; // Default to true
+        this.showCurrentGameIndicator = options.showCurrentGameIndicator !== false; // Default to true
         
         this.init();
     }
@@ -146,15 +147,17 @@ class GlobalGameSelector {
                     ` : ''}
                 </div>
             </div>
-            <div id="current-game-indicator" class="current-game-indicator ${this.currentGame ? '' : 'hidden'}">
-                <div class="current-game-info">
-                    <span class="current-game-label">Current Game:</span>
-                    <strong id="current-game-name">${this.currentGame?.name || 'No Game Selected'}</strong>
+            ${this.showCurrentGameIndicator ? `
+                <div id="current-game-indicator" class="current-game-indicator ${this.currentGame ? '' : 'hidden'}">
+                    <div class="current-game-info">
+                        <span class="current-game-label">Current Game:</span>
+                        <strong id="current-game-name">${this.currentGame?.name || 'No Game Selected'}</strong>
+                    </div>
+                    ${this.allowGameChange ? `
+                        <button id="change-game-btn" class="btn btn-small btn-secondary">Change Game</button>
+                    ` : ''}
                 </div>
-                ${this.allowGameChange ? `
-                    <button id="change-game-btn" class="btn btn-small btn-secondary">Change Game</button>
-                ` : ''}
-            </div>
+            ` : ''}
         `;
 
         this.setupGameSelectorEvents();
@@ -209,11 +212,11 @@ class GlobalGameSelector {
         const indicator = document.getElementById('current-game-indicator');
         const modal = document.getElementById('game-selector-modal');
 
-        if (currentNameEl) {
+        if (currentNameEl && this.showCurrentGameIndicator) {
             currentNameEl.textContent = this.currentGame?.name || 'No Game Selected';
         }
 
-        if (indicator) {
+        if (indicator && this.showCurrentGameIndicator) {
             indicator.classList.toggle('hidden', !this.currentGame);
         }
 

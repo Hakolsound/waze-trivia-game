@@ -167,6 +167,7 @@ class HostControl {
             questionPoints: document.getElementById('question-points'),
             markCorrectBtn: document.getElementById('mark-correct-btn'),
             markIncorrectBtn: document.getElementById('mark-incorrect-btn'),
+            giveUpBtn: document.getElementById('give-up-btn'),
             nextInLineCard: document.getElementById('next-in-line-card'),
             nextTeamName: document.getElementById('next-team-name'),
             nextBuzzerTime: document.getElementById('next-buzzer-time'),
@@ -348,6 +349,7 @@ class HostControl {
         if (this.elements.closeEvaluationBtn) this.elements.closeEvaluationBtn.addEventListener('click', () => this.hideAnswerEvaluationModal());
         if (this.elements.markCorrectBtn) this.elements.markCorrectBtn.addEventListener('click', () => this.markAnswer(true));
         if (this.elements.markIncorrectBtn) this.elements.markIncorrectBtn.addEventListener('click', () => this.markAnswer(false));
+        if (this.elements.giveUpBtn) this.elements.giveUpBtn.addEventListener('click', () => this.giveUpQuestion());
         
         // Buzzer status modal
         if (this.elements.closeBuzzerModalBtn) this.elements.closeBuzzerModalBtn.addEventListener('click', () => this.hideBuzzerStatusModal());
@@ -1871,6 +1873,38 @@ class HostControl {
         } catch (error) {
             console.error('Failed to evaluate answer:', error);
             this.showToast('Failed to evaluate answer', 'error');
+        }
+    }
+
+    async giveUpQuestion() {
+        if (!this.currentGame) {
+            this.showToast('No active game', 'error');
+            return;
+        }
+
+        try {
+            // End the current question without evaluating any answers
+            const response = await fetch(`/api/games/${this.currentGame.id}/end-question`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to end question');
+            }
+
+            // Show feedback and hide modal
+            this.showToast('Question skipped - moving to next question', 'info');
+            this.hideAnswerEvaluationModal();
+            
+            // Auto-advance to next question after brief delay
+            setTimeout(() => {
+                this.nextQuestion();
+            }, 1000);
+
+        } catch (error) {
+            console.error('Failed to give up question:', error);
+            this.showToast('Failed to skip question', 'error');
         }
     }
 

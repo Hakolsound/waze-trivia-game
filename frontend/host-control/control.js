@@ -128,6 +128,7 @@ class HostControl {
             endQuestionBtn: document.getElementById('end-question-btn'),
             prevQuestionBtn: document.getElementById('prev-question-btn'),
             questionSelect: document.getElementById('question-select'),
+            showQuestionSelectBtn: document.getElementById('show-question-select-btn'),
             
             // Secondary panels
             teamsScoring: document.getElementById('teams-scoring'),
@@ -179,6 +180,10 @@ class HostControl {
             showGameActionsBtn: document.getElementById('show-game-actions-btn'),
             gameActionsModal: document.getElementById('game-actions-modal'),
             closeGameActionsModalBtn: document.getElementById('close-game-actions-modal-btn'),
+            
+            // Header navigation buttons
+            navOpenDisplayBtn: document.getElementById('nav-open-display-btn'),
+            navOpenAdminBtn: document.getElementById('nav-open-admin-btn'),
             
             // Toast container
             toastContainer: document.getElementById('toast-container'),
@@ -305,6 +310,7 @@ class HostControl {
         if (this.elements.nextQuestionBtn) this.elements.nextQuestionBtn.addEventListener('click', () => this.nextQuestion());
         if (this.elements.prevQuestionBtn) this.elements.prevQuestionBtn.addEventListener('click', () => this.prevQuestion());
         if (this.elements.questionSelect) this.elements.questionSelect.addEventListener('change', (e) => this.jumpToQuestion(e.target.value));
+        if (this.elements.showQuestionSelectBtn) this.elements.showQuestionSelectBtn.addEventListener('click', () => this.showQuestionSelectModal());
         if (this.elements.resetGameBtn) this.elements.resetGameBtn.addEventListener('click', () => this.resetGame());
         if (this.elements.endGameBtn) this.elements.endGameBtn.addEventListener('click', () => this.endGame());
         
@@ -336,6 +342,10 @@ class HostControl {
         // Game actions modal
         if (this.elements.showGameActionsBtn) this.elements.showGameActionsBtn.addEventListener('click', () => this.showGameActionsModal());
         if (this.elements.closeGameActionsModalBtn) this.elements.closeGameActionsModalBtn.addEventListener('click', () => this.hideGameActionsModal());
+        
+        // Header navigation buttons
+        if (this.elements.navOpenDisplayBtn) this.elements.navOpenDisplayBtn.addEventListener('click', () => window.open('/display', '_blank'));
+        if (this.elements.navOpenAdminBtn) this.elements.navOpenAdminBtn.addEventListener('click', () => window.open('/admin', '_blank'));
         
         // Close modals when clicking outside
         this.elements.answerEvaluationModal.addEventListener('click', (e) => {
@@ -530,6 +540,7 @@ class HostControl {
         if (this.elements.awardPointsBtn) this.elements.awardPointsBtn.disabled = !hasGame;
         if (this.elements.teamSelect) this.elements.teamSelect.disabled = !hasGame;
         if (this.elements.questionSelect) this.elements.questionSelect.disabled = !hasGame;
+        if (this.elements.showQuestionSelectBtn) this.elements.showQuestionSelectBtn.disabled = !hasGame;
     }
 
     updateBuzzerStatus() {
@@ -621,6 +632,20 @@ class HostControl {
             this.currentQuestionIndex = parseInt(index);
             this.updateQuestionDisplay();
             this.updateQuestionControls();
+        }
+    }
+
+    showQuestionSelectModal() {
+        // For now, just trigger the select dropdown
+        if (this.elements.questionSelect && !this.elements.questionSelect.disabled) {
+            this.elements.questionSelect.classList.remove('hidden');
+            this.elements.questionSelect.focus();
+            this.elements.questionSelect.click();
+            
+            // Hide it again after selection
+            setTimeout(() => {
+                this.elements.questionSelect.classList.add('hidden');
+            }, 100);
         }
     }
 

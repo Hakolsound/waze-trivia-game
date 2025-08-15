@@ -14,24 +14,30 @@
         <!-- Game Selector Container -->
         <div id="game-selector-container"></div>
         
-        <!-- Main Header with Game Status -->
-        <header class="game-header">
-            <div class="header-content">
-                <div class="game-branding">
-                    <h1>🏆 Waze Trivia Host</h1>
-                    <div class="game-info">
-                        <span id="current-game-name">No Game Loaded</span>
-                        <div class="game-stats">
-                            <span id="question-progress">Q 0/0</span>
-                            <span id="teams-count">0 Teams</span>
-                        </div>
-                    </div>
+        <!-- Compact Header -->
+        <header class="compact-header">
+            <div class="header-left">
+                <h1>🏆 Waze Trivia Host</h1>
+                <div class="game-stats">
+                    <span id="question-progress">Q 0/0</span>
+                    <span id="teams-count">0 Teams</span>
                 </div>
-                <div class="connection-status">
-                    <div class="status-item">
-                        <div id="status-indicator" class="status-indicator"></div>
-                        <span id="connection-status">Connecting...</span>
-                    </div>
+            </div>
+            <div class="header-center">
+                <div class="current-game-info">
+                    <span class="current-game-label">Current Game:</span>
+                    <strong id="current-game-name">No Game Loaded</strong>
+                </div>
+                <div class="header-actions">
+                    <button id="nav-open-display-btn" class="btn btn-small btn-secondary">🖥️ Display</button>
+                    <button id="nav-open-admin-btn" class="btn btn-small btn-secondary">⚙️ Admin</button>
+                    <button id="change-game-btn" class="btn btn-small btn-primary">Change Game</button>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="status-item">
+                    <div id="status-indicator" class="status-indicator"></div>
+                    <span id="connection-status">Connecting...</span>
                 </div>
             </div>
         </header>
@@ -73,33 +79,32 @@
 
                 <!-- Main Control Buttons -->
                 <div class="main-controls">
-                    <button id="start-question-btn" class="btn btn-primary btn-large" disabled>
+                    <button id="start-question-btn" class="control-icon btn-primary" title="Start Question" disabled>
                         <span class="material-icons">play_arrow</span>
-                        Start Question
                     </button>
-                    <button id="show-answers-btn" class="btn btn-success btn-large hidden">
+                    <button id="show-answers-btn" class="control-icon btn-success hidden" title="Evaluate Answers">
                         <span class="material-icons">quiz</span>
-                        Evaluate Answers
                     </button>
-                    <button id="next-question-btn" class="btn btn-info btn-large" disabled>
+                    <button id="next-question-btn" class="control-icon btn-info" title="Next Question" disabled>
                         <span class="material-icons">skip_next</span>
-                        Next Question
                     </button>
                 </div>
 
                 <!-- Quick Actions Bar -->
                 <div class="quick-actions">
-                    <button id="prev-question-btn" class="btn btn-secondary" disabled>
+                    <button id="prev-question-btn" class="control-icon btn-secondary" title="Previous Question" disabled>
                         <span class="material-icons">skip_previous</span>
-                        Previous
                     </button>
-                    <select id="question-select" class="question-selector" disabled>
+                    <button id="show-question-select-btn" class="control-icon btn-secondary" title="Jump to Question" disabled>
+                        <span class="material-icons">list</span>
+                    </button>
+                    <button id="end-question-btn" class="control-icon btn-warning" title="End Question" disabled>
+                        <span class="material-icons">stop</span>
+                    </button>
+                    <!-- Hidden select for question jumping -->
+                    <select id="question-select" class="question-selector hidden" disabled>
                         <option value="">Jump to Question...</option>
                     </select>
-                    <button id="end-question-btn" class="btn btn-warning" disabled>
-                        <span class="material-icons">stop</span>
-                        End Question
-                    </button>
                 </div>
             </section>
 

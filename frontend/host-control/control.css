@@ -69,16 +69,67 @@ body {
   flex-direction: column;
 }
 
-/* Main Header */
-.game-header {
-  background: rgba(255, 255, 255, 0.98);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  padding: 16px 24px;
+/* Compact Header */
+.compact-header {
+  background: linear-gradient(135deg, var(--waze-primary), var(--waze-secondary));
+  padding: 8px 16px;
+  color: white;
+  box-shadow: var(--md-sys-elevation-level2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
   position: sticky;
   top: 0;
   z-index: 100;
+}
+
+.header-left, .header-center, .header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-left h1 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.header-center {
+  flex-direction: column;
+  gap: 6px;
+  text-align: center;
+}
+
+.current-game-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.current-game-label {
+  opacity: 0.9;
+}
+
+.header-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.game-stats {
+  display: flex;
+  gap: 12px;
+  font-size: 0.8rem;
+  opacity: 0.9;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
 }
 
 .header-content {
@@ -456,9 +507,40 @@ body {
 /* Main Control Buttons */
 .main-controls {
   display: flex;
-  gap: 20px;
+  gap: 16px;
   justify-content: center;
   flex-wrap: wrap;
+  margin: 16px 0;
+}
+
+.control-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  cursor: pointer;
+  transition: all var(--md-sys-motion-duration-medium) var(--md-sys-motion-easing-standard);
+  box-shadow: var(--md-sys-elevation-level2);
+  font-size: 0;
+}
+
+.control-icon:hover:not(:disabled) {
+  transform: scale(1.1);
+  box-shadow: var(--md-sys-elevation-level3);
+}
+
+.control-icon:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.control-icon .material-icons {
+  font-size: 24px;
 }
 
 .btn {
@@ -558,10 +640,11 @@ body {
 /* Quick Actions Bar */
 .quick-actions {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
+  margin: 12px 0;
 }
 
 .quick-actions .btn {

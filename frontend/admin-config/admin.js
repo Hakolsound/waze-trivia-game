@@ -136,9 +136,6 @@ class AdminConfig {
             configTabs: document.querySelectorAll('.config-tab'),
             configPanels: document.querySelectorAll('.config-panel'),
             
-            // Back button
-            backToGamesBtn: document.getElementById('back-to-games-btn'),
-            
             // New action buttons
             changeGameBtn: document.getElementById('change-game-btn'),
             openDisplayBtn: document.getElementById('open-display-btn'),
@@ -192,6 +189,11 @@ class AdminConfig {
             resetBuzzerTestBtn: document.getElementById('reset-buzzer-test-btn'),
             testProgressText: document.getElementById('test-progress-text'),
             
+            // CSV import/export elements
+            downloadCsvTemplateBtn: document.getElementById('download-csv-template-btn'),
+            exportQuestionsCsvBtn: document.getElementById('export-questions-csv-btn'),
+            importQuestionsCsv: document.getElementById('import-questions-csv'),
+            
             // Buzzer sidebar elements
             buzzerSidebar: document.getElementById('buzzer-sidebar'),
             toggleBuzzerSidebarBtn: document.getElementById('toggle-buzzer-sidebar'),
@@ -213,13 +215,6 @@ class AdminConfig {
                 tab.addEventListener('click', (e) => {
                     this.switchConfigTab(e.target.dataset.tab);
                 });
-            });
-        }
-
-        // Back button
-        if (this.elements.backToGamesBtn) {
-            this.elements.backToGamesBtn.addEventListener('click', () => {
-                this.gameSelector.clearCurrentGame();
             });
         }
 
@@ -327,6 +322,25 @@ class AdminConfig {
         if (this.elements.resetBuzzerTestBtn) {
             this.elements.resetBuzzerTestBtn.addEventListener('click', () => {
                 this.resetBuzzerTest();
+            });
+        }
+        
+        // CSV import/export functionality
+        if (this.elements.downloadCsvTemplateBtn) {
+            this.elements.downloadCsvTemplateBtn.addEventListener('click', () => {
+                this.downloadCsvTemplate();
+            });
+        }
+        
+        if (this.elements.exportQuestionsCsvBtn) {
+            this.elements.exportQuestionsCsvBtn.addEventListener('click', () => {
+                this.exportQuestionsToCSV();
+            });
+        }
+        
+        if (this.elements.importQuestionsCsv) {
+            this.elements.importQuestionsCsv.addEventListener('change', (e) => {
+                this.importQuestionsFromCSV(e);
             });
         }
         
@@ -1258,6 +1272,220 @@ class AdminConfig {
         setTimeout(() => {
             toast.remove();
         }, 3000);
+    }
+    
+    // CSV Import/Export Methods
+    downloadCsvTemplate() {
+        const template = [
+            ['Question Text', 'Correct Answer', 'Time Limit (seconds)', 'Points', 'Media URL (optional)'],
+            ['What is the capital of France?', 'Paris', '30', '100', ''],
+            ['Which planet is closest to the Sun?', 'Mercury', '25', '100', ''],
+            ['What is 2 + 2?', '4', '15', '50', '']
+        ];
+        
+        const csvContent = template.map(row => 
+            row.map(field => `"${field.toString().replace(/"/g, '""')}"`).join(',')
+        ).join('\n');
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'questions_template.csv');
+        link.style.visibility = 'hidden';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        this.showToast('📋 CSV template downloaded successfully!', 'success');
+    }
+    
+    async exportQuestionsToCSV() {
+        if (!this.currentGame) {
+            this.showToast('Please select a game first', 'error');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/questions/game/${this.currentGame.id}`);
+            const questions = await response.json();
+            
+            if (questions.length === 0) {
+                this.showToast('No questions found to export', 'warning');
+                return;
+            }
+            
+            const csvData = [
+                ['Question Text', 'Correct Answer', 'Time Limit (seconds)', 'Points', 'Media URL (optional)'],
+                ...questions.map(q => [
+                    q.text || '',
+                    q.correct_answer || '',
+                    q.time_limit || '30',
+                    q.points || '100',
+                    q.media_url || ''
+                ])
+            ];
+            
+            const csvContent = csvData.map(row => 
+                row.map(field => `"${field.toString().replace(/"/g, '""')}"`).join(',')
+            ).join('\n');
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            const gameName = this.currentGame.name.replace(/[^a-zA-Z0-9]/g, '_');
+            link.setAttribute('href', url);
+            link.setAttribute('download', `${gameName}_questions.csv`);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            this.showToast(`📤 Exported ${questions.length} questions to CSV!`, 'success');
+        } catch (error) {
+            console.error('Failed to export questions:', error);
+            this.showToast('Failed to export questions', 'error');
+        }
+    }
+    
+    async importQuestionsFromCSV(event) {
+        if (!this.currentGame) {
+            this.showToast('Please select a game first', 'error');
+            return;
+        }
+        
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        if (file.type !== 'text/csv' && !file.name.toLowerCase().endsWith('.csv')) {
+            this.showToast('Please select a valid CSV file', 'error');
+            return;
+        }
+        
+        try {
+            const text = await file.text();
+            const lines = text.split('\n').filter(line => line.trim());
+            
+            if (lines.length < 2) {
+                this.showToast('CSV file appears to be empty or invalid', 'error');
+                return;
+            }
+            
+            // Skip header row
+            const questionRows = lines.slice(1);
+            const questions = [];
+            let errorCount = 0;
+            
+            for (let i = 0; i < questionRows.length; i++) {
+                try {
+                    const row = this.parseCSVRow(questionRows[i]);
+                    
+                    if (row.length < 2) {
+                        errorCount++;
+                        continue;
+                    }
+                    
+                    const question = {
+                        text: row[0]?.trim() || '',
+                        correct_answer: row[1]?.trim() || '',
+                        time_limit: parseInt(row[2]) || 30,
+                        points: parseInt(row[3]) || 100,
+                        media_url: row[4]?.trim() || null
+                    };
+                    
+                    if (question.text && question.correct_answer) {
+                        questions.push(question);
+                    } else {
+                        errorCount++;
+                    }
+                } catch (rowError) {
+                    console.error(`Error parsing row ${i + 2}:`, rowError);
+                    errorCount++;
+                }
+            }
+            
+            if (questions.length === 0) {
+                this.showToast('No valid questions found in CSV file', 'error');
+                return;
+            }
+            
+            // Import questions to the current game
+            for (const question of questions) {
+                await this.addQuestionToGame(question);
+            }
+            
+            // Reset file input
+            event.target.value = '';
+            
+            // Reload questions to show imported ones
+            await this.loadQuestions(this.currentGame.id);
+            
+            let message = `📥 Successfully imported ${questions.length} questions!`;
+            if (errorCount > 0) {
+                message += ` (${errorCount} rows had errors and were skipped)`;
+            }
+            
+            this.showToast(message, 'success');
+            
+        } catch (error) {
+            console.error('Failed to import CSV:', error);
+            this.showToast('Failed to import CSV file', 'error');
+        }
+    }
+    
+    parseCSVRow(row) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        let i = 0;
+        
+        while (i < row.length) {
+            const char = row[i];
+            const nextChar = row[i + 1];
+            
+            if (char === '"') {
+                if (inQuotes && nextChar === '"') {
+                    current += '"';
+                    i += 2;
+                    continue;
+                }
+                inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+                result.push(current.trim());
+                current = '';
+                i++;
+                continue;
+            } else {
+                current += char;
+            }
+            i++;
+        }
+        
+        result.push(current.trim());
+        return result;
+    }
+    
+    async addQuestionToGame(questionData) {
+        const response = await fetch('/api/questions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                ...questionData,
+                game_id: this.currentGame.id
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to add question');
+        }
+        
+        return response.json();
     }
     
     // Buzzer Test Modal Methods

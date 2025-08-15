@@ -31,7 +31,6 @@
             <!-- Game Configuration View -->
             <section id="game-configuration" class="game-configuration hidden">
                 <div class="config-header">
-                    <button id="back-to-games-btn" class="btn btn-secondary">← Back to Games</button>
                     <h2 id="current-game-title">Game Configuration</h2>
                     <div class="game-actions">
                         <button id="change-game-btn" class="btn btn-info">🔄 Change Game</button>
@@ -135,6 +134,31 @@
                                 <button id="test-buzzer-connectivity-btn" class="btn btn-info">🔔 Test Buzzer Connectivity</button>
                                 <button id="refresh-system-status-btn" class="btn btn-secondary">Refresh Status</button>
                                 <button id="backup-db-btn" class="btn btn-warning">Backup Database</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Question Data Management -->
+                        <div class="panel">
+                            <h3>📊 Question Data Management</h3>
+                            <div class="csv-actions-grid">
+                                <div class="csv-action-item">
+                                    <h4>📋 CSV Template</h4>
+                                    <p>Download a blank CSV template with proper formatting for question import.</p>
+                                    <button id="download-csv-template-btn" class="btn btn-secondary">📥 Download Template</button>
+                                </div>
+                                <div class="csv-action-item">
+                                    <h4>📤 Export Questions</h4>
+                                    <p>Export all questions from the current game to a CSV file.</p>
+                                    <button id="export-questions-csv-btn" class="btn btn-info">📤 Export to CSV</button>
+                                </div>
+                                <div class="csv-action-item">
+                                    <h4>📥 Import Questions</h4>
+                                    <p>Import questions from a CSV file. This will add to existing questions.</p>
+                                    <label for="import-questions-csv" class="btn btn-success" style="cursor: pointer;">
+                                        📥 Import from CSV
+                                        <input type="file" id="import-questions-csv" accept=".csv" style="display: none;">
+                                    </label>
+                                </div>
                             </div>
                         </div>
                     </div>

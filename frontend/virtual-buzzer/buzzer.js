@@ -131,6 +131,10 @@ class VirtualBuzzer {
             this.handleBuzzersDisarmed(data);
         });
 
+        this.socket.on('question-end', (data) => {
+            this.handleQuestionEnd(data);
+        });
+
         this.socket.on('buzzer-acknowledged', (data) => {
             if (data.buzzerId === this.buzzerId) {
                 this.handleBuzzerAcknowledged(data);
@@ -374,10 +378,15 @@ class VirtualBuzzer {
     }
 
     handleBuzzersDisarmed(data) {
-        if (this.currentState !== 'pressed') {
-            this.currentState = 'idle';
-            this.updateBuzzerState();
-        }
+        // Always reset to idle when buzzers are disarmed, regardless of current state
+        this.currentState = 'idle';
+        this.updateBuzzerState();
+    }
+
+    handleQuestionEnd(data) {
+        // Ensure buzzer resets to idle when question ends
+        this.currentState = 'idle';
+        this.updateBuzzerState();
     }
 
     handleBuzzerAcknowledged(data) {

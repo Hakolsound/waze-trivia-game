@@ -1,3 +1,8 @@
+// Test if JS file loads at all
+console.log('=== ADMIN.JS FILE LOADED ===');
+console.log('Current URL:', window.location.href);
+console.log('Socket.io available:', typeof io);
+
 class AdminConfig {
     constructor() {
         console.log('AdminConfig constructor - initializing socket...');
@@ -1249,6 +1254,9 @@ class AdminConfig {
 }
 
 // Initialize admin when DOM is loaded
+console.log('=== SETTING UP DOM LISTENER ===');
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('=== DOM LOADED - CREATING ADMIN CONFIG ===');
     window.admin = new AdminConfig();
+    console.log('=== ADMIN CONFIG CREATED ===', window.admin);
 });

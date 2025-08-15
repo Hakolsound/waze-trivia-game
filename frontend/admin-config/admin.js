@@ -173,6 +173,7 @@ class AdminConfig {
             // Buzzer sidebar elements
             buzzerSidebar: document.getElementById('buzzer-sidebar'),
             toggleBuzzerSidebarBtn: document.getElementById('toggle-buzzer-sidebar'),
+            buzzerCounter: document.getElementById('buzzer-counter'),
             onlineThreshold: document.getElementById('online-threshold'),
             onlineBuzzers: document.getElementById('online-buzzers'),
             offlineBuzzers: document.getElementById('offline-buzzers'),
@@ -1045,6 +1046,9 @@ class AdminConfig {
         
         // Update offline buzzers
         this.renderBuzzerList(this.elements.offlineBuzzers, offlineBuzzers, false);
+        
+        // Update counter
+        this.updateBuzzerCounter(onlineBuzzers.length);
     }
 
     renderBuzzerList(container, buzzers, isOnline) {
@@ -1113,6 +1117,20 @@ class AdminConfig {
         } catch (error) {
             console.error('Failed to refresh buzzer status:', error);
         }
+    }
+
+    updateBuzzerCounter(onlineCount) {
+        if (this.elements.buzzerCounter) {
+            const totalGroups = this.getTotalGroups();
+            this.elements.buzzerCounter.textContent = `${onlineCount}/${totalGroups}`;
+        }
+    }
+    
+    getTotalGroups() {
+        if (this.currentGame && this.currentGame.groups) {
+            return this.currentGame.groups.length;
+        }
+        return 4; // Default to 4 groups
     }
 
     // Threshold management methods

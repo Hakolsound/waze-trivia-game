@@ -9,62 +9,29 @@
 </head>
 <body>
     <div id="app">
-        <!-- Header -->
-        <header class="app-header">
-            <h1>🏆 Virtual Buzzer</h1>
-            <div class="connection-status" id="connection-status">
-                <div class="status-dot" id="status-dot"></div>
-                <span id="status-text">Connecting...</span>
-            </div>
-        </header>
-
         <!-- Team Selection Screen -->
         <section id="team-selection" class="screen active">
             <div class="selection-container">
                 <h2>Choose Your Team</h2>
-                <p class="selection-subtitle">Select a team that doesn't have a physical buzzer online</p>
-                
                 <div class="teams-grid" id="teams-grid">
                     <div class="team-loading">
                         <div class="loading-spinner"></div>
                         <p>Loading available teams...</p>
                     </div>
                 </div>
-                
-                <div class="selection-footer">
-                    <p class="info-text">🔄 Teams refresh automatically when physical buzzers come online/offline</p>
-                </div>
             </div>
         </section>
 
         <!-- Buzzer Screen -->
         <section id="buzzer-screen" class="screen">
-            <div class="buzzer-container">
-                <div class="team-info" id="team-info">
-                    <div class="team-avatar" id="team-avatar"></div>
-                    <h2 id="selected-team-name">Team Name</h2>
-                    <button id="change-team-btn" class="change-team-btn">Change Team</button>
-                </div>
+            <!-- Main Buzzer Button -->
+            <button id="buzzer-button" class="buzzer-button">
+                <div class="buzzer-inner">BUZZ!</div>
+                <div class="buzzer-animation"></div>
+            </button>
 
-                <div class="buzzer-area">
-                    <div class="game-state" id="game-state">
-                        <div class="state-icon" id="state-icon">⏳</div>
-                        <h3 id="state-title">Waiting for Question</h3>
-                        <p id="state-description">Stand by for the next trivia question</p>
-                    </div>
-
-                    <button id="buzzer-button" class="buzzer-button disabled">
-                        <div class="buzzer-inner">
-                            <div class="buzzer-text">BUZZ!</div>
-                        </div>
-                        <div class="buzzer-ripple"></div>
-                    </button>
-
-                    <div class="buzzer-feedback" id="buzzer-feedback">
-                        <div class="feedback-message" id="feedback-message"></div>
-                    </div>
-                </div>
-            </div>
+            <!-- Change Team Button (Bottom) -->
+            <button id="change-team-btn" class="change-team-btn">Change Team</button>
         </section>
 
         <!-- Error Screen -->
@@ -76,6 +43,18 @@
                 <button id="retry-btn" class="retry-btn">Try Again</button>
             </div>
         </section>
+
+        <!-- Password Modal -->
+        <div id="password-modal" class="modal hidden">
+            <div class="modal-content">
+                <h3>Enter Password</h3>
+                <input type="password" id="password-input" placeholder="Password">
+                <div class="modal-actions">
+                    <button id="password-submit">OK</button>
+                    <button id="password-cancel">Cancel</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="buzzer.js"></script>

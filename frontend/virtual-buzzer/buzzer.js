@@ -3,9 +3,10 @@ class VirtualBuzzer {
         this.socket = null;
         this.currentGame = null;
         this.selectedTeam = null;
-        this.currentState = 'disconnected'; // disconnected, idle, armed, pressed
+        this.currentState = 'idle'; // idle, armed, pressed
         this.teams = [];
         this.buzzerId = null;
+        this.password = 'michal'; // Simple password storage
         
         this.initializeElements();
         this.connectToServer();
@@ -14,10 +15,6 @@ class VirtualBuzzer {
 
     initializeElements() {
         this.elements = {
-            // Status elements
-            statusDot: document.getElementById('status-dot'),
-            statusText: document.getElementById('status-text'),
-            
             // Screen elements
             teamSelection: document.getElementById('team-selection'),
             buzzerScreen: document.getElementById('buzzer-screen'),
@@ -27,18 +24,14 @@ class VirtualBuzzer {
             teamsGrid: document.getElementById('teams-grid'),
             
             // Buzzer screen elements
-            teamAvatar: document.getElementById('team-avatar'),
-            selectedTeamName: document.getElementById('selected-team-name'),
+            buzzerButton: document.getElementById('buzzer-button'),
             changeTeamBtn: document.getElementById('change-team-btn'),
             
-            // Game state elements
-            stateIcon: document.getElementById('state-icon'),
-            stateTitle: document.getElementById('state-title'),
-            stateDescription: document.getElementById('state-description'),
-            
-            // Buzzer elements
-            buzzerButton: document.getElementById('buzzer-button'),
-            feedbackMessage: document.getElementById('feedback-message'),
+            // Password modal elements
+            passwordModal: document.getElementById('password-modal'),
+            passwordInput: document.getElementById('password-input'),
+            passwordSubmit: document.getElementById('password-submit'),
+            passwordCancel: document.getElementById('password-cancel'),
             
             // Error elements
             errorMessage: document.getElementById('error-message'),
@@ -49,52 +42,34 @@ class VirtualBuzzer {
     connectToServer() {
         try {
             this.socket = io();
+            
+            this.socket.on('connect', () => {
+                console.log('Connected to server');
+                this.requestGameData();
+            });
+
+            this.socket.on('disconnect', () => {
+                console.log('Disconnected from server');
+                this.showError('Connection lost. Please refresh the page.');
+            });
+
+            this.socket.on('connect_error', (error) => {
+                console.error('Connection error:', error);
+                this.showError('Unable to connect to server');
+            });
+
             this.setupSocketListeners();
         } catch (error) {
-            console.error('Failed to connect to server:', error);
-            this.showError('Failed to connect to game server');
+            console.error('Socket initialization error:', error);
+            this.showError('Failed to initialize connection');
         }
     }
 
     setupSocketListeners() {
-        if (!this.socket) return;
-
-        this.socket.on('connect', () => {
-            console.log('Connected to server');
-            this.updateConnectionStatus('connected');
-            this.buzzerId = `virtual_${this.socket.id}`;
-            this.requestGameData();
-        });
-
-        this.socket.on('disconnect', () => {
-            console.log('Disconnected from server');
-            this.updateConnectionStatus('disconnected');
-            this.currentState = 'disconnected';
-            this.updateBuzzerState();
-        });
-
-        this.socket.on('connect_error', (error) => {
-            console.error('Connection error:', error);
-            this.showError('Connection lost. Please check your internet connection.');
-        });
-
         // Global game events
         this.socket.on('global-game-changed', (data) => {
             this.currentGame = data.game;
-            this.updateGameData();
-        });
-
-        // Game state events
-        this.socket.on('game-state', (state) => {
-            this.handleGameStateChange(state);
-        });
-
-        this.socket.on('question-start', (data) => {
-            this.handleQuestionStart(data);
-        });
-
-        this.socket.on('question-end', (data) => {
-            this.handleQuestionEnd(data);
+            this.updateTeamSelection();
         });
 
         // Teams update
@@ -120,13 +95,6 @@ class VirtualBuzzer {
     }
 
     setupEventListeners() {
-        // Change team button
-        if (this.elements.changeTeamBtn) {
-            this.elements.changeTeamBtn.addEventListener('click', () => {
-                this.showTeamSelection();
-            });
-        }
-
         // Buzzer button
         if (this.elements.buzzerButton) {
             this.elements.buzzerButton.addEventListener('click', () => {
@@ -137,6 +105,34 @@ class VirtualBuzzer {
             this.elements.buzzerButton.addEventListener('touchstart', (e) => {
                 e.preventDefault(); // Prevent double-tap zoom
                 this.pressBuzzer();
+            });
+        }
+
+        // Change team button
+        if (this.elements.changeTeamBtn) {
+            this.elements.changeTeamBtn.addEventListener('click', () => {
+                this.showPasswordModal();
+            });
+        }
+
+        // Password modal events
+        if (this.elements.passwordSubmit) {
+            this.elements.passwordSubmit.addEventListener('click', () => {
+                this.verifyPassword();
+            });
+        }
+
+        if (this.elements.passwordCancel) {
+            this.elements.passwordCancel.addEventListener('click', () => {
+                this.hidePasswordModal();
+            });
+        }
+
+        if (this.elements.passwordInput) {
+            this.elements.passwordInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.verifyPassword();
+                }
             });
         }
 
@@ -160,54 +156,27 @@ class VirtualBuzzer {
         this.socket.emit('request-teams');
     }
 
-    updateConnectionStatus(status) {
-        const dot = this.elements.statusDot;
-        const text = this.elements.statusText;
-
-        dot.className = `status-dot ${status}`;
-        
-        switch (status) {
-            case 'connected':
-                text.textContent = 'Connected';
-                break;
-            case 'disconnected':
-                text.textContent = 'Disconnected';
-                break;
-            default:
-                text.textContent = 'Connecting...';
-        }
-    }
-
-    updateGameData() {
-        if (this.currentGame && this.currentGame.groups) {
-            this.teams = this.currentGame.groups;
-            this.updateTeamSelection();
-        }
-    }
-
     async updateTeamSelection() {
-        if (!this.teams.length) {
+        if (!this.currentGame || !this.currentGame.groups) {
             this.elements.teamsGrid.innerHTML = `
                 <div class="team-loading">
                     <div class="loading-spinner"></div>
-                    <p>No teams available</p>
+                    <p>Loading game data...</p>
                 </div>
             `;
             return;
         }
 
-        // Get virtual buzzer settings to determine offline threshold
         const settings = await this.getVirtualBuzzerSettings();
         const offlineThreshold = settings?.buzzerOfflineThreshold || 120;
 
-        // Get online buzzers to determine availability
+        // Get available teams
         const availableTeams = await this.getAvailableTeams(offlineThreshold);
 
         if (availableTeams.length === 0) {
             this.elements.teamsGrid.innerHTML = `
                 <div class="team-loading">
                     <p>All teams have active buzzers</p>
-                    <p class="info-text">Virtual buzzers are only available for teams without physical buzzers online</p>
                 </div>
             `;
             return;
@@ -217,7 +186,7 @@ class VirtualBuzzer {
             <div class="team-card available" data-team-id="${team.id}">
                 <div class="team-avatar" style="background: ${team.color || '#4A9EBF'}">${team.name.charAt(0)}</div>
                 <div class="team-name">${team.name}</div>
-                <div class="team-status">Available for virtual buzzer</div>
+                <div class="team-status">Available</div>
             </div>
         `).join('');
 
@@ -225,7 +194,7 @@ class VirtualBuzzer {
         document.querySelectorAll('.team-card[data-team-id]').forEach(card => {
             card.addEventListener('click', () => {
                 const teamId = card.dataset.teamId;
-                const team = this.teams.find(t => t.id === teamId);
+                const team = availableTeams.find(t => t.id === teamId);
                 if (team) {
                     this.selectTeam(team);
                 }
@@ -254,19 +223,18 @@ class VirtualBuzzer {
             const response = await fetch(`/api/games/${this.currentGame.id}/available-teams-virtual`);
             if (response.ok) {
                 return await response.json();
-            } else {
-                console.error('Failed to get available teams:', response.statusText);
-                return [];
             }
         } catch (error) {
             console.error('Failed to fetch available teams:', error);
-            return [];
         }
+        return [];
     }
 
     selectTeam(team) {
         this.selectedTeam = team;
-        this.updateTeamInfo();
+        this.buzzerId = `virtual_${team.id}_${Date.now()}`;
+        
+        // Show buzzer screen
         this.showBuzzerScreen();
         
         // Register with server as virtual buzzer for this team
@@ -276,94 +244,54 @@ class VirtualBuzzer {
             teamName: team.name
         });
 
-        this.showFeedback('Team selected! You can now buzz in.', 'success');
+        console.log(`Selected team: ${team.name}`);
     }
 
-    updateTeamInfo() {
-        if (!this.selectedTeam) return;
-
-        this.elements.teamAvatar.style.background = this.selectedTeam.color || '#4A9EBF';
-        this.elements.teamAvatar.textContent = this.selectedTeam.name.charAt(0);
-        this.elements.selectedTeamName.textContent = this.selectedTeam.name;
+    showTeamSelection() {
+        this.hideAllScreens();
+        this.elements.teamSelection.classList.add('active');
+        this.updateTeamSelection();
     }
 
-    handleGameStateChange(state) {
-        if (state.currentQuestion) {
-            this.updateGameState('question', '📝 Question Active', 'Get ready to buzz in!');
-        } else {
-            this.updateGameState('idle', '⏳ Waiting', 'Waiting for next question...');
-        }
-    }
-
-    handleQuestionStart(data) {
-        this.updateGameState('question', '📝 Question Started', 'Question is now active!');
-        this.currentState = 'idle';
+    showBuzzerScreen() {
+        this.hideAllScreens();
+        this.elements.buzzerScreen.classList.add('active');
         this.updateBuzzerState();
     }
 
-    handleQuestionEnd(data) {
-        this.updateGameState('idle', '⏰ Time Up', 'Question time has ended');
-        this.currentState = 'idle';
-        this.updateBuzzerState();
-    }
-
-    handleBuzzersArmed(data) {
-        if (this.selectedTeam && this.currentState !== 'pressed') {
-            this.currentState = 'armed';
-            this.updateBuzzerState();
-            this.updateGameState('armed', '🔴 Ready to Buzz!', 'Tap the buzzer to answer');
-            
-            // Haptic feedback if available
-            if (navigator.vibrate) {
-                navigator.vibrate(50);
-            }
+    showError(message) {
+        this.hideAllScreens();
+        this.elements.errorScreen.classList.add('active');
+        if (this.elements.errorMessage) {
+            this.elements.errorMessage.textContent = message;
         }
     }
 
-    handleBuzzersDisarmed(data) {
-        if (this.currentState !== 'pressed') {
-            this.currentState = 'idle';
-            this.updateBuzzerState();
-            this.updateGameState('idle', '⏳ Waiting', 'Buzzers are not active');
-        }
-    }
-
-    handleBuzzerAcknowledged(data) {
-        this.showFeedback('Buzz received! Wait for your turn.', 'success');
-    }
-
-    updateGameState(state, title, description) {
-        const icons = {
-            idle: '⏳',
-            question: '📝',
-            armed: '🔴',
-            pressed: '✅'
-        };
-
-        this.elements.stateIcon.textContent = icons[state] || '⏳';
-        this.elements.stateTitle.textContent = title;
-        this.elements.stateDescription.textContent = description;
+    hideAllScreens() {
+        this.elements.teamSelection.classList.remove('active');
+        this.elements.buzzerScreen.classList.remove('active');
+        this.elements.errorScreen.classList.remove('active');
     }
 
     updateBuzzerState() {
         const button = this.elements.buzzerButton;
         
         // Remove all state classes
-        button.classList.remove('disabled', 'armed', 'pressed');
+        button.classList.remove('idle', 'armed', 'pressed');
         
+        // Add current state class
+        button.classList.add(this.currentState);
+        
+        // Update button state
         switch (this.currentState) {
             case 'armed':
-                button.classList.add('armed');
                 button.disabled = false;
                 break;
             case 'pressed':
-                button.classList.add('pressed');
                 button.disabled = true;
                 break;
             case 'idle':
-            case 'disconnected':
             default:
-                button.classList.add('disabled');
                 button.disabled = true;
         }
     }
@@ -373,7 +301,6 @@ class VirtualBuzzer {
 
         this.currentState = 'pressed';
         this.updateBuzzerState();
-        this.updateGameState('pressed', '✅ Buzzed!', 'You have buzzed in!');
 
         // Send buzzer press to server
         this.socket.emit('buzzer-press', {
@@ -387,44 +314,75 @@ class VirtualBuzzer {
         if (navigator.vibrate) {
             navigator.vibrate([100, 50, 100]);
         }
-
-        this.showFeedback('Buzzed! Wait for host response.', 'success');
     }
 
-    showFeedback(message, type = '') {
-        const feedback = this.elements.feedbackMessage;
-        feedback.textContent = message;
-        feedback.className = `feedback-message show ${type}`;
+    handleBuzzersArmed(data) {
+        if (this.selectedTeam && this.currentState !== 'pressed') {
+            this.currentState = 'armed';
+            this.updateBuzzerState();
+            
+            // Haptic feedback if available
+            if (navigator.vibrate) {
+                navigator.vibrate(50);
+            }
+        }
+    }
+
+    handleBuzzersDisarmed(data) {
+        if (this.currentState !== 'pressed') {
+            this.currentState = 'idle';
+            this.updateBuzzerState();
+        }
+    }
+
+    handleBuzzerAcknowledged(data) {
+        console.log('Buzz acknowledged!');
+    }
+
+    // Password Modal Methods
+    showPasswordModal() {
+        this.elements.passwordModal.classList.remove('hidden');
+        this.elements.passwordInput.value = '';
+        this.elements.passwordInput.focus();
+    }
+
+    hidePasswordModal() {
+        this.elements.passwordModal.classList.add('hidden');
+        this.elements.passwordInput.value = '';
+    }
+
+    verifyPassword() {
+        const enteredPassword = this.elements.passwordInput.value;
         
-        setTimeout(() => {
-            feedback.classList.remove('show');
-        }, 3000);
+        if (enteredPassword === this.password) {
+            this.hidePasswordModal();
+            this.changeTeam();
+        } else {
+            // Simple error indication
+            this.elements.passwordInput.style.borderColor = '#dc3545';
+            this.elements.passwordInput.value = '';
+            this.elements.passwordInput.placeholder = 'Wrong password';
+            
+            // Reset after 2 seconds
+            setTimeout(() => {
+                this.elements.passwordInput.style.borderColor = '';
+                this.elements.passwordInput.placeholder = 'Password';
+            }, 2000);
+        }
     }
 
-    showScreen(screenId) {
-        document.querySelectorAll('.screen').forEach(screen => {
-            screen.classList.remove('active');
-        });
-        document.getElementById(screenId).classList.add('active');
-    }
-
-    showTeamSelection() {
-        this.showScreen('team-selection');
-        this.updateTeamSelection();
-    }
-
-    showBuzzerScreen() {
-        this.showScreen('buzzer-screen');
-        this.updateBuzzerState();
-    }
-
-    showError(message) {
-        this.elements.errorMessage.textContent = message;
-        this.showScreen('error-screen');
+    changeTeam() {
+        // Reset current team selection
+        this.selectedTeam = null;
+        this.buzzerId = null;
+        this.currentState = 'idle';
+        
+        // Go back to team selection
+        this.showTeamSelection();
     }
 }
 
-// Initialize virtual buzzer when DOM is loaded
+// Initialize the virtual buzzer when the page loads
 document.addEventListener('DOMContentLoaded', () => {
-    window.virtualBuzzer = new VirtualBuzzer();
+    new VirtualBuzzer();
 });

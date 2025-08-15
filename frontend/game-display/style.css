@@ -238,9 +238,9 @@ body::before {
 }
 
 .question-text {
-  font-size: 72rem;
-  font-weight: 900;
-  line-height: 0.85;
+  font-size: 72rem !important;
+  font-weight: 900 !important;
+  line-height: 0.85 !important;
   letter-spacing: -0.03em;
   color: var(--md-sys-color-on-surface);
   text-align: center;
@@ -283,15 +283,15 @@ body::before {
 .question-points {
   background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
   color: white;
-  padding: 25px 40px;
+  padding: 8px 12px;
   border-radius: 100px;
-  font-size: 3rem;
-  font-weight: 700;
-  box-shadow: var(--md-sys-elevation-level3);
-  backdrop-filter: blur(20px);
-  border: 2px solid rgba(255, 255, 255, 0.25);
+  font-size: 0.9rem;
+  font-weight: 600;
+  box-shadow: var(--md-sys-elevation-level2);
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   animation: pointsPulse 2s ease-in-out infinite;
-  text-shadow: 0 2px 15px rgba(0, 0, 0, 0.4);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.3);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -608,7 +608,7 @@ body::before {
   }
   
   .question-text {
-    font-size: 2rem;
+    font-size: 50rem !important; /* Still massive for smaller projectors */
   }
 }
 

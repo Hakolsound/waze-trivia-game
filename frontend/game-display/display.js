@@ -376,7 +376,8 @@ class GameDisplay {
         
         const seconds = Math.max(0, Math.ceil(timeRemaining)); // Round up to show whole seconds
         if (seconds > 0) {
-            this.elements.timerText.textContent = `${seconds} second${seconds !== 1 ? 's' : ''} remaining`;
+            // Format: "13s" for >10s, "3s" for <=10s, no "remaining"
+            this.elements.timerText.textContent = `${seconds}s`;
         } else {
             this.elements.timerText.textContent = 'Time up!';
         }

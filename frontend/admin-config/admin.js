@@ -9,11 +9,17 @@ class AdminConfig {
         this.initializeElements();
         this.setupEventListeners();
         
-        // Initialize buzzer overlay
+        // Initialize buzzer sidebar
         this.buzzerDevices = new Map();
+        this.loadThresholdSetting();
         setTimeout(() => {
             this.refreshBuzzerStatus();
         }, 1000);
+        
+        // Set up periodic status updates to handle stale devices
+        setInterval(() => {
+            this.updateBuzzerSidebar();
+        }, 5000); // Check every 5 seconds
     }
 
     initializeGameSelector() {
@@ -164,9 +170,10 @@ class AdminConfig {
             refreshSystemStatusBtn: document.getElementById('refresh-system-status-btn'),
             backupDbBtn: document.getElementById('backup-db-btn'),
             
-            // Buzzer overlay elements
-            buzzerOverlay: document.getElementById('buzzer-overlay'),
-            toggleBuzzerOverlayBtn: document.getElementById('toggle-buzzer-overlay'),
+            // Buzzer sidebar elements
+            buzzerSidebar: document.getElementById('buzzer-sidebar'),
+            toggleBuzzerSidebarBtn: document.getElementById('toggle-buzzer-sidebar'),
+            onlineThreshold: document.getElementById('online-threshold'),
             onlineBuzzers: document.getElementById('online-buzzers'),
             offlineBuzzers: document.getElementById('offline-buzzers'),
             
@@ -287,10 +294,20 @@ class AdminConfig {
             });
         }
         
-        // Buzzer overlay controls
-        if (this.elements.toggleBuzzerOverlayBtn) {
-            this.elements.toggleBuzzerOverlayBtn.addEventListener('click', () => {
-                this.toggleBuzzerOverlay();
+        // Buzzer sidebar controls
+        if (this.elements.toggleBuzzerSidebarBtn) {
+            this.elements.toggleBuzzerSidebarBtn.addEventListener('click', () => {
+                this.toggleBuzzerSidebar();
+            });
+        }
+        
+        // Online threshold setting
+        if (this.elements.onlineThreshold) {
+            this.elements.onlineThreshold.addEventListener('input', () => {
+                this.updateBuzzerSidebar();
+            });
+            this.elements.onlineThreshold.addEventListener('change', () => {
+                this.saveThresholdSetting();
             });
         }
         
@@ -329,6 +346,13 @@ class AdminConfig {
 
         this.socket.on('esp32-status', (data) => {
             this.updateESP32Status(data);
+        });
+        
+        // Listen for ESP32 device data from server logs
+        this.socket.on('esp32-device-data', (data) => {
+            if (data.esp32_data) {
+                this.parseESP32DeviceData(data.esp32_data, data.timestamp);
+            }
         });
     }
 
@@ -840,18 +864,18 @@ class AdminConfig {
     }
 
     // Buzzer Overlay Methods
-    toggleBuzzerOverlay() {
-        if (!this.elements.buzzerOverlay) return;
+    toggleBuzzerSidebar() {
+        if (!this.elements.buzzerSidebar) return;
         
-        const isHidden = this.elements.buzzerOverlay.classList.contains('minimized');
+        const isHidden = this.elements.buzzerSidebar.classList.contains('hidden');
         
         if (isHidden) {
-            this.elements.buzzerOverlay.classList.remove('minimized');
-            this.elements.toggleBuzzerOverlayBtn.textContent = 'Hide';
+            this.elements.buzzerSidebar.classList.remove('hidden');
+            this.elements.toggleBuzzerSidebarBtn.textContent = 'Hide';
             this.refreshBuzzerStatus();
         } else {
-            this.elements.buzzerOverlay.classList.add('minimized');
-            this.elements.toggleBuzzerOverlayBtn.textContent = 'Show';
+            this.elements.buzzerSidebar.classList.add('hidden');
+            this.elements.toggleBuzzerSidebarBtn.textContent = 'Show';
         }
     }
 
@@ -869,7 +893,7 @@ class AdminConfig {
             status: 'online'
         });
         
-        this.updateBuzzerOverlay();
+        this.updateBuzzerSidebar();
     }
 
     updateBuzzerHeartbeat(data) {
@@ -896,7 +920,7 @@ class AdminConfig {
             });
         }
         
-        this.updateBuzzerOverlay();
+        this.updateBuzzerSidebar();
     }
 
     updateESP32Status(data) {
@@ -904,6 +928,79 @@ class AdminConfig {
         if (this.elements.hardwareStatus) {
             this.elements.hardwareStatus.textContent = data.connected ? 'Connected' : 'Disconnected';
             this.elements.hardwareStatus.className = `status-indicator ${data.connected ? 'healthy' : 'error'}`;
+        }
+        
+        // Parse ESP32 device data if available
+        if (data.esp32_data) {
+            this.parseESP32DeviceData(data.esp32_data);
+        }
+    }
+    
+    parseESP32DeviceData(esp32Data, timestamp) {
+        // Parse format: "DEVICE:1,online=1,armed=0,pressed=0,mac=EC:62:60:1D:E8:D4"
+        try {
+            const parts = esp32Data.split(',');
+            if (parts.length < 2) return;
+            
+            // Extract device ID
+            const devicePart = parts[0];
+            if (!devicePart.startsWith('DEVICE:')) return;
+            const deviceId = devicePart.split(':')[1];
+            
+            // Parse parameters
+            const params = {};
+            for (let i = 1; i < parts.length; i++) {
+                const [key, value] = parts[i].split('=');
+                if (key && value !== undefined) {
+                    params[key] = value === '1' ? true : value === '0' ? false : value;
+                }
+            }
+            
+            // Convert timestamp to milliseconds if provided
+            let lastSeen;
+            if (timestamp) {
+                // Handle both ISO string and timestamp formats
+                if (typeof timestamp === 'string') {
+                    lastSeen = new Date(timestamp).getTime();
+                } else {
+                    lastSeen = timestamp;
+                }
+            } else {
+                lastSeen = Date.now();
+            }
+            
+            // Determine if device is actually online based on timestamp
+            const now = Date.now();
+            const timeSinceLastSeen = now - lastSeen;
+            const threshold = this.getOnlineThreshold();
+            const isRecentlyActive = timeSinceLastSeen < threshold;
+            const reportedOnline = params.online === true;
+            
+            // Device is considered online if it reported online AND was seen recently
+            const actuallyOnline = reportedOnline && isRecentlyActive;
+            
+            if (!this.buzzerDevices) {
+                this.buzzerDevices = new Map();
+            }
+            
+            const existingDevice = this.buzzerDevices.get(deviceId);
+            this.buzzerDevices.set(deviceId, {
+                device_id: deviceId,
+                name: `Buzzer ${deviceId}`,
+                last_seen: lastSeen,
+                status: actuallyOnline ? 'online' : 'offline',
+                armed: params.armed === true,
+                pressed: params.pressed === true,
+                mac: params.mac || '',
+                teamName: this.getTeamNameByBuzzerId(deviceId),
+                reported_online: reportedOnline,
+                time_since_last_seen: timeSinceLastSeen,
+                ...existingDevice // Keep any additional data
+            });
+            
+            this.updateBuzzerSidebar();
+        } catch (error) {
+            console.error('Error parsing ESP32 device data:', error);
         }
     }
 
@@ -913,11 +1010,11 @@ class AdminConfig {
         return team ? team.name : null;
     }
 
-    updateBuzzerOverlay() {
+    updateBuzzerSidebar() {
         if (!this.buzzerDevices || !this.elements.onlineBuzzers || !this.elements.offlineBuzzers) return;
         
         const now = Date.now();
-        const staleThreshold = 60000; // 60 seconds
+        const staleThreshold = this.getOnlineThreshold();
         
         const onlineBuzzers = [];
         const offlineBuzzers = [];
@@ -999,10 +1096,32 @@ class AdminConfig {
                     });
                 });
                 
-                this.updateBuzzerOverlay();
+                this.updateBuzzerSidebar();
             }
         } catch (error) {
             console.error('Failed to refresh buzzer status:', error);
+        }
+    }
+
+    // Threshold management methods
+    getOnlineThreshold() {
+        if (this.elements.onlineThreshold) {
+            const value = parseInt(this.elements.onlineThreshold.value);
+            return value * 1000; // Convert seconds to milliseconds
+        }
+        return 60000; // Default 60 seconds
+    }
+    
+    loadThresholdSetting() {
+        const saved = localStorage.getItem('buzzer-online-threshold');
+        if (saved && this.elements.onlineThreshold) {
+            this.elements.onlineThreshold.value = saved;
+        }
+    }
+    
+    saveThresholdSetting() {
+        if (this.elements.onlineThreshold) {
+            localStorage.setItem('buzzer-online-threshold', this.elements.onlineThreshold.value);
         }
     }
 

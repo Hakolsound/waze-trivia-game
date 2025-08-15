@@ -47,15 +47,22 @@
         <div class="host-content-wrapper">
             <!-- Left Scoreboard Sidebar -->
             <aside class="scoreboard-sidebar">
-                <div class="panel scoreboard-panel">
-                    <div class="panel-header">
-                        <h3>🏆 Live Scoreboard</h3>
-                        <button id="refresh-scores-btn" class="btn btn-small btn-secondary">
-                            <span class="material-icons">refresh</span>
-                        </button>
-                    </div>
-                    <div id="teams-scoring" class="teams-list">
-                        <div class="no-teams">No teams loaded</div>
+                <div class="scoreboard-sidebar-header">
+                    <h3>🏆 Live Scoreboard</h3>
+                    <div class="team-counter" id="team-counter">0/0</div>
+                    <div class="collapsed-indicator">🏆</div>
+                    <button id="refresh-scores-btn" class="btn btn-small btn-secondary">
+                        <span class="material-icons">refresh</span>
+                    </button>
+                </div>
+                <div class="scoreboard-sidebar-content">
+                    <div class="scoreboard-sections">
+                        <div class="scoreboard-section">
+                            <h4>📊 Team Scores</h4>
+                            <div id="teams-scoring" class="teams-list">
+                                <div class="no-teams">No teams loaded</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </aside>
@@ -80,14 +87,6 @@
                             <div class="question-meta" id="question-meta">
                                 <span class="points">100 pts</span>
                                 <span class="time">30s</span>
-                            </div>
-                            <div class="live-timer hidden" id="live-timer">
-                                <div class="timer-circle">
-                                    <span id="timer-countdown">30</span>
-                                </div>
-                                <div class="timer-status">
-                                    <span id="timer-label">Time Remaining</span>
-                                </div>
                             </div>
                         </div>
                     </div>

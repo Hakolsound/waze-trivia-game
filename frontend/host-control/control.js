@@ -105,15 +105,15 @@ class HostControl {
             questionMeta: document.getElementById('question-meta'),
             questionMedia: document.getElementById('question-media'),
             
-            // Timer elements
-            liveTimer: document.getElementById('live-timer'),
-            timerCountdown: document.getElementById('timer-countdown'),
-            timerLabel: document.getElementById('timer-label'),
+            // Timer elements (circular timer removed - only progress bar remains)
             
             // Progress bar timer elements
             questionProgressBar: document.getElementById('question-progress-bar'),
             progressBarFill: document.getElementById('progress-bar-fill'),
             progressTimeText: document.getElementById('progress-time-text'),
+            
+            // Scoreboard sidebar elements
+            teamCounter: document.getElementById('team-counter'),
             
             // Question progress elements
             currentQuestionNum: document.getElementById('current-question-num'),
@@ -633,6 +633,12 @@ class HostControl {
         // Update team count
         if (this.elements.teamsCount) {
             this.elements.teamsCount.textContent = `${this.teams.length}`;
+        }
+        
+        // Update team counter in scoreboard sidebar
+        if (this.elements.teamCounter) {
+            const totalPossibleTeams = this.teams.length > 0 ? this.teams.length : 0;
+            this.elements.teamCounter.textContent = `${this.teams.length}/${totalPossibleTeams}`;
         }
         
         // Update question progress info
@@ -1489,10 +1495,7 @@ class HostControl {
 
         this.stopTimer(); // Clear any existing timer first
         
-        // Show both timers
-        if (this.elements.liveTimer) {
-            this.elements.liveTimer.classList.remove('hidden');
-        }
+        // Show progress bar timer
         if (this.elements.questionProgressBar) {
             this.elements.questionProgressBar.classList.remove('hidden');
         }
@@ -1501,12 +1504,7 @@ class HostControl {
             const elapsed = Math.floor((Date.now() - this.questionStartTime) / 1000);
             const remaining = Math.max(0, this.questionTimeLimit - elapsed);
             
-            // Update circular timer
-            if (this.elements.timerCountdown) {
-                this.elements.timerCountdown.textContent = remaining;
-            }
-            
-            // Update progress bar timer
+            // Update progress bar timer text
             if (this.elements.progressTimeText) {
                 this.elements.progressTimeText.textContent = `${remaining}s remaining`;
             }
@@ -1514,12 +1512,6 @@ class HostControl {
             // Calculate progress percentage (0-100, where 0 is full time, 100 is no time)
             const progress = Math.min(100, (elapsed / this.questionTimeLimit) * 100);
             const remainingPercentage = Math.max(0, 100 - progress);
-            
-            // Update circular timer progress
-            const timerCircle = this.elements.liveTimer?.querySelector('.timer-circle');
-            if (timerCircle) {
-                timerCircle.style.setProperty('--timer-progress', `${progress}%`);
-            }
             
             // Update progress bar fill
             if (this.elements.progressBarFill) {
@@ -1531,9 +1523,6 @@ class HostControl {
             const criticalThreshold = this.questionTimeLimit * 0.1; // 10% of time remaining
             
             // Reset classes
-            if (this.elements.liveTimer) {
-                this.elements.liveTimer.classList.remove('critical');
-            }
             if (this.elements.questionProgressBar) {
                 this.elements.questionProgressBar.classList.remove('warning', 'critical');
             }
@@ -1544,9 +1533,6 @@ class HostControl {
             // Apply state-based styling
             if (remaining <= criticalThreshold) {
                 // Critical state - red
-                if (this.elements.liveTimer) {
-                    this.elements.liveTimer.classList.add('critical');
-                }
                 if (this.elements.questionProgressBar) {
                     this.elements.questionProgressBar.classList.add('critical');
                 }
@@ -1582,12 +1568,6 @@ class HostControl {
     }
     
     hideTimers() {
-        // Hide and reset circular timer
-        if (this.elements.liveTimer) {
-            this.elements.liveTimer.classList.add('hidden');
-            this.elements.liveTimer.classList.remove('critical');
-        }
-        
         // Hide and reset progress bar timer
         if (this.elements.questionProgressBar) {
             this.elements.questionProgressBar.classList.add('hidden');

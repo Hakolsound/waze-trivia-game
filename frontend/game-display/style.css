@@ -193,7 +193,7 @@ body::before {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   text-align: center;
   width: 100%;
   height: 100%;
@@ -201,7 +201,7 @@ body::before {
   transform: translateY(20px);
   transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
-  padding: 80px 40px;
+  padding: 40px 20px;
 }
 
 .question-section.active {
@@ -211,7 +211,7 @@ body::before {
 
 .question-container {
   background: rgba(255, 255, 255, 0.02);
-  border-radius: 40px;
+  border-radius: 60px;
   padding: 80px 60px;
   box-shadow: var(--md-sys-elevation-level4);
   backdrop-filter: blur(40px);
@@ -219,10 +219,12 @@ body::before {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  width: 100%;
-  max-width: 1400px;
+  width: 75vw;
+  max-width: none;
   position: relative;
   overflow: hidden;
+  min-height: 50vh;
+  margin-top: 20px;
 }
 
 .question-container::before {
@@ -236,19 +238,21 @@ body::before {
 }
 
 .question-text {
-  font-size: 18rem;
-  font-weight: 800;
-  line-height: 0.9;
-  letter-spacing: -0.02em;
+  font-size: 72rem;
+  font-weight: 900;
+  line-height: 0.85;
+  letter-spacing: -0.03em;
   color: var(--md-sys-color-on-surface);
   text-align: center;
   margin: 0;
-  background: linear-gradient(135deg, #ffffff 0%, rgba(255, 255, 255, 0.8) 100%);
+  background: linear-gradient(135deg, #ffffff 0%, rgba(255, 255, 255, 0.9) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  text-shadow: 0 0 80px rgba(99, 102, 241, 0.3);
+  text-shadow: 0 0 200px rgba(99, 102, 241, 0.5);
   animation: textGlow 3s ease-in-out infinite alternate;
+  word-wrap: break-word;
+  hyphens: auto;
 }
 
 @keyframes textGlow {
@@ -258,11 +262,12 @@ body::before {
 
 .question-media {
   max-width: 100%;
-  max-height: 300px;
+  max-height: 800px;
   object-fit: contain;
-  border-radius: 16px;
-  margin-bottom: 24px;
-  box-shadow: var(--md-sys-elevation-level2);
+  border-radius: 32px;
+  margin-top: 80px;
+  box-shadow: var(--md-sys-elevation-level3);
+  border: 2px solid rgba(255, 255, 255, 0.1);
 }
 
 .question-meta {
@@ -273,24 +278,22 @@ body::before {
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.question-points-overlay {
-  position: absolute;
-  top: 40px;
-  right: 40px;
-  z-index: 10;
-}
+/* Removed question-points-overlay as it's now in header */
 
 .question-points {
   background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
   color: white;
-  padding: 20px 32px;
+  padding: 25px 40px;
   border-radius: 100px;
-  font-size: 2rem;
+  font-size: 3rem;
   font-weight: 700;
   box-shadow: var(--md-sys-elevation-level3);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.25);
   animation: pointsPulse 2s ease-in-out infinite;
+  text-shadow: 0 2px 15px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 @keyframes pointsPulse {
@@ -299,22 +302,29 @@ body::before {
 }
 
 /* Timer Progress Bar */
+.question-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 75vw;
+  margin-bottom: 20px;
+  gap: 60px;
+}
+
 .timer-container {
-  width: 100%;
-  max-width: 1200px;
-  margin-bottom: 60px;
+  flex: 1;
   position: relative;
 }
 
 .timer-bar {
   width: 100%;
-  height: 12px;
+  height: 20px;
   background: rgba(255, 255, 255, 0.08);
   border-radius: 100px;
   overflow: hidden;
   position: relative;
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.15);
 }
 
 .timer-progress {
@@ -338,12 +348,12 @@ body::before {
 }
 
 .timer-text {
-  text-align: center;
-  margin-top: 20px;
-  font-size: 1.5rem;
+  text-align: left;
+  margin-top: 15px;
+  font-size: 2.5rem;
   font-weight: 600;
   color: var(--md-sys-color-on-surface-variant);
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 2px 15px rgba(0, 0, 0, 0.6);
 }
 
 /* Buzzer Sidebar */

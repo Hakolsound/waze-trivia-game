@@ -47,9 +47,11 @@ module.exports = (gameService) => {
 
   router.put('/:id/branding', async (req, res) => {
     try {
+      console.log('Updating branding for game:', req.params.id, 'with data:', req.body);
       const branding = await gameService.updateGameBranding(req.params.id, req.body);
       res.json(branding);
     } catch (error) {
+      console.error('Branding update error:', error);
       res.status(400).json({ error: error.message });
     }
   });

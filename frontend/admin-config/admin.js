@@ -1910,7 +1910,9 @@ class AdminConfig {
         });
         
         if (!response.ok) {
-            throw new Error('Failed to save branding data');
+            const errorText = await response.text();
+            console.error('Branding save failed:', response.status, errorText);
+            throw new Error(`Failed to save branding data: ${response.status} ${errorText}`);
         }
         
         // Update current game data

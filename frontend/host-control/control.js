@@ -636,16 +636,39 @@ class HostControl {
     }
 
     showQuestionSelectModal() {
-        // For now, just trigger the select dropdown
+        // Create a temporary select that stays visible longer
         if (this.elements.questionSelect && !this.elements.questionSelect.disabled) {
-            this.elements.questionSelect.classList.remove('hidden');
-            this.elements.questionSelect.focus();
-            this.elements.questionSelect.click();
+            const select = this.elements.questionSelect;
             
-            // Hide it again after selection
-            setTimeout(() => {
-                this.elements.questionSelect.classList.add('hidden');
-            }, 100);
+            // Position the select near the button and make it visible
+            select.classList.remove('hidden');
+            select.style.position = 'absolute';
+            select.style.zIndex = '1000';
+            select.style.top = '50%';
+            select.style.left = '50%';
+            select.style.transform = 'translate(-50%, -50%)';
+            select.style.fontSize = '1rem';
+            select.style.padding = '8px';
+            
+            // Focus and open the dropdown
+            select.focus();
+            
+            // Add a change listener to hide after selection
+            const hideSelect = () => {
+                select.classList.add('hidden');
+                select.style.position = '';
+                select.style.zIndex = '';
+                select.style.top = '';
+                select.style.left = '';
+                select.style.transform = '';
+                select.style.fontSize = '';
+                select.style.padding = '';
+                select.removeEventListener('change', hideSelect);
+                select.removeEventListener('blur', hideSelect);
+            };
+            
+            select.addEventListener('change', hideSelect);
+            select.addEventListener('blur', hideSelect);
         }
     }
 
@@ -1441,10 +1464,20 @@ class HostControl {
 
     // Enhanced Buzzer Results Display
     updateBuzzerResults() {
+        const buzzerResultsSection = document.getElementById('buzzer-results-section');
+        
         if (this.buzzerOrder.length === 0) {
             this.elements.buzzerResults.innerHTML = '<div class="no-buzzes">No buzzer presses yet</div>';
             this.elements.showAnswersBtn.classList.add('hidden');
+            if (buzzerResultsSection) {
+                buzzerResultsSection.classList.add('hidden');
+            }
             return;
+        }
+
+        // Show the buzzer results section in sidebar
+        if (buzzerResultsSection) {
+            buzzerResultsSection.classList.remove('hidden');
         }
 
         this.elements.buzzerResults.innerHTML = '';
@@ -1452,7 +1485,7 @@ class HostControl {
         
         this.buzzerOrder.forEach((buzzer, index) => {
             const buzzerItem = document.createElement('div');
-            buzzerItem.className = 'buzzer-item';
+            buzzerItem.className = 'buzzer-result-item';
             
             const teamName = this.getTeamName(buzzer.groupId);
             const deltaTime = (buzzer.deltaMs / 1000).toFixed(2);
@@ -1464,7 +1497,7 @@ class HostControl {
             }
             
             buzzerItem.innerHTML = `
-                <div class="buzzer-rank ${index === 0 ? 'first' : ''}">${index + 1}</div>
+                <div class="buzzer-rank-badge ${index === 0 ? 'first' : ''}">${index + 1}</div>
                 <div class="buzzer-team-info">
                     <div class="buzzer-team-name">
                         ${teamName}
@@ -1472,16 +1505,10 @@ class HostControl {
                     </div>
                     <div class="buzzer-timing">
                         ${index === 0 ? 
-                            `<span class="first-buzz">First: ${deltaTime}s</span>` : 
-                            `<span class="delta-time">+${deltaFromFirst}s</span>`
+                            `${deltaTime}s` : 
+                            `+${deltaFromFirst}s`
                         }
                     </div>
-                </div>
-                <div class="buzzer-status">
-                    ${buzzer.evaluated ? 
-                        `<span class="points-awarded">${buzzer.pointsAwarded > 0 ? '+' : ''}${buzzer.pointsAwarded}</span>` : 
-                        '<span class="waiting">Waiting</span>'
-                    }
                 </div>
             `;
             

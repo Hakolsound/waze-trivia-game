@@ -24,14 +24,9 @@
                 </div>
             </div>
             <div class="header-center">
-                <div class="current-game-info">
-                    <span class="current-game-label">Current Game:</span>
-                    <strong id="current-game-name">No Game Loaded</strong>
-                </div>
                 <div class="header-actions">
                     <button id="nav-open-display-btn" class="btn btn-small btn-secondary">🖥️ Display</button>
                     <button id="nav-open-admin-btn" class="btn btn-small btn-secondary">⚙️ Admin</button>
-                    <button id="change-game-btn" class="btn btn-small btn-primary">Change Game</button>
                 </div>
             </div>
             <div class="header-right">
@@ -43,6 +38,21 @@
         </header>
 
         <div class="host-content-wrapper">
+            <!-- Left Scoreboard Sidebar -->
+            <aside class="scoreboard-sidebar">
+                <div class="panel scoreboard-panel">
+                    <div class="panel-header">
+                        <h3>🏆 Live Scoreboard</h3>
+                        <button id="refresh-scores-btn" class="btn btn-small btn-secondary">
+                            <span class="material-icons">refresh</span>
+                        </button>
+                    </div>
+                    <div id="teams-scoring" class="teams-list">
+                        <div class="no-teams">No teams loaded</div>
+                    </div>
+                </div>
+            </aside>
+            
             <main class="host-main">
             <!-- Primary Game Control Area -->
             <section class="primary-control">
@@ -77,24 +87,24 @@
                     </div>
                 </div>
 
-                <!-- Main Control Buttons -->
+                <!-- Main Control Row -->
                 <div class="main-controls">
-                    <button id="start-question-btn" class="control-icon btn-primary" title="Start Question" disabled>
+                    <button id="prev-question-btn" class="control-icon btn-secondary" title="Previous Question" disabled>
+                        <span class="material-icons">skip_previous</span>
+                    </button>
+                    <button id="start-question-btn" class="control-icon control-icon-large btn-primary" title="Start Question" disabled>
                         <span class="material-icons">play_arrow</span>
                     </button>
-                    <button id="show-answers-btn" class="control-icon btn-success hidden" title="Evaluate Answers">
+                    <button id="show-answers-btn" class="control-icon control-icon-large btn-success hidden" title="Evaluate Answers">
                         <span class="material-icons">quiz</span>
                     </button>
-                    <button id="next-question-btn" class="control-icon btn-info" title="Next Question" disabled>
+                    <button id="next-question-btn" class="control-icon btn-secondary" title="Next Question" disabled>
                         <span class="material-icons">skip_next</span>
                     </button>
                 </div>
 
                 <!-- Quick Actions Bar -->
                 <div class="quick-actions">
-                    <button id="prev-question-btn" class="control-icon btn-secondary" title="Previous Question" disabled>
-                        <span class="material-icons">skip_previous</span>
-                    </button>
                     <button id="show-question-select-btn" class="control-icon btn-secondary" title="Jump to Question" disabled>
                         <span class="material-icons">list</span>
                     </button>
@@ -110,19 +120,6 @@
 
             <!-- Secondary Panels -->
             <div class="secondary-panels">
-                <!-- Live Scoreboard -->
-                <div class="panel scoreboard-panel">
-                    <div class="panel-header">
-                        <h3>🏆 Live Scoreboard</h3>
-                        <button id="refresh-scores-btn" class="btn btn-small btn-secondary">
-                            <span class="material-icons">refresh</span>
-                        </button>
-                    </div>
-                    <div id="teams-scoring" class="teams-list">
-                        <div class="no-teams">No teams loaded</div>
-                    </div>
-                </div>
-
                 <!-- Current Answering Team Highlight -->
                 <div id="current-answerer-highlight" class="current-answerer-highlight hidden">
                     <div class="answerer-badge">
@@ -137,15 +134,6 @@
                     </div>
                 </div>
                 
-                <!-- Live Buzzer Rankings -->
-                <div class="panel buzzer-results-panel">
-                    <div class="panel-header">
-                        <h3>🔔 Live Buzzer Results</h3>
-                    </div>
-                    <div id="buzzer-results" class="buzzer-results">
-                        <div class="no-buzzes">No buzzer presses yet</div>
-                    </div>
-                </div>
 
             </div>
         </main>
@@ -160,6 +148,14 @@
             </div>
             <div class="buzzer-sidebar-content">
                 <div class="buzzer-sections">
+                    <!-- Live Buzzer Results (shown during active questions) -->
+                    <div id="buzzer-results-section" class="buzzer-section hidden">
+                        <h4>🏃 Current Round</h4>
+                        <div id="buzzer-results" class="buzzer-results-list">
+                            <div class="no-buzzes">No buzzer presses yet</div>
+                        </div>
+                    </div>
+                    
                     <div class="buzzer-section">
                         <h4>🟢 Online Buzzers</h4>
                         <div id="online-buzzers" class="buzzer-list">

@@ -507,10 +507,11 @@ body {
 /* Main Control Buttons */
 .main-controls {
   display: flex;
-  gap: 16px;
+  gap: 20px;
   justify-content: center;
+  align-items: center;
   flex-wrap: wrap;
-  margin: 16px 0;
+  margin: 20px 0;
 }
 
 .control-icon {
@@ -541,6 +542,15 @@ body {
 
 .control-icon .material-icons {
   font-size: 24px;
+}
+
+.control-icon-large {
+  width: 64px;
+  height: 64px;
+}
+
+.control-icon-large .material-icons {
+  font-size: 32px;
 }
 
 .btn {
@@ -1416,6 +1426,25 @@ body {
     gap: 0;
 }
 
+/* Scoreboard Sidebar */
+.scoreboard-sidebar {
+    width: 300px;
+    background: white;
+    border-right: 1px solid var(--md-sys-color-outline);
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.05);
+    min-height: calc(100vh - 48px);
+    display: flex;
+    flex-direction: column;
+}
+
+.scoreboard-sidebar .panel {
+    margin: 0;
+    border-radius: 0;
+    border: none;
+    flex: 1;
+    box-shadow: none;
+}
+
 .host-main {
     flex: 1;
     width: 100%;
@@ -1674,5 +1703,72 @@ body {
     color: var(--md-sys-color-outline);
     font-style: italic;
     font-size: 10px;
+}
+
+/* Buzzer Results in Sidebar */
+.buzzer-results-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.buzzer-result-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    background: var(--md-sys-color-surface-variant);
+    border: 1px solid var(--md-sys-color-outline);
+    transition: all 0.2s ease;
+}
+
+.buzzer-result-item.evaluated-correct {
+    background: rgba(76, 175, 80, 0.1);
+    border-color: rgba(76, 175, 80, 0.3);
+}
+
+.buzzer-result-item.evaluated-incorrect {
+    background: rgba(244, 67, 54, 0.1);
+    border-color: rgba(244, 67, 54, 0.3);
+}
+
+.buzzer-rank-badge {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--md-sys-color-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.buzzer-rank-badge.first {
+    background: gold;
+    color: black;
+}
+
+.buzzer-result-item .buzzer-team-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.buzzer-result-item .buzzer-team-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--md-sys-color-on-surface);
+    line-height: 1.2;
+}
+
+.buzzer-result-item .buzzer-timing {
+    font-size: 9px;
+    color: var(--md-sys-color-outline);
+    line-height: 1;
 }
 

@@ -409,13 +409,14 @@ body {
 }
 
 .question-tab.active {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.25);
     color: var(--md-sys-color-primary);
-    font-weight: 500;
-    box-shadow: var(--md-sys-elevation-level2);
+    font-weight: 600;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3), 0 0 0 2px rgba(74, 158, 191, 0.4);
     z-index: 2;
-    transform: translateY(-3px);
-    backdrop-filter: blur(10px);
+    transform: translateY(-6px) scale(1.02);
+    backdrop-filter: blur(15px);
+    border: 2px solid rgba(74, 158, 191, 0.5);
 }
 
 .question-tab.dragging {
@@ -430,16 +431,18 @@ body {
     border: none;
     color: rgba(255, 255, 255, 0.4);
     cursor: pointer;
-    font-size: 0.8rem;
-    padding: 2px;
+    font-size: 1rem;
+    padding: 4px;
     border-radius: 50%;
-    width: 16px;
-    height: 16px;
+    width: 20px;
+    height: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
     opacity: 0;
     transition: all 0.2s ease;
+    margin-left: auto;
+    margin-right: 2px;
 }
 
 .question-tab:hover .question-tab-close {
@@ -447,8 +450,9 @@ body {
 }
 
 .question-tab-close:hover {
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(220, 38, 38, 0.8);
     color: #ffffff;
+    transform: scale(1.1);
 }
 
 .add-question-tab {

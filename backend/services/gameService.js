@@ -104,7 +104,9 @@ class GameService {
       startTime: Date.now()
     });
 
+    // Arm buzzers for both host control and all game clients (including virtual buzzers)
     this.io.to('control-panel').emit('buzzers-armed', { gameId, questionId: currentQuestion.id });
+    this.io.to(`game-${gameId}`).emit('buzzers-armed', { gameId, questionId: currentQuestion.id });
 
     // Timeout is now handled above in the activeGames setup
 
@@ -130,7 +132,9 @@ class GameService {
       buzzerOrder: gameState.buzzerOrder
     });
 
+    // Disarm buzzers for both host control and all game clients (including virtual buzzers)
     this.io.to('control-panel').emit('buzzers-disarmed', { gameId });
+    this.io.to(`game-${gameId}`).emit('buzzers-disarmed', { gameId });
 
     // Remove the game state to prevent any lingering timers
     this.activeGames.delete(gameId);

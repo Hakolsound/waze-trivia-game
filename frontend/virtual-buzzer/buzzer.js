@@ -369,7 +369,7 @@ class VirtualBuzzer {
     }
 
     pressBuzzer() {
-        if (this.currentState !== 'armed' || !this.selectedTeam) return;
+        if (this.currentState !== 'armed' || !this.selectedTeam || !this.currentGame) return;
 
         this.currentState = 'pressed';
         this.updateBuzzerState();
@@ -377,6 +377,7 @@ class VirtualBuzzer {
 
         // Send buzzer press to server
         this.socket.emit('buzzer-press', {
+            gameId: this.currentGame.id,
             buzzerId: this.buzzerId,
             groupId: this.selectedTeam.id,
             timestamp: Date.now()

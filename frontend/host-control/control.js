@@ -21,6 +21,17 @@ class HostControl {
         this.questionTimer = null;
         this.questionStartTime = null;
         this.questionTimeLimit = 30;
+        
+        // Initialize buzzer sidebar
+        this.loadThresholdSetting();
+        setTimeout(() => {
+            this.refreshBuzzerStatus();
+        }, 1000);
+        
+        // Set up periodic status updates to handle stale devices
+        setInterval(() => {
+            this.updateBuzzerSidebar(); // Check for stale devices based on timestamps
+        }, 5000); // Check every 5 seconds
     }
 
     initializeGameSelector() {
@@ -167,9 +178,11 @@ class HostControl {
             // Toast container
             toastContainer: document.getElementById('toast-container'),
             
-            // Buzzer overlay elements
-            buzzerOverlay: document.getElementById('buzzer-overlay'),
-            toggleBuzzerOverlayBtn: document.getElementById('toggle-buzzer-overlay'),
+            // Buzzer sidebar elements
+            buzzerSidebar: document.getElementById('buzzer-sidebar'),
+            toggleBuzzerSidebarBtn: document.getElementById('toggle-buzzer-sidebar'),
+            buzzerCounter: document.getElementById('buzzer-counter'),
+            onlineThreshold: document.getElementById('online-threshold'),
             onlineBuzzers: document.getElementById('online-buzzers'),
             offlineBuzzers: document.getElementById('offline-buzzers')
         };
@@ -201,6 +214,17 @@ class HostControl {
 
         this.socket.on('buzzer-pressed', (data) => {
             this.handleBuzzerPress(data);
+        });
+
+        // ESP32 device monitoring listeners
+        this.socket.on('esp32-device-data', (data) => {
+            if (data.esp32_data) {
+                this.parseESP32DeviceData(data.esp32_data, data.timestamp);
+            }
+        });
+        
+        this.socket.on('esp32-status', (data) => {
+            this.updateESP32Status(data);
         });
 
         this.socket.on('question-start', (data) => {
@@ -319,9 +343,19 @@ class HostControl {
         }
         
         // Buzzer overlay controls
-        if (this.elements.toggleBuzzerOverlayBtn) {
-            this.elements.toggleBuzzerOverlayBtn.addEventListener('click', () => {
-                this.toggleBuzzerOverlay();
+        if (this.elements.toggleBuzzerSidebarBtn) {
+            this.elements.toggleBuzzerSidebarBtn.addEventListener('click', () => {
+                this.toggleBuzzerSidebar();
+            });
+        }
+        
+        // Online threshold setting
+        if (this.elements.onlineThreshold) {
+            this.elements.onlineThreshold.addEventListener('input', () => {
+                this.updateBuzzerSidebar();
+            });
+            this.elements.onlineThreshold.addEventListener('change', () => {
+                this.saveThresholdSetting();
             });
         }
     }
@@ -1463,34 +1497,38 @@ class HostControl {
         }
     }
 
-    // Buzzer Overlay Methods
-    toggleBuzzerOverlay() {
-        if (!this.elements.buzzerOverlay) return;
+    // Buzzer Sidebar Methods
+    toggleBuzzerSidebar() {
+        if (!this.elements.buzzerSidebar) return;
         
-        const isHidden = this.elements.buzzerOverlay.classList.contains('minimized');
+        const isCollapsed = this.elements.buzzerSidebar.classList.contains('collapsed');
         
-        if (isHidden) {
-            this.elements.buzzerOverlay.classList.remove('minimized');
-            this.elements.toggleBuzzerOverlayBtn.textContent = 'Hide';
-            this.refreshBuzzerOverlayStatus();
+        if (isCollapsed) {
+            this.elements.buzzerSidebar.classList.remove('collapsed');
+            this.elements.toggleBuzzerSidebarBtn.textContent = '◀';
+            this.refreshBuzzerStatus();
         } else {
-            this.elements.buzzerOverlay.classList.add('minimized');
-            this.elements.toggleBuzzerOverlayBtn.textContent = 'Show';
+            this.elements.buzzerSidebar.classList.add('collapsed');
+            this.elements.toggleBuzzerSidebarBtn.textContent = '▶';
         }
     }
 
-    updateBuzzerOverlay() {
+    updateBuzzerSidebar() {
         if (!this.buzzerDevices || !this.elements.onlineBuzzers || !this.elements.offlineBuzzers) return;
         
         const now = Date.now();
-        const staleThreshold = 60000; // 60 seconds
+        const staleThreshold = this.getOnlineThreshold();
         
         const onlineBuzzers = [];
         const offlineBuzzers = [];
         
         this.buzzerDevices.forEach(device => {
             const timeSinceLastSeen = now - device.last_seen;
-            if (timeSinceLastSeen < staleThreshold) {
+            const isRecent = timeSinceLastSeen < staleThreshold;
+            const isOnlineReported = device.online === true;
+            
+            // Device is online ONLY if ESP32 reported online=true AND data is recent
+            if (isOnlineReported && isRecent) {
                 onlineBuzzers.push(device);
             } else {
                 offlineBuzzers.push(device);
@@ -1498,13 +1536,16 @@ class HostControl {
         });
         
         // Update online buzzers
-        this.renderBuzzerOverlayList(this.elements.onlineBuzzers, onlineBuzzers, true);
+        this.renderBuzzerList(this.elements.onlineBuzzers, onlineBuzzers, true);
         
         // Update offline buzzers
-        this.renderBuzzerOverlayList(this.elements.offlineBuzzers, offlineBuzzers, false);
+        this.renderBuzzerList(this.elements.offlineBuzzers, offlineBuzzers, false);
+        
+        // Update counter
+        this.updateBuzzerCounter(onlineBuzzers.length);
     }
 
-    renderBuzzerOverlayList(container, buzzers, isOnline) {
+    renderBuzzerList(container, buzzers, isOnline) {
         if (buzzers.length === 0) {
             container.innerHTML = `<div class="no-buzzers">No ${isOnline ? 'online' : 'offline'} buzzers</div>`;
             return;
@@ -1542,7 +1583,7 @@ class HostControl {
         return team ? team.name : null;
     }
 
-    async refreshBuzzerOverlayStatus() {
+    async refreshBuzzerStatus() {
         try {
             const response = await fetch('/api/buzzers/devices');
             if (response.ok) {
@@ -1558,10 +1599,146 @@ class HostControl {
                     });
                 });
                 
-                this.updateBuzzerOverlay();
+                this.updateBuzzerSidebar();
             }
         } catch (error) {
             console.error('Failed to refresh buzzer status:', error);
+        }
+    }
+
+    updateBuzzerCounter(onlineCount) {
+        if (this.elements.buzzerCounter) {
+            const totalGroups = this.getTotalGroups();
+            this.elements.buzzerCounter.textContent = `${onlineCount}/${totalGroups}`;
+        }
+    }
+    
+    getTotalGroups() {
+        return this.teams ? this.teams.length : 4; // Default to 4 groups
+    }
+
+    // Threshold management methods
+    getOnlineThreshold() {
+        if (this.elements.onlineThreshold) {
+            const value = parseInt(this.elements.onlineThreshold.value);
+            // Ensure minimum threshold of 10 seconds to prevent constant offline/online switching
+            const minValue = Math.max(value, 10);
+            return minValue * 1000; // Convert seconds to milliseconds
+        }
+        return 60000; // Default 60 seconds
+    }
+    
+    loadThresholdSetting() {
+        const saved = localStorage.getItem('buzzer-online-threshold');
+        if (saved && this.elements.onlineThreshold) {
+            this.elements.onlineThreshold.value = saved;
+        }
+    }
+    
+    saveThresholdSetting() {
+        if (this.elements.onlineThreshold) {
+            localStorage.setItem('buzzer-online-threshold', this.elements.onlineThreshold.value);
+        }
+    }
+
+    formatLastSeen(milliseconds) {
+        const seconds = Math.floor(milliseconds / 1000);
+        
+        if (seconds <= 0) {
+            return 'now';
+        } else if (seconds < 60) {
+            return `${seconds}s ago`;
+        } else if (seconds < 3600) {
+            return `${Math.floor(seconds / 60)}m ago`;
+        } else {
+            return `${Math.floor(seconds / 3600)}h ago`;
+        }
+    }
+
+    parseESP32DeviceData(esp32Data, timestamp) {
+        // Parse format: "DEVICE:1,online=1,armed=0,pressed=0,mac=EC:62:60:1D:E8:D4"
+        try {
+            if (typeof esp32Data !== 'string') {
+                return;
+            }
+            
+            const parts = esp32Data.split(',');
+            if (parts.length < 2) {
+                return;
+            }
+            
+            // Extract device ID
+            const devicePart = parts[0];
+            if (!devicePart.startsWith('DEVICE:')) {
+                return;
+            }
+            const deviceId = devicePart.split(':')[1];
+            
+            if (!deviceId || deviceId.trim() === '' || !/^\d+$/.test(deviceId.toString())) {
+                return; // Only accept numeric device IDs
+            }
+            
+            // Parse parameters
+            const params = {};
+            for (let i = 1; i < parts.length; i++) {
+                const [key, value] = parts[i].split('=');
+                if (key && value !== undefined) {
+                    params[key] = value === '1' ? true : value === '0' ? false : value;
+                }
+            }
+            
+            // Convert timestamp to milliseconds if provided
+            let lastSeen;
+            if (timestamp) {
+                // Handle both ISO string and timestamp formats
+                if (typeof timestamp === 'string') {
+                    lastSeen = new Date(timestamp).getTime();
+                } else {
+                    lastSeen = timestamp;
+                }
+            } else {
+                lastSeen = Date.now();
+            }
+            
+            // Determine if device is actually online based on timestamp
+            const now = Date.now();
+            const timeSinceLastSeen = now - lastSeen;
+            const threshold = this.getOnlineThreshold();
+            const isRecentlyActive = timeSinceLastSeen < threshold;
+            const reportedOnline = params.online === true;
+            
+            // Device is considered online if it reported online AND was seen recently
+            const actuallyOnline = reportedOnline && isRecentlyActive;
+            
+            if (!this.buzzerDevices) {
+                this.buzzerDevices = new Map();
+            }
+            
+            const deviceData = {
+                device_id: deviceId,
+                name: `Buzzer ${deviceId}`,
+                last_seen: lastSeen,
+                status: actuallyOnline ? 'online' : 'offline',
+                online: actuallyOnline, // Explicit online flag
+                armed: params.armed === true,
+                pressed: params.pressed === true,
+                mac: params.mac || '',
+                teamName: this.getTeamNameByBuzzerId(deviceId),
+                reported_online: reportedOnline,
+                time_since_last_seen: timeSinceLastSeen
+            };
+            
+            this.buzzerDevices.set(deviceId, deviceData);
+            this.updateBuzzerSidebar();
+        } catch (error) {
+            console.error('Error parsing ESP32 device data:', error);
+        }
+    }
+
+    updateESP32Status(data) {
+        // Parse ESP32 device data if available
+        if (data.esp32_data) {
+            this.parseESP32DeviceData(data.esp32_data);
         }
     }
 }

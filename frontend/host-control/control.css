@@ -1324,83 +1324,185 @@ body {
   }
 }
 
-/* Buzzer Overlay */
-.buzzer-overlay {
-    position: fixed;
-    top: 120px;
-    right: 20px;
-    width: 320px;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 16px;
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.1);
-    z-index: 1000;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+/* Layout wrapper for sidebar integration */
+.host-content-wrapper {
+    display: flex;
+    flex: 1;
+    gap: 0;
 }
 
-.buzzer-overlay.minimized {
-    height: 60px;
+.host-main {
+    flex: 1;
+    width: 100%;
+    min-height: calc(100vh - 120px);
+}
+
+/* Buzzer Sidebar */
+.buzzer-sidebar {
+    width: 280px;
+    background: white;
+    border-left: 1px solid var(--md-sys-color-outline);
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.05);
+    min-height: calc(100vh - 120px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+}
+
+.buzzer-sidebar.collapsed {
+    width: 48px;
     overflow: hidden;
 }
 
-.buzzer-overlay-header {
-    padding: 16px;
+.buzzer-sidebar.collapsed .buzzer-sidebar-header {
+    padding: 12px 8px;
+    justify-content: center;
+}
+
+.buzzer-sidebar.collapsed .buzzer-sidebar-header h3,
+.buzzer-sidebar.collapsed .buzzer-counter {
+    display: none;
+}
+
+.buzzer-sidebar.collapsed .buzzer-sidebar-content {
+    display: none;
+}
+
+.buzzer-sidebar.collapsed #toggle-buzzer-sidebar {
+    transform: rotate(180deg);
+}
+
+#toggle-buzzer-sidebar {
+    transition: transform 0.3s ease;
+    font-family: monospace;
+    font-size: 14px;
+    line-height: 1;
+    padding: 4px 8px;
+}
+
+.buzzer-sidebar-header {
+    padding: 12px 16px;
     border-bottom: 1px solid var(--md-sys-color-outline);
     display: flex;
     justify-content: space-between;
     align-items: center;
     background: linear-gradient(135deg, var(--waze-primary) 0%, var(--waze-purple) 100%);
     color: white;
-    border-radius: 16px 16px 0 0;
+    flex-shrink: 0;
+    gap: 8px;
 }
 
-.buzzer-overlay.minimized .buzzer-overlay-header {
-    border-radius: 16px;
-}
-
-.buzzer-overlay-header h3 {
+.buzzer-sidebar-header h3 {
     font-size: 14px;
     font-weight: 600;
     margin: 0;
+    flex: 1;
 }
 
-.buzzer-overlay-content {
-    max-height: 400px;
+.buzzer-counter {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 3px 6px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.collapsed-indicator {
+    display: none;
+    font-size: 18px;
+}
+
+.buzzer-sidebar.collapsed .collapsed-indicator {
+    display: block;
+}
+
+.buzzer-sidebar-content {
+    flex: 1;
+    overflow: hidden;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+}
+
+.buzzer-sections {
+    flex: 1;
     overflow-y: auto;
-    padding: 16px;
+    display: flex;
+    flex-direction: column;
+}
+
+.buzzer-settings {
+    background: var(--md-sys-color-surface-variant);
+    border: 1px solid var(--md-sys-color-outline);
+    border-radius: 4px;
+    padding: 8px;
+    margin-top: auto;
+    margin-bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.buzzer-settings label {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--md-sys-color-on-surface);
+    white-space: nowrap;
+}
+
+.threshold-input {
+    width: 50px;
+    padding: 3px 4px;
+    border: 1px solid var(--md-sys-color-outline);
+    border-radius: 3px;
+    font-size: 10px;
+    transition: border-color 0.2s ease;
+}
+
+.threshold-input:focus {
+    outline: none;
+    border-color: var(--waze-primary);
+    box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.2);
 }
 
 .buzzer-section {
+    margin-bottom: 12px;
+    flex-shrink: 0;
+}
+
+.buzzer-section:last-of-type {
     margin-bottom: 16px;
 }
 
-.buzzer-section:last-child {
-    margin-bottom: 0;
-}
-
 .buzzer-section h4 {
-    font-size: 12px;
+    font-size: 10px;
     font-weight: 600;
     color: var(--md-sys-color-on-surface);
-    margin-bottom: 8px;
+    margin-bottom: 4px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .buzzer-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 3px;
 }
 
 .buzzer-item {
-    padding: 12px;
-    border-radius: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
     background: var(--md-sys-color-surface-variant);
     border: 1px solid var(--md-sys-color-outline);
     transition: all 0.2s ease;
+    font-size: 11px;
 }
 
 .buzzer-item.online {
@@ -1415,67 +1517,78 @@ body {
 
 .buzzer-info {
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
 }
 
 .buzzer-header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    flex: 1;
 }
 
 .buzzer-id {
     font-weight: 600;
-    font-size: 14px;
+    font-size: 11px;
     color: var(--md-sys-color-on-surface);
-}
-
-.buzzer-status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    display: inline-block;
-}
-
-.buzzer-status-dot.online {
-    background: var(--waze-success);
-    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.3);
-}
-
-.buzzer-status-dot.offline {
-    background: var(--waze-error);
-    box-shadow: 0 0 0 2px rgba(244, 67, 54, 0.3);
+    line-height: 1;
 }
 
 .buzzer-details {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 0;
 }
 
 .team-name {
-    font-size: 12px;
+    font-size: 10px;
     font-weight: 500;
     color: var(--md-sys-color-on-surface);
+    line-height: 1.2;
+    text-align: center;
 }
 
 .no-team {
-    font-size: 12px;
+    font-size: 10px;
     color: var(--md-sys-color-outline);
     font-style: italic;
+    line-height: 1.2;
+    text-align: center;
 }
 
 .last-seen {
-    font-size: 11px;
+    font-size: 8px;
     color: var(--md-sys-color-outline);
+    line-height: 1;
+    margin-top: 1px;
+}
+
+.buzzer-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.buzzer-status-dot.online {
+    background: #4CAF50;
+    box-shadow: 0 0 0 1px rgba(76, 175, 80, 0.3);
+}
+
+.buzzer-status-dot.offline {
+    background: #F44336;
+    box-shadow: 0 0 0 1px rgba(244, 67, 54, 0.3);
 }
 
 .no-buzzers {
     text-align: center;
-    padding: 16px;
+    padding: 12px 8px;
     color: var(--md-sys-color-outline);
     font-style: italic;
-    font-size: 12px;
+    font-size: 10px;
 }
 

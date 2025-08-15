@@ -34,6 +34,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 app.use('/admin', express.static(path.join(__dirname, '../frontend/admin-config')));
 app.use('/display', express.static(path.join(__dirname, '../frontend/game-display')));
 app.use('/control', express.static(path.join(__dirname, '../frontend/host-control')));
+app.use('/shared', express.static(path.join(__dirname, '../frontend/shared')));
 
 const db = new Database();
 const gameService = new GameService(db, io);
@@ -76,6 +77,11 @@ app.get('/admin', (req, res) => {
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
   
+  // Send current global game status when client connects
+  gameService.getGlobalGameStatus().then(globalStatus => {
+    socket.emit('global-game-status', globalStatus);
+  });
+  
   socket.on('join-game', (gameId) => {
     socket.join(`game-${gameId}`);
     gameService.getGameState(gameId).then(state => {
@@ -85,6 +91,14 @@ io.on('connection', (socket) => {
   
   socket.on('join-control', () => {
     socket.join('control-panel');
+  });
+  
+  socket.on('join-admin', () => {
+    socket.join('admin-panel');
+  });
+  
+  socket.on('join-display', () => {
+    socket.join('game-display');
   });
   
   socket.on('buzzer-press', (data) => {

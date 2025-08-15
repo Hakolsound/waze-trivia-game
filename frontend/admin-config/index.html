@@ -5,339 +5,210 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trivia Game Admin Configuration</title>
     <link rel="stylesheet" href="admin.css">
+    <link rel="stylesheet" href="/shared/gameSelector.css">
     <script src="/socket.io/socket.io.js"></script>
+    <script src="/shared/gameSelector.js"></script>
 </head>
 <body>
     <div id="app">
         <nav class="admin-nav">
-            <h1>Admin Configuration</h1>
-            <div class="nav-tabs">
-                <button class="tab-button active" data-tab="games">Games</button>
-                <button class="tab-button" data-tab="branding">Branding</button>
-                <button class="tab-button" data-tab="groups">Teams</button>
-                <button class="tab-button" data-tab="questions">Questions</button>
-                <button class="tab-button" data-tab="system">System</button>
+            <h1>🏆 Waze Trivia Admin</h1>
+            <div class="nav-info" id="nav-info">
+                <span class="current-game-indicator" id="current-game-indicator">No Game Selected</span>
             </div>
         </nav>
+        
+        <!-- Game Selector Container -->
+        <div id="game-selector-container"></div>
 
         <main class="admin-main">
-            <!-- Games Tab -->
-            <section id="games-tab" class="tab-content active">
-                <div class="tab-header">
-                    <h2>Game Management</h2>
-                    <button id="create-game-btn" class="btn btn-primary">Create New Game</button>
+            <!-- Game Selection View -->
+            <section id="games-selection" class="games-selection active">
+                <div class="section-header">
+                    <h2>📁 Select Game to Configure</h2>
+                    <button id="create-game-btn" class="btn btn-primary">+ Create New Game</button>
                 </div>
 
-                <div class="games-list">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Status</th>
-                                <th>Teams</th>
-                                <th>Questions</th>
-                                <th>Created</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="games-table-body">
-                            <!-- Games will be populated here -->
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Create/Edit Game Modal -->
-                <div id="game-modal" class="modal hidden">
-                    <div class="modal-content">
-                        <h3 id="game-modal-title">Create New Game</h3>
-                        <form id="game-form">
-                            <div class="form-group">
-                                <label for="game-name">Game Name:</label>
-                                <input type="text" id="game-name" required>
-                            </div>
-                            <div class="form-actions">
-                                <button type="submit" class="btn btn-primary">Save Game</button>
-                                <button type="button" id="cancel-game-btn" class="btn btn-secondary">Cancel</button>
-                            </div>
-                        </form>
-                    </div>
+                <div class="games-grid" id="games-grid">
+                    <!-- Games will be populated here as cards -->
                 </div>
             </section>
 
-            <!-- Branding Tab -->
-            <section id="branding-tab" class="tab-content">
-                <div class="tab-header">
-                    <h2>Game Branding & Design</h2>
-                    <div class="game-selector">
-                        <select id="branding-game-select">
-                            <option value="">Select a game to customize...</option>
-                        </select>
-                        <button id="preview-branding-btn" class="btn btn-info" disabled>Preview Changes</button>
+            <!-- Game Configuration View -->
+            <section id="game-configuration" class="game-configuration hidden">
+                <div class="config-header">
+                    <button id="back-to-games-btn" class="btn btn-secondary">← Back to Games</button>
+                    <h2 id="current-game-title">Game Configuration</h2>
+                    <div class="game-actions">
+                        <button id="save-all-btn" class="btn btn-success">Save All Changes</button>
+                        <button id="reset-game-btn" class="btn btn-danger">Reset Game</button>
                     </div>
                 </div>
 
-                <div class="branding-content" id="branding-content">
-                    <div class="branding-panels">
-                        <!-- Logo & Visual Identity -->
+                <div class="config-tabs">
+                    <button class="config-tab active" data-tab="branding">🎨 Branding</button>
+                    <button class="config-tab" data-tab="teams">👥 Teams</button>
+                    <button class="config-tab" data-tab="questions">❓ Questions</button>
+                    <button class="config-tab" data-tab="system">⚙️ System</button>
+                </div>
+
+                <div class="config-content">
+                    <!-- Branding Configuration -->
+                    <div id="branding-config" class="config-panel active">
                         <div class="panel">
-                            <h3>🎨 Visual Identity</h3>
-                            <div class="branding-section">
-                                <div class="form-group">
+                            <h3>🎨 Visual Identity & Branding</h3>
+                            <div class="branding-grid">
+                                <div class="brand-section">
+                                    <label for="primary-color">Primary Color:</label>
+                                    <input type="color" id="primary-color" value="#00D4FF">
+                                </div>
+                                <div class="brand-section">
+                                    <label for="secondary-color">Secondary Color:</label>
+                                    <input type="color" id="secondary-color" value="#FF6B35">
+                                </div>
+                                <div class="brand-section">
                                     <label for="game-logo">Logo Upload:</label>
                                     <input type="file" id="game-logo" accept="image/*">
-                                    <div class="file-info">
-                                        <small>Recommended: PNG with transparent background, max 200x200px</small>
-                                        <div id="current-logo-preview" class="logo-preview hidden">
-                                            <img id="logo-preview-img" src="" alt="Current Logo">
-                                            <button id="remove-logo-btn" class="btn btn-danger btn-small">Remove Logo</button>
-                                        </div>
-                                    </div>
                                 </div>
-
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="logo-position">Logo Position:</label>
-                                        <select id="logo-position">
-                                            <option value="top-left">Top Left</option>
-                                            <option value="top-center">Top Center</option>
-                                            <option value="top-right" selected>Top Right</option>
-                                            <option value="bottom-left">Bottom Left</option>
-                                            <option value="bottom-center">Bottom Center</option>
-                                            <option value="bottom-right">Bottom Right</option>
-                                            <option value="center">Center Overlay</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="logo-size">Logo Size:</label>
-                                        <select id="logo-size">
-                                            <option value="small">Small (80px)</option>
-                                            <option value="medium" selected>Medium (120px)</option>
-                                            <option value="large">Large (160px)</option>
-                                            <option value="x-large">Extra Large (200px)</option>
-                                        </select>
-                                    </div>
+                                <div class="brand-section">
+                                    <label for="game-description">Game Description:</label>
+                                    <input type="text" id="game-description" placeholder="Waze Team Building 2024">
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Color Scheme -->
+                    <!-- Teams Configuration -->
+                    <div id="teams-config" class="config-panel">
                         <div class="panel">
-                            <h3>🌈 Color Scheme</h3>
-                            <div class="branding-section">
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="primary-color">Primary Color:</label>
-                                        <input type="color" id="primary-color" value="#667eea">
-                                        <span class="color-preview" id="primary-preview">#667eea</span>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="secondary-color">Secondary Color:</label>
-                                        <input type="color" id="secondary-color" value="#764ba2">
-                                        <span class="color-preview" id="secondary-preview">#764ba2</span>
-                                    </div>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="accent-color">Accent Color:</label>
-                                        <input type="color" id="accent-color" value="#FFD700">
-                                        <span class="color-preview" id="accent-preview">#FFD700</span>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="background-style">Background Style:</label>
-                                        <select id="background-style">
-                                            <option value="gradient" selected>Gradient</option>
-                                            <option value="solid">Solid Color</option>
-                                            <option value="pattern">Pattern</option>
-                                            <option value="image">Custom Image</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div class="color-presets">
-                                    <label>Quick Presets:</label>
-                                    <div class="preset-buttons">
-                                        <button class="preset-btn" data-preset="default">Default Blue</button>
-                                        <button class="preset-btn" data-preset="corporate">Corporate Gray</button>
-                                        <button class="preset-btn" data-preset="energetic">Energetic Orange</button>
-                                        <button class="preset-btn" data-preset="nature">Nature Green</button>
-                                        <button class="preset-btn" data-preset="royal">Royal Purple</button>
-                                        <button class="preset-btn" data-preset="modern">Modern Dark</button>
-                                    </div>
-                                </div>
+                            <div class="panel-header">
+                                <h3>👥 Team Management</h3>
+                                <button id="add-team-btn" class="btn btn-primary">+ Add Team</button>
+                            </div>
+                            <div id="teams-container" class="teams-container">
+                                <!-- Teams will be populated here -->
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Typography & Layout -->
+                    <!-- Questions Configuration -->
+                    <div id="questions-config" class="config-panel">
                         <div class="panel">
-                            <h3>📝 Typography & Layout</h3>
-                            <div class="branding-section">
-                                <div class="form-group">
-                                    <label for="font-family">Font Family:</label>
-                                    <select id="font-family">
-                                        <option value="Segoe UI" selected>Segoe UI (Modern)</option>
-                                        <option value="Arial">Arial (Classic)</option>
-                                        <option value="Roboto">Roboto (Clean)</option>
-                                        <option value="Open Sans">Open Sans (Friendly)</option>
-                                        <option value="Montserrat">Montserrat (Bold)</option>
-                                        <option value="Poppins">Poppins (Rounded)</option>
-                                        <option value="Playfair Display">Playfair Display (Elegant)</option>
-                                    </select>
+                            <div class="panel-header">
+                                <h3>❓ Question Management</h3>
+                                <button id="add-question-btn" class="btn btn-primary">+ Add Question</button>
+                            </div>
+                            
+                            <!-- Question Tabs Container -->
+                            <div class="question-tabs-container" id="question-tabs-container">
+                                <div class="question-tabs" id="question-tabs">
+                                    <!-- Question tabs will be dynamically added here -->
                                 </div>
-
-                                <div class="display-options">
-                                    <label>Display Options:</label>
-                                    <div class="checkbox-group">
-                                        <label class="checkbox-label">
-                                            <input type="checkbox" id="show-timer" checked>
-                                            Show Question Timer
-                                        </label>
-                                        <label class="checkbox-label">
-                                            <input type="checkbox" id="show-scores" checked>
-                                            Show Live Scores
-                                        </label>
-                                        <label class="checkbox-label">
-                                            <input type="checkbox" id="auto-advance">
-                                            Auto-advance Questions
-                                        </label>
-                                    </div>
+                                <button id="add-question-tab-btn" class="add-question-tab">+</button>
+                            </div>
+                            
+                            <!-- Question Editor -->
+                            <div class="question-editor" id="question-editor">
+                                <div class="no-question-selected">
+                                    <p>Select a question tab or add a new question to start editing</p>
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Game Settings -->
+                    <!-- System Configuration -->
+                    <div id="system-config" class="config-panel">
                         <div class="panel">
-                            <h3>⚙️ Game Settings</h3>
-                            <div class="branding-section">
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="default-question-time">Default Question Time (seconds):</label>
-                                        <input type="number" id="default-question-time" value="30" min="5" max="300">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="max-groups">Maximum Groups:</label>
-                                        <input type="number" id="max-groups" value="8" min="2" max="15">
-                                    </div>
+                            <h3>⚙️ System Status & Configuration</h3>
+                            <div class="system-grid">
+                                <div class="status-item">
+                                    <label>Database:</label>
+                                    <span id="db-status" class="status-indicator">Unknown</span>
                                 </div>
-
-                                <div class="form-group">
-                                    <label for="game-description">Game Description/Subtitle:</label>
-                                    <input type="text" id="game-description" placeholder="e.g., Waze Team Building Event 2024">
+                                <div class="status-item">
+                                    <label>ESP32 Hardware:</label>
+                                    <span id="hardware-status" class="status-indicator">Unknown</span>
                                 </div>
+                                <div class="status-item">
+                                    <label>Firebase:</label>
+                                    <span id="firebase-status" class="status-indicator">Unknown</span>
+                                </div>
+                            </div>
+                            <div class="system-actions">
+                                <button id="test-all-buzzers-btn" class="btn btn-info">Test All Buzzers</button>
+                                <button id="refresh-system-status-btn" class="btn btn-secondary">Refresh Status</button>
+                                <button id="backup-db-btn" class="btn btn-warning">Backup Database</button>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Live Preview -->
-                    <div class="panel preview-panel">
-                        <h3>🔍 Live Preview</h3>
-                        <div class="preview-container">
-                            <div id="game-preview" class="game-preview">
-                                <div class="preview-header">
-                                    <h1 id="preview-title">Game Title</h1>
-                                    <div id="preview-logo" class="preview-logo hidden"></div>
-                                </div>
-                                <div class="preview-content">
-                                    <div class="preview-question">
-                                        <div class="preview-timer">30</div>
-                                        <h2>Sample Question: What is the capital of France?</h2>
-                                    </div>
-                                    <div class="preview-scores">
-                                        <div class="preview-team">Team Red: 150</div>
-                                        <div class="preview-team">Team Blue: 100</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="branding-actions">
-                        <button id="save-branding-btn" class="btn btn-success" disabled>Save Branding</button>
-                        <button id="reset-branding-btn" class="btn btn-secondary" disabled>Reset to Defaults</button>
-                        <button id="export-theme-btn" class="btn btn-info" disabled>Export Theme</button>
-                        <input type="file" id="import-theme-input" accept=".json" style="display: none;">
-                        <button id="import-theme-btn" class="btn btn-info" disabled>Import Theme</button>
-                    </div>
-                </div>
-
-                <div class="no-game-selected" id="no-game-branding">
-                    <p>Please select a game to customize its branding and design.</p>
-                </div>
-            </section>
-
-            <!-- Teams Tab -->
-            <section id="groups-tab" class="tab-content">
-                <div class="tab-header">
-                    <h2>Team Management</h2>
-                    <div class="game-selector">
-                        <select id="teams-game-select">
-                            <option value="">Select a game...</option>
-                        </select>
-                        <button id="add-team-btn" class="btn btn-primary" disabled>Add Team</button>
-                    </div>
-                </div>
-
-                <div class="teams-list">
-                    <div id="teams-container">
-                        <p>Select a game to manage teams</p>
-                    </div>
-                </div>
-
-                <!-- Team Modal -->
-                <div id="team-modal" class="modal hidden">
-                    <div class="modal-content">
-                        <h3 id="team-modal-title">Add New Team</h3>
-                        <form id="team-form">
-                            <div class="form-group">
-                                <label for="team-name">Team Name:</label>
-                                <input type="text" id="team-name" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="team-color">Team Color:</label>
-                                <input type="color" id="team-color" value="#667eea">
-                            </div>
-                            <div class="form-group">
-                                <label for="buzzer-id">Buzzer ID:</label>
-                                <input type="text" id="buzzer-id" placeholder="buzzer_1">
-                            </div>
-                            <div class="form-actions">
-                                <button type="submit" class="btn btn-primary">Save Team</button>
-                                <button type="button" id="cancel-team-btn" class="btn btn-secondary">Cancel</button>
-                            </div>
-                        </form>
                     </div>
                 </div>
             </section>
 
-            <!-- Questions Tab -->
-            <section id="questions-tab" class="tab-content">
-                <div class="tab-header">
-                    <h2>Question Management</h2>
-                    <div class="game-selector">
-                        <select id="questions-game-select">
-                            <option value="">Select a game...</option>
-                        </select>
-                        <button id="add-question-btn" class="btn btn-primary" disabled>Add Question</button>
-                    </div>
-                </div>
 
-                <div class="questions-list">
-                    <div id="questions-container">
-                        <p>Select a game to manage questions</p>
-                    </div>
-                </div>
 
-                <!-- Question Modal -->
-                <div id="question-modal" class="modal hidden">
-                    <div class="modal-content large">
-                        <h3 id="question-modal-title">Add New Question</h3>
+
+
+        </main>
+
+            <!-- Modals -->
+            <!-- Game Modal -->
+            <div id="game-modal" class="modal hidden">
+                <div class="modal-content">
+                    <h3 id="game-modal-title">Create New Game</h3>
+                    <form id="game-form">
+                        <div class="form-group">
+                            <label for="game-name">Game Name:</label>
+                            <input type="text" id="game-name" required>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Save Game</button>
+                            <button type="button" id="cancel-game-btn" class="btn btn-secondary">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Team Modal -->
+            <div id="team-modal" class="modal hidden">
+                <div class="modal-content">
+                    <h3 id="team-modal-title">Add New Team</h3>
+                    <form id="team-form">
+                        <div class="form-group">
+                            <label for="team-name">Team Name:</label>
+                            <input type="text" id="team-name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="team-color">Team Color:</label>
+                            <input type="color" id="team-color" value="#00D4FF">
+                        </div>
+                        <div class="form-group">
+                            <label for="buzzer-id">Buzzer ID:</label>
+                            <input type="text" id="buzzer-id" placeholder="1">
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Save Team</button>
+                            <button type="button" id="cancel-team-btn" class="btn btn-secondary">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Question Editor Modal -->
+            <div id="question-editor-modal" class="modal hidden">
+                <div class="modal-content large">
+                    <div class="modal-header">
+                        <h3 id="question-editor-title">Edit Question</h3>
+                        <button id="close-question-editor-btn" class="btn btn-secondary">×</button>
+                    </div>
+                    <div class="modal-body">
                         <form id="question-form">
                             <div class="form-group">
                                 <label for="question-text">Question:</label>
-                                <textarea id="question-text" required rows="3"></textarea>
+                                <textarea id="question-text" required rows="3" placeholder="Enter your question here..."></textarea>
                             </div>
                             <div class="form-group">
                                 <label for="correct-answer">Correct Answer:</label>
-                                <input type="text" id="correct-answer" required>
+                                <input type="text" id="correct-answer" required placeholder="Enter the correct answer">
                             </div>
                             <div class="form-row">
                                 <div class="form-group">
@@ -356,105 +227,15 @@
                             <div class="form-actions">
                                 <button type="submit" class="btn btn-primary">Save Question</button>
                                 <button type="button" id="cancel-question-btn" class="btn btn-secondary">Cancel</button>
+                                <button type="button" id="delete-question-btn" class="btn btn-danger">Delete Question</button>
                             </div>
                         </form>
                     </div>
                 </div>
-            </section>
+            </div>
 
-            <!-- System Tab -->
-            <section id="system-tab" class="tab-content">
-                <div class="tab-header">
-                    <h2>System Configuration</h2>
-                </div>
-
-                <div class="system-panels">
-                    <!-- System Status -->
-                    <div class="panel">
-                        <h3>System Status</h3>
-                        <div class="status-grid">
-                            <div class="status-item">
-                                <label>Server Status:</label>
-                                <span id="server-status" class="status-indicator">Unknown</span>
-                            </div>
-                            <div class="status-item">
-                                <label>Database:</label>
-                                <span id="system-db-status" class="status-indicator">Unknown</span>
-                            </div>
-                            <div class="status-item">
-                                <label>ESP32 Hardware:</label>
-                                <span id="system-esp32-status" class="status-indicator">Unknown</span>
-                            </div>
-                            <div class="status-item">
-                                <label>Firebase:</label>
-                                <span id="system-firebase-status" class="status-indicator">Unknown</span>
-                            </div>
-                        </div>
-                        <button id="refresh-system-status-btn" class="btn btn-secondary">Refresh Status</button>
-                    </div>
-
-                    <!-- Buzzer Configuration -->
-                    <div class="panel">
-                        <h3>Buzzer Configuration</h3>
-                        <div class="buzzer-config">
-                            <div class="form-group">
-                                <label>Serial Port:</label>
-                                <span id="serial-port-info">Loading...</span>
-                            </div>
-                            <div class="form-group">
-                                <label>Connection Status:</label>
-                                <span id="buzzer-connection-status">Unknown</span>
-                            </div>
-                            <div class="buzzer-actions">
-                                <button id="test-all-buzzers-btn" class="btn btn-info">Test All Buzzers</button>
-                                <button id="reset-buzzers-btn" class="btn btn-warning">Reset Buzzers</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Live Buzzer Status -->
-                    <div class="panel">
-                        <h3>Live Buzzer Status</h3>
-                        <div id="buzzer-status-list" class="buzzer-status-container">
-                            <div class="no-buzzers">No buzzers detected</div>
-                        </div>
-                        <div class="buzzer-actions">
-                            <button id="refresh-buzzers-btn" class="btn btn-secondary">Refresh Status</button>
-                            <button id="arm-all-buzzers-btn" class="btn btn-success">Arm All</button>
-                            <button id="disarm-all-buzzers-btn" class="btn btn-warning">Disarm All</button>
-                        </div>
-                    </div>
-
-                    <!-- Database Management -->
-                    <div class="panel">
-                        <h3>Database Management</h3>
-                        <div class="db-actions">
-                            <button id="backup-db-btn" class="btn btn-info">Backup Database</button>
-                            <button id="clear-history-btn" class="btn btn-warning">Clear Game History</button>
-                            <button id="reset-db-btn" class="btn btn-danger">Reset Database</button>
-                        </div>
-                        <div class="db-info">
-                            <p id="db-info-text">Database information will appear here</p>
-                        </div>
-                    </div>
-
-                    <!-- Application Logs -->
-                    <div class="panel">
-                        <h3>Application Logs</h3>
-                        <div class="logs-container">
-                            <pre id="logs-display">Logs will appear here...</pre>
-                        </div>
-                        <div class="logs-actions">
-                            <button id="refresh-logs-btn" class="btn btn-secondary">Refresh Logs</button>
-                            <button id="clear-logs-btn" class="btn btn-warning">Clear Logs</button>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </main>
-
-        <!-- Toast Container -->
-        <div id="toast-container" class="toast-container"></div>
+            <!-- Toast Container -->
+            <div id="toast-container" class="toast-container"></div>
     </div>
 
     <script src="admin.js"></script>

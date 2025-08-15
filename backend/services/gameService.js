@@ -5,6 +5,7 @@ class GameService {
     this.db = database;
     this.io = io;
     this.activeGames = new Map();
+    this.currentGlobalGame = null; // Global current game for all frontend apps
   }
 
   async createGame(gameData) {
@@ -400,6 +401,50 @@ class GameService {
     };
     
     return this.updateGameBranding(gameId, defaultBranding);
+  }
+
+  // Global Game Management Methods
+  async setCurrentGlobalGame(gameId) {
+    if (gameId) {
+      const game = await this.getGame(gameId);
+      this.currentGlobalGame = gameId;
+      
+      // Notify all connected clients about the new global game
+      this.io.emit('global-game-changed', {
+        gameId: gameId,
+        game: game
+      });
+      
+      return game;
+    } else {
+      this.currentGlobalGame = null;
+      this.io.emit('global-game-changed', {
+        gameId: null,
+        game: null
+      });
+      return null;
+    }
+  }
+
+  getCurrentGlobalGame() {
+    return this.currentGlobalGame;
+  }
+
+  async getCurrentGlobalGameData() {
+    if (!this.currentGlobalGame) {
+      return null;
+    }
+    return await this.getGame(this.currentGlobalGame);
+  }
+
+  // This method should be called when a client connects to get the current global game
+  async getGlobalGameStatus() {
+    if (!this.currentGlobalGame) {
+      return { gameId: null, game: null };
+    }
+    
+    const game = await this.getGame(this.currentGlobalGame);
+    return { gameId: this.currentGlobalGame, game };
   }
 }
 

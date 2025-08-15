@@ -216,5 +216,37 @@ module.exports = (gameService) => {
     }
   });
 
+  // Global Game Management Routes
+  
+  // Get current global game status
+  router.get('/global/current', async (req, res) => {
+    try {
+      const globalStatus = await gameService.getGlobalGameStatus();
+      res.json(globalStatus);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Set current global game
+  router.post('/global/set/:id', async (req, res) => {
+    try {
+      const game = await gameService.setCurrentGlobalGame(req.params.id);
+      res.json({ success: true, game });
+    } catch (error) {
+      res.status(404).json({ error: error.message });
+    }
+  });
+
+  // Clear current global game
+  router.post('/global/clear', async (req, res) => {
+    try {
+      await gameService.setCurrentGlobalGame(null);
+      res.json({ success: true, game: null });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return router;
 };

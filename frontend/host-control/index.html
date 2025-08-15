@@ -5,10 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Waze Trivia Host Control</title>
     <link rel="stylesheet" href="/control/control.css">
+    <link rel="stylesheet" href="/shared/gameSelector.css">
     <script src="/socket.io/socket.io.js"></script>
+    <script src="/shared/gameSelector.js"></script>
 </head>
 <body>
     <div id="app">
+        <!-- Game Selector Container -->
+        <div id="game-selector-container"></div>
+        
         <!-- Main Header with Game Status -->
         <header class="game-header">
             <div class="header-content">
@@ -145,16 +150,10 @@
                     </div>
                 </div>
 
-                <!-- Game Management -->
+                <!-- Game Actions -->
                 <div class="panel game-panel">
                     <div class="panel-header">
-                        <h3>⚙️ Game Setup</h3>
-                    </div>
-                    <div class="game-selector">
-                        <select id="game-select">
-                            <option value="">Select a game...</option>
-                        </select>
-                        <button id="load-game-btn" class="btn btn-primary">Load Game</button>
+                        <h3>⚙️ Game Actions</h3>
                     </div>
                     <div class="game-actions">
                         <button id="reset-game-btn" class="btn btn-danger">Reset Game</button>

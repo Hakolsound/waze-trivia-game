@@ -9,17 +9,75 @@ class HostControl {
         this.isQuestionActive = false;
         this.isBuzzersArmed = false;
         this.buzzerDevices = new Map();
+        this.gameSelector = null;
         
+        this.initializeGameSelector();
         this.initializeElements();
         this.setupSocketListeners();
         this.setupEventListeners();
-        this.loadGames();
         this.refreshSystemStatus();
         this.currentBuzzerPosition = 0;
         this.evaluationHistory = [];
         this.questionTimer = null;
         this.questionStartTime = null;
         this.questionTimeLimit = 30;
+    }
+
+    initializeGameSelector() {
+        this.gameSelector = new GlobalGameSelector({
+            socket: this.socket,
+            containerSelector: '#game-selector-container',
+            showIfNoGame: true,
+            allowGameChange: true
+        });
+
+        // Listen for game changes
+        this.gameSelector.on('gameChanged', (game) => {
+            this.currentGame = game;
+            this.onGameChanged(game);
+        });
+
+        this.gameSelector.on('gamesLoaded', (games) => {
+            this.onGamesLoaded(games);
+        });
+    }
+
+    onGameChanged(game) {
+        console.log('Game changed in host control:', game);
+        
+        if (game) {
+            // Load game data
+            this.questions = game.questions || [];
+            this.teams = game.groups || [];
+            this.currentQuestionIndex = game.current_question_index || 0;
+            
+            // Update displays
+            this.updateGameDisplay();
+            this.updateTeamDisplay();
+            this.updateQuestionSelector();
+            this.updateQuestionControls();
+            this.updateQuestionDisplay();
+            
+            // Join game room
+            this.socket.emit('join-game', game.id);
+            this.showToast('Game loaded successfully', 'success');
+        } else {
+            // Clear game data
+            this.questions = [];
+            this.teams = [];
+            this.currentQuestionIndex = 0;
+            
+            // Update displays
+            this.updateGameDisplay();
+            this.updateTeamDisplay();
+            this.updateQuestionSelector();
+            this.updateQuestionControls();
+            this.updateQuestionDisplay();
+        }
+    }
+
+    onGamesLoaded(games) {
+        console.log('Games loaded in host control:', games.length);
     }
 
     initializeElements() {
@@ -67,8 +125,6 @@ class HostControl {
             armBuzzersBtn: document.getElementById('arm-buzzers-btn'),
             disarmBuzzersBtn: document.getElementById('disarm-buzzers-btn'),
             buzzerResults: document.getElementById('buzzer-results'),
-            gameSelect: document.getElementById('game-select'),
-            loadGameBtn: document.getElementById('load-game-btn'),
             resetGameBtn: document.getElementById('reset-game-btn'),
             endGameBtn: document.getElementById('end-game-btn'),
             
@@ -198,8 +254,7 @@ class HostControl {
     }
 
     setupEventListeners() {
-        // Main game controls
-        this.elements.loadGameBtn.addEventListener('click', () => this.loadSelectedGame());
+        // Main game controls (removed loadGameBtn since we use global game selector now)
         this.elements.startQuestionBtn.addEventListener('click', () => this.startQuestion());
         this.elements.endQuestionBtn.addEventListener('click', () => this.endQuestion());
         this.elements.nextQuestionBtn.addEventListener('click', () => this.nextQuestion());
@@ -258,47 +313,7 @@ class HostControl {
         }
     }
 
-    async loadGames() {
-        try {
-            const response = await fetch('/api/games');
-            const games = await response.json();
-            
-            this.elements.gameSelect.innerHTML = '<option value="">Select a game...</option>';
-            games.forEach(game => {
-                const option = document.createElement('option');
-                option.value = game.id;
-                option.textContent = `${game.name} (${game.status})`;
-                this.elements.gameSelect.appendChild(option);
-            });
-        } catch (error) {
-            this.showToast('Failed to load games', 'error');
-        }
-    }
-
-    async loadSelectedGame() {
-        const gameId = this.elements.gameSelect.value;
-        if (!gameId) return;
-
-        try {
-            const response = await fetch(`/api/games/${gameId}`);
-            const game = await response.json();
-            
-            this.currentGame = game;
-            this.questions = game.questions || [];
-            this.teams = game.groups || [];
-            this.currentQuestionIndex = game.current_question_index || 0;
-            
-            this.updateGameDisplay();
-            this.updateTeamDisplay();
-            this.updateQuestionSelector();
-            this.updateQuestionControls();
-            
-            this.socket.emit('join-game', gameId);
-            this.showToast('Game loaded successfully', 'success');
-        } catch (error) {
-            this.showToast('Failed to load game', 'error');
-        }
-    }
+    // Game loading is now handled by the global game selector
 
     handleGameState(state) {
         if (!state) return;

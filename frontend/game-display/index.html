@@ -5,10 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trivia Game Display</title>
     <link rel="stylesheet" href="/display/style.css">
+    <link rel="stylesheet" href="/shared/gameSelector.css">
     <script src="/socket.io/socket.io.js"></script>
+    <script src="/shared/gameSelector.js"></script>
 </head>
 <body>
     <div id="app">
+        <!-- Game Selector Container -->
+        <div id="game-selector-container"></div>
+        
         <!-- Game Header -->
         <header class="game-header">
             <h1 id="game-title">Waze Trivia Game</h1>

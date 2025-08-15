@@ -1,15 +1,64 @@
 class GameDisplay {
     constructor() {
         this.socket = io();
-        this.gameId = null;
+        this.currentGame = null;
         this.currentQuestion = null;
         this.questionTimer = null;
         this.timeRemaining = 0;
         this.buzzerOrder = [];
+        this.gameSelector = null;
         
+        this.initializeGameSelector();
         this.initializeElements();
         this.setupSocketListeners();
-        this.connectToGame();
+    }
+
+    initializeGameSelector() {
+        this.gameSelector = new GlobalGameSelector({
+            socket: this.socket,
+            containerSelector: '#game-selector-container',
+            showIfNoGame: true,
+            allowGameChange: true
+        });
+
+        // Listen for game changes
+        this.gameSelector.on('gameChanged', (game) => {
+            this.currentGame = game;
+            this.onGameChanged(game);
+        });
+
+        this.gameSelector.on('gamesLoaded', (games) => {
+            this.onGamesLoaded(games);
+        });
+    }
+
+    onGameChanged(game) {
+        console.log('Game changed in display:', game);
+        
+        if (game) {
+            // Update team names mapping
+            if (game.groups) {
+                game.groups.forEach(team => {
+                    this.teamNames.set(team.id, team.name);
+                });
+            }
+
+            // Handle the game state
+            this.handleGameState(game);
+            
+            // Join game room
+            this.socket.emit('join-game', game.id);
+            this.socket.emit('join-display');
+        } else {
+            // Clear game data and show waiting screen
+            this.currentGame = null;
+            this.teamNames.clear();
+            this.showWaitingScreen('No game selected. Please select a game to continue.');
+        }
+    }
+
+    onGamesLoaded(games) {
+        console.log('Games loaded in display:', games.length);
     }
 
     initializeElements() {
@@ -50,6 +99,7 @@ class GameDisplay {
         this.socket.on('connect', () => {
             console.log('Connected to server');
             this.updateStatus('Connected');
+            this.socket.emit('join-display');
         });
 
         this.socket.on('disconnect', () => {
@@ -99,39 +149,17 @@ class GameDisplay {
         });
     }
 
-    async connectToGame() {
-        try {
-            const response = await fetch('/api/games');
-            const games = await response.json();
-            
-            if (games.length > 0) {
-                this.gameId = games[0].id;
-                this.socket.emit('join-game', this.gameId);
-                
-                const gameResponse = await fetch(`/api/games/${this.gameId}/state`);
-                const gameState = await gameResponse.json();
-                
-                // If game has questions and teams, hide waiting screen
-                if (gameState && (gameState.questions?.length > 0 || gameState.groups?.length > 0)) {
-                    this.hideWaitingScreen();
-                }
-                
-                this.handleGameState(gameState);
-            } else {
-                this.showWaitingScreen('No games available');
-            }
-        } catch (error) {
-            console.error('Failed to connect to game:', error);
-            this.showWaitingScreen('Connection failed');
-        }
-    }
+    // Game connection is now handled by the global game selector
 
     handleGameState(state) {
-        if (!state) return;
+        if (!state) {
+            this.showWaitingScreen('No game data available');
+            return;
+        }
 
         this.elements.gameTitle.textContent = state.name || 'Trivia Game';
         this.updateGameStatus(state.status);
-        this.updateQuestionCounter(state.current_question_index, state.questions?.length || 0);
+        this.updateQuestionCounter(state.current_question_index || 0, state.questions?.length || 0);
         this.updateTeamsList(state.groups || []);
         
         // Update team names mapping
@@ -141,10 +169,15 @@ class GameDisplay {
             });
         }
 
+        // Determine whether to show waiting screen based on game state
+        const hasQuestions = state.questions && state.questions.length > 0;
+        const hasTeams = state.groups && state.groups.length > 0;
+        const isGameSetup = hasQuestions && hasTeams;
+
         if (state.status === 'setup' || state.status === 'waiting') {
             this.showWaitingScreen('Game is being set up...');
-        } else if (state.status === 'active' || state.status === 'in_progress' || state.questions?.length > 0) {
-            this.hideWaitingScreen();
+        } else if (!isGameSetup) {
+            this.showWaitingScreen('Waiting for questions and teams to be configured...');
         } else {
             this.hideWaitingScreen();
         }

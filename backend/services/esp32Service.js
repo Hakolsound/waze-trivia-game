@@ -102,6 +102,13 @@ class ESP32Service {
         });
         
         this.updateBuzzerStates(statusData);
+      } else if (data.startsWith('DEVICE:')) {
+        // Parse DEVICE:1,online=1,armed=0,pressed=0,mac=EC:62:60:1D:E8:D4 format
+        console.log('ESP32 Device Data:', data);
+        this.io.emit('esp32-device-data', {
+          esp32_data: data,
+          timestamp: new Date().toISOString()
+        });
       } else if (data.startsWith('ACK:')) {
         console.log('ESP32 Command acknowledged:', data.substring(4));
       } else if (data.startsWith('ERROR:')) {
@@ -251,9 +258,12 @@ class ESP32Service {
   }
 
   updateBuzzerStates(statusData) {
-    for (const [buzzerId, state] of Object.entries(statusData)) {
-      this.buzzerStates.set(buzzerId, state);
-    }
+    // Don't treat status keys as individual devices
+    // Instead emit the overall ESP32 status
+    this.io.emit('esp32-status', {
+      connected: true,
+      ...statusData
+    });
   }
 
   isConnected() {

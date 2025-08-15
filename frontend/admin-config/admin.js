@@ -939,13 +939,25 @@ class AdminConfig {
     parseESP32DeviceData(esp32Data, timestamp) {
         // Parse format: "DEVICE:1,online=1,armed=0,pressed=0,mac=EC:62:60:1D:E8:D4"
         try {
+            if (typeof esp32Data !== 'string') {
+                return;
+            }
+            
             const parts = esp32Data.split(',');
-            if (parts.length < 2) return;
+            if (parts.length < 2) {
+                return;
+            }
             
             // Extract device ID
             const devicePart = parts[0];
-            if (!devicePart.startsWith('DEVICE:')) return;
+            if (!devicePart.startsWith('DEVICE:')) {
+                return;
+            }
             const deviceId = devicePart.split(':')[1];
+            
+            if (!deviceId || deviceId.trim() === '') {
+                return;
+            }
             
             // Parse parameters
             const params = {};

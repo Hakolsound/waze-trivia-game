@@ -163,6 +163,36 @@
                 </div>
             </div>
         </main>
+
+        <!-- Live Buzzer Status Sidebar -->
+        <aside id="buzzer-sidebar" class="buzzer-sidebar">
+            <div class="buzzer-sidebar-header">
+                <h3>🔔 Live Buzzer Status</h3>
+                <div class="buzzer-counter" id="buzzer-counter">0/0</div>
+                <div class="collapsed-indicator">🔔</div>
+                <button id="toggle-buzzer-sidebar" class="btn btn-small btn-secondary">◀</button>
+            </div>
+            <div class="buzzer-sidebar-content">
+                <div class="buzzer-sections">
+                    <div class="buzzer-section">
+                        <h4>🟢 Online Buzzers</h4>
+                        <div id="online-buzzers" class="buzzer-list">
+                            <div class="no-buzzers">No online buzzers detected</div>
+                        </div>
+                    </div>
+                    <div class="buzzer-section">
+                        <h4>🔴 Offline Buzzers</h4>
+                        <div id="offline-buzzers" class="buzzer-list">
+                            <div class="no-buzzers">No offline buzzers</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="buzzer-settings">
+                    <label for="online-threshold">Threshold (sec):</label>
+                    <input type="number" id="online-threshold" min="10" max="300" value="60" class="threshold-input">
+                </div>
+            </div>
+        </aside>
         </div>
 
         <!-- Answer Evaluation Modal -->
@@ -253,36 +283,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- Live Buzzer Status Sidebar -->
-        <aside id="buzzer-sidebar" class="buzzer-sidebar">
-            <div class="buzzer-sidebar-header">
-                <h3>🔔 Live Buzzer Status</h3>
-                <div class="buzzer-counter" id="buzzer-counter">0/0</div>
-                <div class="collapsed-indicator">🔔</div>
-                <button id="toggle-buzzer-sidebar" class="btn btn-small btn-secondary">◀</button>
-            </div>
-            <div class="buzzer-sidebar-content">
-                <div class="buzzer-sections">
-                    <div class="buzzer-section">
-                        <h4>🟢 Online Buzzers</h4>
-                        <div id="online-buzzers" class="buzzer-list">
-                            <div class="no-buzzers">No online buzzers detected</div>
-                        </div>
-                    </div>
-                    <div class="buzzer-section">
-                        <h4>🔴 Offline Buzzers</h4>
-                        <div id="offline-buzzers" class="buzzer-list">
-                            <div class="no-buzzers">No offline buzzers</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="buzzer-settings">
-                    <label for="online-threshold">Threshold (sec):</label>
-                    <input type="number" id="online-threshold" min="10" max="300" value="60" class="threshold-input">
-                </div>
-            </div>
-        </aside>
 
         <!-- Quick Actions Floating Panel -->
         <div class="floating-actions">

@@ -1618,6 +1618,11 @@ class HostControl {
 
         this.stopTimer(); // Clear any existing timer first
         
+        // Initialize performance tracking variables
+        this.lastDisplayedTime = -1;
+        this.lastProgressPercentage = -1;
+        this.lastTimerState = '';
+        
         // Show progress bar timer
         if (this.elements.questionProgressBar) {
             this.elements.questionProgressBar.classList.remove('hidden');
@@ -1627,49 +1632,49 @@ class HostControl {
             const elapsed = Math.floor((Date.now() - this.questionStartTime) / 1000);
             const remaining = Math.max(0, this.questionTimeLimit - elapsed);
             
-            // Update progress bar timer text
-            if (this.elements.progressTimeText) {
+            // Update progress bar timer text only if it changed
+            if (this.elements.progressTimeText && this.lastDisplayedTime !== remaining) {
                 this.elements.progressTimeText.textContent = `${remaining}s remaining`;
+                this.lastDisplayedTime = remaining;
             }
             
             // Calculate progress percentage (0-100, where 0 is full time, 100 is no time)
             const progress = Math.min(100, (elapsed / this.questionTimeLimit) * 100);
             const remainingPercentage = Math.max(0, 100 - progress);
             
-            // Update progress bar fill
-            if (this.elements.progressBarFill) {
-                this.elements.progressBarFill.style.width = `${remainingPercentage}%`;
+            // Update progress bar fill using transform for better performance
+            if (this.elements.progressBarFill && this.lastProgressPercentage !== remainingPercentage) {
+                this.elements.progressBarFill.style.transform = `scaleX(${remainingPercentage / 100})`;
+                this.lastProgressPercentage = remainingPercentage;
             }
             
-            // Change colors and styles based on remaining time
+            // Change colors and styles based on remaining time - only when state changes
             const warningThreshold = this.questionTimeLimit * 0.3; // 30% of time remaining
             const criticalThreshold = this.questionTimeLimit * 0.1; // 10% of time remaining
             
-            // Reset classes
-            if (this.elements.questionProgressBar) {
-                this.elements.questionProgressBar.classList.remove('warning', 'critical');
-            }
-            if (this.elements.progressBarFill) {
-                this.elements.progressBarFill.classList.remove('warning', 'critical');
+            let currentState = '';
+            if (remaining <= criticalThreshold) {
+                currentState = 'critical';
+            } else if (remaining <= warningThreshold) {
+                currentState = 'warning';
             }
             
-            // Apply state-based styling
-            if (remaining <= criticalThreshold) {
-                // Critical state - red
+            // Only update classes if state changed
+            if (this.lastTimerState !== currentState) {
+                // Reset classes
                 if (this.elements.questionProgressBar) {
-                    this.elements.questionProgressBar.classList.add('critical');
+                    this.elements.questionProgressBar.classList.remove('warning', 'critical');
+                    if (currentState) {
+                        this.elements.questionProgressBar.classList.add(currentState);
+                    }
                 }
                 if (this.elements.progressBarFill) {
-                    this.elements.progressBarFill.classList.add('critical');
+                    this.elements.progressBarFill.classList.remove('warning', 'critical');
+                    if (currentState) {
+                        this.elements.progressBarFill.classList.add(currentState);
+                    }
                 }
-            } else if (remaining <= warningThreshold) {
-                // Warning state - orange
-                if (this.elements.questionProgressBar) {
-                    this.elements.questionProgressBar.classList.add('warning');
-                }
-                if (this.elements.progressBarFill) {
-                    this.elements.progressBarFill.classList.add('warning');
-                }
+                this.lastTimerState = currentState;
             }
             
             // Auto-stop when time is up

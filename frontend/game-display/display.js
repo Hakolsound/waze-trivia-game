@@ -413,6 +413,15 @@ class GameDisplay {
         if (seconds > 0) {
             // Format: "13s" for >10s, "3s" for <=10s, no "remaining"
             this.elements.timerText.textContent = `${seconds}s`;
+            
+            // Check if sidebar should auto-expand when time <= 10 seconds
+            if (seconds <= 10 && !this.sidebarExpanded && this.currentState === 'question') {
+                // Only expand if no auto-expand timer is running (to avoid double expansion)
+                if (!this.autoExpandTimer) {
+                    console.log('Auto-expanding sidebar due to low time:', seconds);
+                    this.expandSidebar();
+                }
+            }
         } else {
             this.elements.timerText.textContent = 'Time up!';
             // Force timer to 0% when showing "Time up!"
@@ -613,10 +622,23 @@ class GameDisplay {
             clearTimeout(this.autoExpandTimer);
         }
         
-        // Set timer to expand after 5 seconds
+        // Random delay between 3-8 seconds for variation
+        const randomDelay = Math.floor(Math.random() * 6000) + 3000; // 3000-8999ms
+        
+        // Set timer to expand after random delay
         this.autoExpandTimer = setTimeout(() => {
-            // Only auto-expand if time remaining is less than 10 seconds
-            if (this.timeRemaining < 10 && !this.sidebarExpanded) {
+            // Only auto-expand if time remaining is less than 10 seconds and sidebar is not expanded
+            console.log('Auto-expand timer triggered. Time remaining:', this.timeRemaining, 'Sidebar expanded:', this.sidebarExpanded);
+            if (this.timeRemaining <= 10 && !this.sidebarExpanded) {
+                console.log('Auto-expanding sidebar');
+                this.expandSidebar();
+            }
+        }, randomDelay);
+        
+        // Also set a backup timer that will expand regardless after 5 seconds
+        setTimeout(() => {
+            if (!this.sidebarExpanded && this.currentState === 'question') {
+                console.log('Backup auto-expand triggered after 5 seconds');
                 this.expandSidebar();
             }
         }, 5000);

@@ -16,8 +16,9 @@ class AdminConfig {
             this.refreshBuzzerStatus();
         }, 1000);
         
-        // Set up periodic status updates to handle stale devices
+        // Set up periodic status updates to handle stale devices and refresh from server
         setInterval(() => {
+            this.refreshBuzzerStatus(); // Fetch fresh data from server
             this.updateBuzzerSidebar();
         }, 5000); // Check every 5 seconds
     }
@@ -886,12 +887,19 @@ class AdminConfig {
         }
         
         const deviceId = data.device_id || data.id;
+        
+        // Only accept numeric device IDs (filter out false devices)
+        if (!deviceId || !/^\d+$/.test(deviceId.toString())) {
+            return;
+        }
+        
         const now = Date.now();
         
         this.buzzerDevices.set(deviceId, {
             ...data,
             last_seen: now,
-            status: 'online'
+            status: 'online',
+            teamName: this.getTeamNameByBuzzerId(deviceId)
         });
         
         this.updateBuzzerSidebar();
@@ -903,6 +911,12 @@ class AdminConfig {
         }
         
         const deviceId = data.device_id || data.id;
+        
+        // Only accept numeric device IDs (filter out false devices)
+        if (!deviceId || !/^\d+$/.test(deviceId.toString())) {
+            return;
+        }
+        
         const now = Date.now();
         
         if (this.buzzerDevices.has(deviceId)) {
@@ -956,8 +970,8 @@ class AdminConfig {
             }
             const deviceId = devicePart.split(':')[1];
             
-            if (!deviceId || deviceId.trim() === '') {
-                return;
+            if (!deviceId || deviceId.trim() === '' || !/^\d+$/.test(deviceId.toString())) {
+                return; // Only accept numeric device IDs
             }
             
             // Parse parameters
@@ -1103,14 +1117,23 @@ class AdminConfig {
                 const devices = await response.json();
                 const now = Date.now();
                 
-                // Update our device map with fresh data
-                this.buzzerDevices = new Map();
-                devices.forEach(device => {
-                    this.buzzerDevices.set(device.device_id, {
-                        ...device,
-                        last_seen: device.last_seen || now
+                // Clear all existing devices to prevent duplicates
+                this.buzzerDevices.clear();
+                
+                // Only add devices that have valid numeric IDs (filter out false devices)
+                if (Array.isArray(devices)) {
+                    devices.forEach(device => {
+                        const deviceId = device.device_id;
+                        // Only accept numeric device IDs (1, 2, 3, 4) not text ones (buzzer_1, etc)
+                        if (deviceId && /^\d+$/.test(deviceId.toString())) {
+                            this.buzzerDevices.set(deviceId, {
+                                ...device,
+                                last_seen: device.last_seen || now,
+                                teamName: this.getTeamNameByBuzzerId(deviceId)
+                            });
+                        }
                     });
-                });
+                }
                 
                 this.updateBuzzerSidebar();
             }

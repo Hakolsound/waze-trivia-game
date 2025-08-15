@@ -345,16 +345,26 @@ class AdminConfig {
             this.updateBuzzerHeartbeat(data);
         });
 
-        this.socket.on('esp32-status', (data) => {
-            this.updateESP32Status(data);
+        // Test if socket is working at all
+        this.socket.on('connect', () => {
+            console.log('Socket connected successfully!');
         });
         
-        // Listen for ESP32 device data from server logs
+        this.socket.on('disconnect', () => {
+            console.log('Socket disconnected!');
+        });
+        
+        // Listen for any ESP32 related events
         this.socket.on('esp32-device-data', (data) => {
-            console.log('Received ESP32 device data:', data);
+            console.log('=== ESP32 DEVICE DATA RECEIVED ===', data);
             if (data.esp32_data) {
                 this.parseESP32DeviceData(data.esp32_data, data.timestamp);
             }
+        });
+        
+        this.socket.on('esp32-status', (data) => {
+            console.log('=== ESP32 STATUS RECEIVED ===', data);
+            this.updateESP32Status(data);
         });
     }
 

@@ -301,9 +301,9 @@ class HostControl {
             // Update team data with new scores if provided
             if (data.teams) {
                 this.teams = data.teams;
-            } else if (data.teamId && data.newScore !== undefined) {
+            } else if (data.groupId && data.newScore !== undefined) {
                 // Update specific team score
-                const team = this.teams.find(t => t.id === data.teamId);
+                const team = this.teams.find(t => t.id === data.groupId);
                 if (team) {
                     team.score = data.newScore;
                 }

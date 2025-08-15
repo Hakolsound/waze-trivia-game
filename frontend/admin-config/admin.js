@@ -1,6 +1,15 @@
 class AdminConfig {
     constructor() {
-        this.socket = io();
+        console.log('AdminConfig constructor - initializing socket...');
+        console.log('io object:', typeof io, io);
+        
+        try {
+            this.socket = io();
+            console.log('Socket created:', this.socket);
+        } catch (error) {
+            console.error('Failed to create socket:', error);
+        }
+        
         this.currentGame = null;
         this.gameSelector = null;
         
@@ -347,11 +356,19 @@ class AdminConfig {
 
         // Test if socket is working at all
         this.socket.on('connect', () => {
-            console.log('Socket connected successfully!');
+            console.log('Socket connected successfully!', this.socket.id);
         });
         
-        this.socket.on('disconnect', () => {
-            console.log('Socket disconnected!');
+        this.socket.on('disconnect', (reason) => {
+            console.log('Socket disconnected!', reason);
+        });
+        
+        this.socket.on('connect_error', (error) => {
+            console.error('Socket connection error:', error);
+        });
+        
+        this.socket.on('error', (error) => {
+            console.error('Socket error:', error);
         });
         
         // Listen for any ESP32 related events

@@ -129,6 +129,9 @@ io.on('connection', (socket) => {
     if (gameService.getCurrentGlobalGame()) {
       socket.join(`game-${gameService.getCurrentGlobalGame()}`);
     }
+    
+    // Notify host control about virtual buzzer registration
+    io.to('control-panel').emit('virtual-buzzer-register', data);
   });
 
   socket.on('request-global-game', async () => {
@@ -156,6 +159,12 @@ io.on('connection', (socket) => {
     // Clean up virtual buzzer registration
     if (socket.virtualBuzzerId) {
       console.log('Virtual buzzer disconnected:', socket.virtualBuzzerId);
+      // Notify host control about virtual buzzer disconnection
+      io.to('control-panel').emit('virtual-buzzer-disconnect', {
+        buzzerId: socket.virtualBuzzerId,
+        groupId: socket.virtualGroupId,
+        teamName: socket.virtualTeamName
+      });
     }
   });
 });

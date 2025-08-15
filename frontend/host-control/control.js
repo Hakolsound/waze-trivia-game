@@ -264,11 +264,8 @@ class HostControl {
             this.handleVirtualBuzzerRegister(data);
         });
 
-        this.socket.on('disconnect', (reason, socket) => {
-            // Remove virtual buzzer if it was disconnected
-            if (socket && socket.virtualBuzzerId) {
-                this.handleVirtualBuzzerDisconnect(socket.virtualBuzzerId);
-            }
+        this.socket.on('virtual-buzzer-disconnect', (data) => {
+            this.handleVirtualBuzzerDisconnect(data.buzzerId);
         });
 
         this.socket.on('question-start', (data) => {

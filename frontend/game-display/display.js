@@ -372,7 +372,13 @@ class GameDisplay {
         this.totalTime = totalTime;
         
         // Ensure timer bar is completely empty when time is up
-        const percentage = timeRemaining <= 0 ? 0 : Math.max(0, (timeRemaining / totalTime) * 100);
+        let percentage;
+        if (timeRemaining <= 0 || totalTime <= 0) {
+            percentage = 0;
+        } else {
+            percentage = Math.max(0, (timeRemaining / totalTime) * 100);
+        }
+        
         this.elements.timerProgress.style.width = `${percentage}%`;
         
         const seconds = Math.max(0, Math.ceil(timeRemaining)); // Round up to show whole seconds
@@ -381,6 +387,8 @@ class GameDisplay {
             this.elements.timerText.textContent = `${seconds}s`;
         } else {
             this.elements.timerText.textContent = 'Time up!';
+            // Force timer to 0% when showing "Time up!"
+            this.elements.timerProgress.style.width = '0%';
         }
     }
 

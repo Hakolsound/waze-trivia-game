@@ -34,6 +34,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 app.use('/admin', express.static(path.join(__dirname, '../frontend/admin-config')));
 app.use('/display', express.static(path.join(__dirname, '../frontend/game-display')));
 app.use('/control', express.static(path.join(__dirname, '../frontend/host-control')));
+app.use('/virtual-buzzer', express.static(path.join(__dirname, '../frontend/virtual-buzzer')));
 app.use('/shared', express.static(path.join(__dirname, '../frontend/shared')));
 
 // Serve admin static files at root level since admin is the default page

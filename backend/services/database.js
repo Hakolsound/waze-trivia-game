@@ -49,6 +49,8 @@ class Database {
         auto_advance BOOLEAN DEFAULT 0,
         game_description TEXT DEFAULT '',
         time_based_scoring BOOLEAN DEFAULT 0,
+        virtual_buzzers_enabled BOOLEAN DEFAULT 0,
+        buzzer_offline_threshold INTEGER DEFAULT 120,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`,
@@ -109,6 +111,23 @@ class Database {
       // Column probably already exists, which is fine
       if (!error.message.includes('duplicate column name')) {
         console.error('Error adding time_based_scoring column:', error.message);
+      }
+    }
+    
+    // Add virtual buzzer columns to existing games if they don't exist
+    try {
+      await this.run('ALTER TABLE games ADD COLUMN virtual_buzzers_enabled BOOLEAN DEFAULT 0');
+    } catch (error) {
+      if (!error.message.includes('duplicate column name')) {
+        console.error('Error adding virtual_buzzers_enabled column:', error.message);
+      }
+    }
+    
+    try {
+      await this.run('ALTER TABLE games ADD COLUMN buzzer_offline_threshold INTEGER DEFAULT 120');
+    } catch (error) {
+      if (!error.message.includes('duplicate column name')) {
+        console.error('Error adding buzzer_offline_threshold column:', error.message);
       }
     }
   }

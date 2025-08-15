@@ -473,6 +473,29 @@ class GameService {
     };
   }
 
+  // Virtual Buzzer Settings Methods
+  async updateVirtualBuzzerSettings(gameId, settings) {
+    const game = await this.getGame(gameId);
+    if (!game) throw new Error('Game not found');
+
+    await this.db.run(
+      'UPDATE games SET virtual_buzzers_enabled = ?, buzzer_offline_threshold = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [settings.virtualBuzzersEnabled ? 1 : 0, settings.buzzerOfflineThreshold || 120, gameId]
+    );
+
+    return this.getGame(gameId);
+  }
+
+  async getVirtualBuzzerSettings(gameId) {
+    const game = await this.getGame(gameId);
+    if (!game) throw new Error('Game not found');
+
+    return {
+      virtualBuzzersEnabled: Boolean(game.virtual_buzzers_enabled),
+      buzzerOfflineThreshold: game.buzzer_offline_threshold || 120
+    };
+  }
+
   // Global Game Management Methods
   async setCurrentGlobalGame(gameId) {
     if (gameId) {

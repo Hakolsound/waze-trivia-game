@@ -1559,3 +1559,84 @@ input:checked + .slider:before {
         max-height: 100px;
     }
 }
+
+/* Virtual Buzzer Settings Styles */
+.virtual-buzzer-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.virtual-buzzer-details {
+    border-left: 3px solid var(--waze-accent);
+    margin-left: 20px;
+    animation: slideDown 0.3s ease-out;
+}
+
+.threshold-input-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.threshold-input-container .threshold-input {
+    width: 80px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--md-sys-color-on-surface);
+    font-size: 0.875rem;
+}
+
+.input-suffix {
+    color: var(--md-sys-color-outline);
+    font-size: 0.875rem;
+}
+
+.qr-code-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.qr-code-display {
+    width: 200px;
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    border: 2px solid var(--waze-accent);
+    box-shadow: var(--md-sys-elevation-level2);
+}
+
+.qr-placeholder {
+    color: rgba(0, 0, 0, 0.6);
+    text-align: center;
+    font-size: 0.875rem;
+    padding: 20px;
+}
+
+.qr-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.virtual-buzzer-url {
+    font-family: 'Courier New', monospace;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 0.875rem;
+    color: var(--waze-accent);
+    margin: 0;
+    word-break: break-all;
+}
+
+#copy-url-btn {
+    align-self: flex-start;
+}

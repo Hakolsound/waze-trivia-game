@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="/shared/gameSelector.css">
     <script src="/socket.io/socket.io.js"></script>
     <script src="/shared/gameSelector.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 </head>
 <body>
     <div id="app">
@@ -135,6 +136,51 @@
                             </div>
                             <div class="panel-actions">
                                 <button id="save-scoring-settings-btn" class="btn btn-primary">💾 Save Scoring Settings</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Virtual Buzzer Configuration -->
+                        <div class="panel">
+                            <h3>📱 Virtual Buzzer Settings</h3>
+                            <div class="virtual-buzzer-settings">
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <label for="virtual-buzzers-enabled">📱 Enable Virtual Buzzers</label>
+                                        <p class="setting-description">Allow smartphones to act as backup buzzers via QR code</p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="virtual-buzzers-enabled">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="setting-item virtual-buzzer-details" id="virtual-buzzer-details" style="display: none;">
+                                    <div class="setting-info">
+                                        <label for="buzzer-offline-threshold">⏱️ Offline Threshold (seconds):</label>
+                                        <p class="setting-description">Time before a physical buzzer is considered offline and available for virtual replacement</p>
+                                    </div>
+                                    <div class="threshold-input-container">
+                                        <input type="number" id="buzzer-offline-threshold" min="60" max="600" value="120" class="threshold-input">
+                                        <span class="input-suffix">seconds</span>
+                                    </div>
+                                </div>
+                                <div class="setting-item virtual-buzzer-details" id="virtual-buzzer-qr" style="display: none;">
+                                    <div class="setting-info">
+                                        <label>📱 QR Code for Players:</label>
+                                        <p class="setting-description">Players scan this code to access virtual buzzers</p>
+                                    </div>
+                                    <div class="qr-code-container">
+                                        <div id="qr-code-display" class="qr-code-display">
+                                            <div class="qr-placeholder">QR Code will appear here when enabled</div>
+                                        </div>
+                                        <div class="qr-info">
+                                            <p class="virtual-buzzer-url" id="virtual-buzzer-url">http://pi.local:3000/virtual-buzzer</p>
+                                            <button id="copy-url-btn" class="btn btn-small btn-secondary">📋 Copy URL</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="panel-actions">
+                                <button id="save-virtual-buzzer-settings-btn" class="btn btn-primary">💾 Save Virtual Buzzer Settings</button>
                             </div>
                         </div>
                         

@@ -129,6 +129,9 @@ class AdminConfig {
             // Load scoring settings
             await this.loadScoringSettings();
             
+            // Load virtual buzzer settings
+            await this.loadVirtualBuzzerSettings();
+            
             // Update UI title
             const titleElement = document.getElementById('current-game-title');
             if (titleElement) {
@@ -196,6 +199,16 @@ class AdminConfig {
             timeBasedScoring: document.getElementById('time-based-scoring'),
             timeBasedDetails: document.getElementById('time-based-details'),
             saveScoringSettingsBtn: document.getElementById('save-scoring-settings-btn'),
+            
+            // Virtual buzzer settings elements
+            virtualBuzzersEnabled: document.getElementById('virtual-buzzers-enabled'),
+            virtualBuzzerDetails: document.getElementById('virtual-buzzer-details'),
+            virtualBuzzerQr: document.getElementById('virtual-buzzer-qr'),
+            buzzerOfflineThreshold: document.getElementById('buzzer-offline-threshold'),
+            qrCodeDisplay: document.getElementById('qr-code-display'),
+            virtualBuzzerUrl: document.getElementById('virtual-buzzer-url'),
+            copyUrlBtn: document.getElementById('copy-url-btn'),
+            saveVirtualBuzzerSettingsBtn: document.getElementById('save-virtual-buzzer-settings-btn'),
             
             // System elements
             dbStatus: document.getElementById('db-status'),
@@ -283,6 +296,25 @@ class AdminConfig {
         if (this.elements.saveScoringSettingsBtn) {
             this.elements.saveScoringSettingsBtn.addEventListener('click', () => {
                 this.saveScoringSettingsWithToast();
+            });
+        }
+
+        // Virtual buzzer settings
+        if (this.elements.virtualBuzzersEnabled) {
+            this.elements.virtualBuzzersEnabled.addEventListener('change', () => {
+                this.toggleVirtualBuzzerDetails();
+            });
+        }
+        
+        if (this.elements.copyUrlBtn) {
+            this.elements.copyUrlBtn.addEventListener('click', () => {
+                this.copyVirtualBuzzerUrl();
+            });
+        }
+        
+        if (this.elements.saveVirtualBuzzerSettingsBtn) {
+            this.elements.saveVirtualBuzzerSettingsBtn.addEventListener('click', () => {
+                this.saveVirtualBuzzerSettingsWithToast();
             });
         }
 
@@ -2055,6 +2087,130 @@ class AdminConfig {
         } catch (error) {
             console.error('Failed to save scoring settings:', error);
             this.showToast('Failed to save scoring settings', 'error');
+        }
+    }
+
+    // Virtual Buzzer Settings Methods
+    toggleVirtualBuzzerDetails() {
+        if (this.elements.virtualBuzzersEnabled && this.elements.virtualBuzzerDetails && this.elements.virtualBuzzerQr) {
+            if (this.elements.virtualBuzzersEnabled.checked) {
+                this.elements.virtualBuzzerDetails.style.display = 'flex';
+                this.elements.virtualBuzzerQr.style.display = 'flex';
+                this.generateQrCode();
+                this.updateVirtualBuzzerUrl();
+            } else {
+                this.elements.virtualBuzzerDetails.style.display = 'none';
+                this.elements.virtualBuzzerQr.style.display = 'none';
+            }
+        }
+    }
+
+    updateVirtualBuzzerUrl() {
+        // Get the current hostname and port
+        const host = window.location.hostname;
+        const port = window.location.port || '3000';
+        const url = `http://${host === 'localhost' ? 'pi.local' : host}:${port}/virtual-buzzer`;
+        
+        if (this.elements.virtualBuzzerUrl) {
+            this.elements.virtualBuzzerUrl.textContent = url;
+        }
+        
+        return url;
+    }
+
+    async generateQrCode() {
+        const url = this.updateVirtualBuzzerUrl();
+        
+        try {
+            // Generate QR code using qrcode.js library (we'll need to include this)
+            const qrCodeDataUrl = await QRCode.toDataURL(url, {
+                width: 200,
+                margin: 2,
+                color: {
+                    dark: '#000000',
+                    light: '#FFFFFF'
+                }
+            });
+            
+            this.elements.qrCodeDisplay.innerHTML = `<img src="${qrCodeDataUrl}" alt="Virtual Buzzer QR Code" style="width: 100%; height: 100%; object-fit: contain;">`;
+        } catch (error) {
+            console.error('Failed to generate QR code:', error);
+            this.elements.qrCodeDisplay.innerHTML = `<div class="qr-placeholder">Failed to generate QR code<br>URL: ${url}</div>`;
+        }
+    }
+
+    async copyVirtualBuzzerUrl() {
+        const url = this.elements.virtualBuzzerUrl.textContent;
+        
+        try {
+            await navigator.clipboard.writeText(url);
+            this.showToast('Virtual buzzer URL copied to clipboard!', 'success');
+        } catch (error) {
+            console.error('Failed to copy URL:', error);
+            this.showToast('Failed to copy URL', 'error');
+        }
+    }
+
+    async loadVirtualBuzzerSettings() {
+        if (!this.currentGame) return;
+
+        try {
+            const response = await fetch(`/api/games/${this.currentGame.id}/virtual-buzzer-settings`);
+            if (response.ok) {
+                const settings = await response.json();
+                if (this.elements.virtualBuzzersEnabled) {
+                    this.elements.virtualBuzzersEnabled.checked = settings.virtualBuzzersEnabled;
+                    this.toggleVirtualBuzzerDetails();
+                }
+                if (this.elements.buzzerOfflineThreshold) {
+                    this.elements.buzzerOfflineThreshold.value = settings.buzzerOfflineThreshold || 120;
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load virtual buzzer settings:', error);
+        }
+    }
+
+    async saveVirtualBuzzerSettings() {
+        if (!this.currentGame) return;
+
+        const settings = {
+            virtualBuzzersEnabled: this.elements.virtualBuzzersEnabled ? this.elements.virtualBuzzersEnabled.checked : false,
+            buzzerOfflineThreshold: this.elements.buzzerOfflineThreshold ? parseInt(this.elements.buzzerOfflineThreshold.value) : 120
+        };
+
+        try {
+            const response = await fetch(`/api/games/${this.currentGame.id}/virtual-buzzer-settings`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(settings)
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to save virtual buzzer settings');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Failed to save virtual buzzer settings:', error);
+            throw error;
+        }
+    }
+
+    async saveVirtualBuzzerSettingsWithToast() {
+        if (!this.currentGame) {
+            this.showToast('No game selected', 'error');
+            return;
+        }
+
+        try {
+            await this.saveVirtualBuzzerSettings();
+            this.showToast('Virtual buzzer settings saved successfully', 'success');
+        } catch (error) {
+            console.error('Failed to save virtual buzzer settings:', error);
+            this.showToast('Failed to save virtual buzzer settings', 'error');
         }
     }
 }

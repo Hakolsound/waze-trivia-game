@@ -20,11 +20,6 @@ class AdminConfig {
         setInterval(() => {
             this.updateBuzzerSidebar(); // Check for stale devices based on timestamps
         }, 5000); // Check every 5 seconds
-        
-        // Refresh from server less frequently to avoid wiping real-time data
-        setInterval(() => {
-            this.refreshBuzzerStatus(); // Get baseline device list from server
-        }, 30000); // Every 30 seconds
     }
 
     initializeGameSelector() {

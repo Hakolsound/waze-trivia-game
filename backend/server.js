@@ -160,6 +160,20 @@ io.on('connection', (socket) => {
   });
 });
 
+// Listen for ESP32 device updates directly from the ESP32 service
+esp32Service.on('device-data', (data) => {
+  // Parse device data and update game service buzzer status
+  if (data.esp32_data) {
+    const deviceMatch = data.esp32_data.match(/^DEVICE:(\d+),.*online=(\d+)/);
+    if (deviceMatch) {
+      const deviceId = deviceMatch[1];
+      const isOnline = deviceMatch[2] === '1';
+      console.log(`Updating buzzer ${deviceId} status: ${isOnline ? 'online' : 'offline'}`);
+      gameService.updateBuzzerOnlineStatus(deviceId, isOnline);
+    }
+  }
+});
+
 async function initialize() {
   try {
     await db.initialize();

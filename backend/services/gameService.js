@@ -7,6 +7,7 @@ class GameService {
     this.activeGames = new Map();
     this.currentGlobalGame = null; // Global current game for all frontend apps
     this.buzzerActivity = new Map(); // Track last activity for each buzzer
+    this.onlineBuzzers = new Set(); // Track which buzzer IDs are currently online
   }
 
   async createGame(gameData) {
@@ -510,30 +511,34 @@ class GameService {
     });
   }
 
+  // Update online buzzer status (called from ESP32 events)
+  updateBuzzerOnlineStatus(buzzerId, isOnline) {
+    if (isOnline) {
+      this.onlineBuzzers.add(buzzerId.toString());
+    } else {
+      this.onlineBuzzers.delete(buzzerId.toString());
+    }
+  }
+
+  // Get current online buzzer IDs
+  getOnlineBuzzerIds() {
+    return Array.from(this.onlineBuzzers);
+  }
+
   async getAvailableTeamsForVirtual(gameId) {
     const game = await this.getGame(gameId);
     if (!game || !game.virtual_buzzers_enabled) {
       return [];
     }
 
-    const offlineThreshold = (game.buzzer_offline_threshold || 120) * 1000; // Convert to milliseconds
-    const now = Date.now();
+    const onlineBuzzerIds = this.getOnlineBuzzerIds();
     
     return game.groups.filter(team => {
-      // Find any buzzer activity for this team
-      let hasRecentPhysicalBuzzer = false;
+      // Team is available if its buzzer_id is NOT in the online buzzers list
+      const teamBuzzerId = team.buzzer_id?.toString();
+      const hasOnlinePhysicalBuzzer = teamBuzzerId && onlineBuzzerIds.includes(teamBuzzerId);
       
-      for (const [buzzerId, activity] of this.buzzerActivity) {
-        if (activity.groupId === team.id && activity.isPhysical) {
-          if (now - activity.lastSeen < offlineThreshold) {
-            hasRecentPhysicalBuzzer = true;
-            break;
-          }
-        }
-      }
-      
-      // Team is available for virtual buzzer if no recent physical buzzer activity
-      return !hasRecentPhysicalBuzzer;
+      return !hasOnlinePhysicalBuzzer;
     });
   }
 

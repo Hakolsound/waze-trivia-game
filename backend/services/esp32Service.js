@@ -7,8 +7,11 @@ try {
   console.warn('SerialPort module not available, ESP32 will run in simulation mode');
 }
 
-class ESP32Service {
+const { EventEmitter } = require('events');
+
+class ESP32Service extends EventEmitter {
   constructor(io) {
+    super();
     this.io = io;
     this.serialPort = null;
     this.parser = null;
@@ -106,7 +109,15 @@ class ESP32Service {
         // Parse DEVICE:1,online=1,armed=0,pressed=0,mac=EC:62:60:1D:E8:D4 format
         console.log('ESP32 Device Data:', data);
         this.parseDeviceData(data);
+        
+        // Emit to Socket.io clients
         this.io.emit('esp32-device-data', {
+          esp32_data: data,
+          timestamp: new Date().toISOString()
+        });
+        
+        // Emit to gameService via EventEmitter
+        this.emit('device-data', {
           esp32_data: data,
           timestamp: new Date().toISOString()
         });

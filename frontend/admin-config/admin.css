@@ -887,8 +887,15 @@ textarea {
 
 .buzzer-sidebar-content {
     flex: 1;
-    overflow-y: auto;
+    overflow: hidden;
     padding: 12px;
+    display: flex;
+    flex-direction: column;
+}
+
+.buzzer-sections {
+    flex: 1;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
 }
@@ -898,10 +905,12 @@ textarea {
     border: 1px solid var(--gray-200);
     border-radius: 4px;
     padding: 8px;
-    margin-bottom: 12px;
+    margin-top: auto;
+    margin-bottom: 0;
     display: flex;
     align-items: center;
     gap: 6px;
+    flex-shrink: 0;
 }
 
 .buzzer-settings label {
@@ -927,11 +936,12 @@ textarea {
 }
 
 .buzzer-section {
-    margin-bottom: 8px;
+    margin-bottom: 12px;
+    flex-shrink: 0;
 }
 
-.buzzer-section:last-child {
-    margin-bottom: 0;
+.buzzer-section:last-of-type {
+    margin-bottom: 16px;
 }
 
 .buzzer-section h4 {

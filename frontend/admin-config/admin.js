@@ -1026,6 +1026,7 @@ class AdminConfig {
                 } else {
                     lastSeen = timestamp;
                 }
+                console.log(`Timestamp conversion: ${timestamp} -> ${lastSeen} (now: ${Date.now()})`);
             } else {
                 lastSeen = Date.now();
             }
@@ -1056,10 +1057,11 @@ class AdminConfig {
                 mac: params.mac || '',
                 teamName: this.getTeamNameByBuzzerId(deviceId),
                 reported_online: reportedOnline,
-                time_since_last_seen: timeSinceLastSeen,
-                ...existingDevice // Keep any additional data (but override status)
+                time_since_last_seen: timeSinceLastSeen
+                // REMOVED ...existingDevice - this was overriding new timestamps with old ones!
             };
             
+            console.log(`Device ${deviceId} updated with last_seen: ${lastSeen} (${new Date(lastSeen).toISOString()})`);
             this.buzzerDevices.set(deviceId, deviceData);
             
             this.updateBuzzerSidebar();

@@ -142,7 +142,6 @@ class HostControl {
             
             // Main control buttons
             startQuestionBtn: document.getElementById('start-question-btn'),
-            showAnswersBtn: document.getElementById('show-answers-btn'),
             nextQuestionBtn: document.getElementById('next-question-btn'),
             endQuestionBtn: document.getElementById('end-question-btn'),
             prevQuestionBtn: document.getElementById('prev-question-btn'),
@@ -361,8 +360,6 @@ class HostControl {
         if (this.elements.armBuzzersBtn) this.elements.armBuzzersBtn.addEventListener('click', () => this.armBuzzers());
         if (this.elements.disarmBuzzersBtn) this.elements.disarmBuzzersBtn.addEventListener('click', () => this.disarmBuzzers());
         
-        // Show answer evaluation modal
-        if (this.elements.showAnswersBtn) this.elements.showAnswersBtn.addEventListener('click', () => this.showAnswerEvaluationModal());
         
         // Floating action buttons
         if (this.elements.showBuzzerStatusBtn) this.elements.showBuzzerStatusBtn.addEventListener('click', () => this.showBuzzerStatusModal());
@@ -759,7 +756,6 @@ class HostControl {
     updateBuzzerResults() {
         if (this.buzzerOrder.length === 0) {
             this.elements.buzzerResults.innerHTML = '<div class="no-buzzes">No buzzer presses yet</div>';
-            this.elements.showAnswersBtn.classList.add('hidden');
             return;
         }
 
@@ -779,9 +775,6 @@ class HostControl {
             
             this.elements.buzzerResults.appendChild(buzzerItem);
         });
-        
-        // Show the evaluate answers button when there are buzzer presses
-        this.elements.showAnswersBtn.classList.remove('hidden');
     }
 
     getTeamName(groupId) {
@@ -1776,7 +1769,6 @@ class HostControl {
         
         if (this.buzzerOrder.length === 0) {
             this.elements.buzzerResults.innerHTML = '<div class="no-buzzes">No buzzer presses yet</div>';
-            this.elements.showAnswersBtn.classList.add('hidden');
             if (buzzerResultsSection) {
                 buzzerResultsSection.classList.add('hidden');
             }
@@ -1822,9 +1814,6 @@ class HostControl {
             
             this.elements.buzzerResults.appendChild(buzzerItem);
         });
-        
-        // Show the evaluate answers button when there are buzzer presses
-        this.elements.showAnswersBtn.classList.remove('hidden');
     }
 
     // Override the answer evaluation to include visual feedback

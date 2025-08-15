@@ -203,8 +203,9 @@ class GameService {
       questionComplete: isCorrect || gameState.buzzerOrder.slice(buzzerPosition + 1).filter(b => !b.evaluated).length === 0
     });
 
-    // If answer is correct, move to next question preparation
+    // If answer is correct, end current question and prepare next one
     if (isCorrect) {
+      await this.endQuestion(gameId);
       await this.prepareNextQuestion(gameId);
     }
 
@@ -257,10 +258,13 @@ class GameService {
         gameId,
         finalScores: game.groups.sort((a, b) => b.score - a.score)
       });
+      
+      // Clear the active game state only when game is completed
+      this.activeGames.delete(gameId);
     }
-
-    // Clear the active game state
-    this.activeGames.delete(gameId);
+    
+    // Don't clear active game state here for normal question preparation
+    // Game state should only be cleared when game is completed or question ends
   }
 
   async getNextInLineBuzzer(gameId) {

@@ -1057,7 +1057,11 @@ class AdminConfig {
         
         this.buzzerDevices.forEach(device => {
             const timeSinceLastSeen = now - device.last_seen;
-            if (timeSinceLastSeen < staleThreshold) {
+            const isRecent = timeSinceLastSeen < staleThreshold;
+            const isOnlineReported = device.online === true;
+            
+            // Device is online ONLY if ESP32 reported online=true AND data is recent
+            if (isOnlineReported && isRecent) {
                 onlineBuzzers.push(device);
             } else {
                 offlineBuzzers.push(device);

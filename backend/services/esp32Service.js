@@ -236,6 +236,7 @@ class ESP32Service {
       if (!/^\d+$/.test(deviceId.toString())) continue;
       
       const timeSinceLastSeen = now - (state.last_seen || 0);
+      // Device is online ONLY if ESP32 reported online=1 AND it's recent
       const isOnline = state.online === true && timeSinceLastSeen < staleThreshold;
       
       devices.push({
@@ -267,8 +268,14 @@ class ESP32Service {
       
       if (!deviceId || !/^\d+$/.test(deviceId)) return;
       
-      // Parse parameters
-      const params = { last_seen: Date.now() };
+      // Parse parameters - default to offline
+      const params = { 
+        last_seen: Date.now(),
+        online: false, // Default offline
+        armed: false,
+        pressed: false
+      };
+      
       for (let i = 1; i < parts.length; i++) {
         const [key, value] = parts[i].split('=');
         if (key && value !== undefined) {

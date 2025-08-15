@@ -902,7 +902,8 @@ class AdminConfig {
         this.buzzerDevices.set(deviceId, {
             ...data,
             last_seen: now,
-            status: 'online',
+            status: 'offline', // Default offline until proven online
+            online: false,
             teamName: this.getTeamNameByBuzzerId(deviceId)
         });
         
@@ -926,15 +927,18 @@ class AdminConfig {
         if (this.buzzerDevices.has(deviceId)) {
             const device = this.buzzerDevices.get(deviceId);
             device.last_seen = now;
-            device.status = 'online';
+            device.status = 'online'; // Heartbeat means online
+            device.online = true;
             this.buzzerDevices.set(deviceId, device);
         } else {
-            // Create new device entry from heartbeat
+            // Create new device entry from heartbeat - heartbeat means online
             this.buzzerDevices.set(deviceId, {
                 device_id: deviceId,
                 name: `Buzzer ${deviceId}`,
                 last_seen: now,
-                status: 'online',
+                status: 'online', // Heartbeat means device is online
+                online: true,
+                teamName: this.getTeamNameByBuzzerId(deviceId),
                 ...data
             });
         }
@@ -1020,13 +1024,14 @@ class AdminConfig {
                 name: `Buzzer ${deviceId}`,
                 last_seen: lastSeen,
                 status: actuallyOnline ? 'online' : 'offline',
+                online: actuallyOnline, // Explicit online flag
                 armed: params.armed === true,
                 pressed: params.pressed === true,
                 mac: params.mac || '',
                 teamName: this.getTeamNameByBuzzerId(deviceId),
                 reported_online: reportedOnline,
                 time_since_last_seen: timeSinceLastSeen,
-                ...existingDevice // Keep any additional data
+                ...existingDevice // Keep any additional data (but override status)
             });
             
             this.updateBuzzerSidebar();
@@ -1135,6 +1140,9 @@ class AdminConfig {
                         if (deviceId && /^\d+$/.test(deviceId.toString())) {
                             const existingDevice = this.buzzerDevices.get(deviceId);
                             this.buzzerDevices.set(deviceId, {
+                                // Default to offline
+                                status: 'offline',
+                                online: false,
                                 ...existingDevice, // Keep existing data (like last_seen from ESP32)
                                 ...device, // Overlay server data
                                 server_reported: true,

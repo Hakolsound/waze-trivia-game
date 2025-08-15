@@ -132,6 +132,7 @@ class GlobalGameSelector {
                     <div class="game-selector-header">
                         <h2>🎮 Select Current Game</h2>
                         <p>Choose which game to load across all trivia interfaces</p>
+                        <button id="close-game-selector-x" class="game-selector-close" title="Close (Esc)">×</button>
                     </div>
                     <div class="game-selector-body">
                         <div id="game-selector-list" class="game-selector-list">
@@ -164,6 +165,11 @@ class GlobalGameSelector {
         const modal = document.getElementById('game-selector-modal');
         const changeBtn = document.getElementById('change-game-btn');
         const closeBtn = document.getElementById('close-game-selector');
+        const closeXBtn = document.getElementById('close-game-selector-x');
+
+        const closeModal = () => {
+            modal?.classList.add('hidden');
+        };
 
         if (changeBtn) {
             changeBtn.addEventListener('click', () => {
@@ -172,8 +178,27 @@ class GlobalGameSelector {
         }
 
         if (closeBtn) {
-            closeBtn.addEventListener('click', () => {
-                modal?.classList.add('hidden');
+            closeBtn.addEventListener('click', closeModal);
+        }
+
+        if (closeXBtn) {
+            closeXBtn.addEventListener('click', closeModal);
+        }
+
+        // Add escape key functionality
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+                closeModal();
+                e.preventDefault();
+            }
+        });
+
+        // Close modal when clicking outside
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    closeModal();
+                }
             });
         }
     }

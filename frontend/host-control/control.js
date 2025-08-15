@@ -252,6 +252,16 @@ class HostControl {
         });
 
         this.socket.on('score-update', (data) => {
+            // Update team data with new scores if provided
+            if (data.teams) {
+                this.teams = data.teams;
+            } else if (data.teamId && data.newScore !== undefined) {
+                // Update specific team score
+                const team = this.teams.find(t => t.id === data.teamId);
+                if (team) {
+                    team.score = data.newScore;
+                }
+            }
             this.updateTeamDisplay();
             this.showToast('Points awarded successfully', 'success');
         });
@@ -1528,6 +1538,9 @@ class HostControl {
                 body: JSON.stringify({ groupId: teamId, points: pointsDifference })
             });
             
+            // Update the team score locally immediately
+            currentTeam.score = newScore;
+            this.updateTeamDisplay();
             this.showToast(`Score updated: ${pointsDifference > 0 ? '+' : ''}${pointsDifference} points`, 'success');
         } catch (error) {
             this.showToast('Failed to update score', 'error');

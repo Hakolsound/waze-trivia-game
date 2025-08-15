@@ -9,6 +9,8 @@ class HostControl {
         this.isQuestionActive = false;
         this.isBuzzersArmed = false;
         this.buzzerDevices = new Map();
+        this.virtualBuzzers = new Map(); // Track active virtual buzzers
+        this.virtualBuzzersEnabled = false; // Track if virtual buzzers are enabled
         this.gameSelector = null;
         
         this.initializeGameSelector();
@@ -69,6 +71,9 @@ class HostControl {
             this.updateQuestionControls();
             this.updateQuestionDisplay();
             
+            // Check virtual buzzer settings and update section visibility
+            this.checkVirtualBuzzerSettings();
+            
             // Join game room
             this.socket.emit('join-game', game.id);
             this.showToast('Game loaded successfully', 'success');
@@ -84,6 +89,9 @@ class HostControl {
             this.updateQuestionSelector();
             this.updateQuestionControls();
             this.updateQuestionDisplay();
+            
+            // Hide virtual buzzer section when no game is loaded
+            this.checkVirtualBuzzerSettings();
         }
     }
 
@@ -207,6 +215,8 @@ class HostControl {
             buzzerCounter: document.getElementById('buzzer-counter'),
             onlineThreshold: document.getElementById('online-threshold'),
             onlineBuzzers: document.getElementById('online-buzzers'),
+            virtualBuzzersSection: document.getElementById('virtual-buzzers-section'),
+            virtualBuzzers: document.getElementById('virtual-buzzers'),
             offlineBuzzers: document.getElementById('offline-buzzers')
         };
     }
@@ -248,6 +258,18 @@ class HostControl {
         
         this.socket.on('esp32-status', (data) => {
             this.updateESP32Status(data);
+        });
+
+        // Virtual buzzer listeners
+        this.socket.on('virtual-buzzer-register', (data) => {
+            this.handleVirtualBuzzerRegister(data);
+        });
+
+        this.socket.on('disconnect', (reason, socket) => {
+            // Remove virtual buzzer if it was disconnected
+            if (socket && socket.virtualBuzzerId) {
+                this.handleVirtualBuzzerDisconnect(socket.virtualBuzzerId);
+            }
         });
 
         this.socket.on('question-start', (data) => {
@@ -2181,6 +2203,99 @@ class HostControl {
         if (data.esp32_data) {
             this.parseESP32DeviceData(data.esp32_data);
         }
+    }
+
+    // Virtual Buzzer Management Methods
+    async checkVirtualBuzzerSettings() {
+        if (!this.currentGame) {
+            this.virtualBuzzersEnabled = false;
+            this.updateVirtualBuzzersSection();
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/games/${this.currentGame.id}/virtual-buzzer-settings`);
+            if (response.ok) {
+                const settings = await response.json();
+                this.virtualBuzzersEnabled = settings.virtualBuzzersEnabled || false;
+            } else {
+                this.virtualBuzzersEnabled = false;
+            }
+        } catch (error) {
+            console.error('Failed to check virtual buzzer settings:', error);
+            this.virtualBuzzersEnabled = false;
+        }
+
+        this.updateVirtualBuzzersSection();
+    }
+
+    handleVirtualBuzzerRegister(data) {
+        if (!this.virtualBuzzersEnabled) return;
+
+        const { buzzerId, groupId, teamName } = data;
+        const now = Date.now();
+
+        this.virtualBuzzers.set(buzzerId, {
+            buzzerId,
+            groupId,
+            teamName,
+            connectedAt: now,
+            lastActivity: now,
+            status: 'connected'
+        });
+
+        this.updateVirtualBuzzersSection();
+    }
+
+    handleVirtualBuzzerDisconnect(buzzerId) {
+        if (this.virtualBuzzers.has(buzzerId)) {
+            this.virtualBuzzers.delete(buzzerId);
+            this.updateVirtualBuzzersSection();
+        }
+    }
+
+    updateVirtualBuzzersSection() {
+        if (!this.elements.virtualBuzzersSection || !this.elements.virtualBuzzers) return;
+
+        // Show/hide section based on whether virtual buzzers are enabled
+        if (!this.virtualBuzzersEnabled) {
+            this.elements.virtualBuzzersSection.classList.add('hidden');
+            return;
+        }
+
+        this.elements.virtualBuzzersSection.classList.remove('hidden');
+
+        // Update virtual buzzers list
+        if (this.virtualBuzzers.size === 0) {
+            this.elements.virtualBuzzers.innerHTML = '<div class="no-buzzers">No virtual buzzers active</div>';
+            return;
+        }
+
+        const virtualBuzzerList = Array.from(this.virtualBuzzers.values());
+        this.elements.virtualBuzzers.innerHTML = '';
+
+        virtualBuzzerList.forEach(vBuzzer => {
+            const buzzerElement = document.createElement('div');
+            const armedClass = this.isBuzzersArmed ? ' armed' : '';
+            buzzerElement.className = `buzzer-item virtual${armedClass}`;
+            
+            const connectedTime = Date.now() - vBuzzer.connectedAt;
+            const connectedText = this.formatLastSeen(connectedTime);
+            
+            const dotArmedClass = this.isBuzzersArmed ? ' armed' : '';
+
+            buzzerElement.innerHTML = `
+                <div class="buzzer-status">
+                    <div class="status-dot virtual${dotArmedClass}"></div>
+                    <div class="buzzer-details">
+                        <div class="buzzer-name">${vBuzzer.teamName}</div>
+                        <div class="buzzer-meta">Virtual • Connected ${connectedText}</div>
+                    </div>
+                </div>
+            `;
+
+            this.elements.virtualBuzzers.appendChild(buzzerElement);
+        });
     }
 }
 

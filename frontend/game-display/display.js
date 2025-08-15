@@ -10,6 +10,8 @@ class GameDisplay {
         this.gameSelector = null;
         this.currentState = 'idle'; // idle, question, buzzer, answer
         this.teamNames = new Map();
+        this.sidebarExpanded = true;
+        this.autoExpandTimer = null;
         
         this.initializeGameSelector();
         this.initializeElements();
@@ -156,6 +158,17 @@ class GameDisplay {
         this.socket.on('game-reset', () => {
             this.handleGameReset();
         });
+
+        // Window resize listener for dynamic text sizing
+        window.addEventListener('resize', () => {
+            if (this.currentState === 'question' && this.elements.questionText.textContent) {
+                // Debounce the resize calls
+                clearTimeout(this.resizeTimeout);
+                this.resizeTimeout = setTimeout(() => {
+                    this.adjustQuestionTextSize();
+                }, 250);
+            }
+        });
     }
 
     // State Management
@@ -166,6 +179,9 @@ class GameDisplay {
         this.elements.questionSection.classList.add('hidden');
         this.elements.questionSection.classList.remove('active');
         this.elements.answerFeedback.classList.add('hidden');
+        
+        // Expand sidebar and clear any auto-expand timers
+        this.expandSidebar();
         
         this.updateGameStatus('Ready to play');
         this.clearBuzzerQueue();
@@ -179,6 +195,10 @@ class GameDisplay {
         this.elements.questionSection.classList.add('active');
         this.elements.answerFeedback.classList.add('hidden');
         
+        // Collapse sidebar for new question
+        this.collapseSidebar();
+        this.startAutoExpandTimer();
+        
         // Update question content
         this.elements.questionText.textContent = question.text;
         this.elements.questionPoints.textContent = `${question.points || 100} Points`;
@@ -190,6 +210,9 @@ class GameDisplay {
         } else {
             this.elements.questionMedia.classList.add('hidden');
         }
+        
+        // Apply dynamic text sizing after content is set
+        this.adjustQuestionTextSize();
         
         this.updateGameStatus('Question in progress');
         this.clearBuzzerQueue();
@@ -230,6 +253,11 @@ class GameDisplay {
 
     handleBuzzerPressed(data) {
         console.log('Buzzer pressed:', data);
+        
+        // Expand sidebar on first buzzer press
+        if (this.buzzerQueue.length === 0 && !this.sidebarExpanded) {
+            this.expandSidebar();
+        }
         
         // Add to buzzer queue if not already there
         const buzzerId = data.buzzer_id || data.buzzerId;
@@ -509,6 +537,89 @@ class GameDisplay {
 
     hideMessage() {
         this.elements.messageOverlay.classList.add('hidden');
+    }
+
+    // Dynamic Text Sizing
+    adjustQuestionTextSize() {
+        const questionElement = this.elements.questionText;
+        const containerElement = questionElement.closest('.question-container');
+        
+        if (!questionElement || !containerElement) return;
+        
+        // Base font size in rem (current default)
+        const baseFontSize = 8;
+        const minFontSize = 3; // Minimum font size in rem
+        const maxFontSize = 10; // Maximum font size in rem
+        
+        // Reset to base size first
+        questionElement.style.fontSize = `${baseFontSize}rem`;
+        
+        // Wait for next frame to ensure text is rendered
+        requestAnimationFrame(() => {
+            const containerRect = containerElement.getBoundingClientRect();
+            const questionRect = questionElement.getBoundingClientRect();
+            
+            // Calculate available space (subtract padding and some margin for media)
+            const availableWidth = containerRect.width * 0.9; // 90% of container width
+            const availableHeight = containerRect.height * 0.6; // 60% of container height (leave room for media)
+            
+            let fontSize = baseFontSize;
+            
+            // If text is too wide or too tall, reduce font size
+            if (questionRect.width > availableWidth || questionRect.height > availableHeight) {
+                const widthRatio = availableWidth / questionRect.width;
+                const heightRatio = availableHeight / questionRect.height;
+                const scaleFactor = Math.min(widthRatio, heightRatio);
+                
+                fontSize = Math.max(minFontSize, baseFontSize * scaleFactor);
+            }
+            // If text is much smaller than available space, increase font size (but not beyond max)
+            else if (questionRect.width < availableWidth * 0.5 && questionRect.height < availableHeight * 0.5) {
+                const widthRatio = (availableWidth * 0.8) / questionRect.width;
+                const heightRatio = (availableHeight * 0.8) / questionRect.height;
+                const scaleFactor = Math.min(widthRatio, heightRatio);
+                
+                fontSize = Math.min(maxFontSize, baseFontSize * scaleFactor);
+            }
+            
+            // Apply the calculated font size
+            questionElement.style.fontSize = `${fontSize}rem`;
+            
+            // Update line height proportionally
+            const lineHeight = fontSize >= 6 ? 1.2 : 1.3;
+            questionElement.style.lineHeight = lineHeight;
+        });
+    }
+
+    // Sidebar Management
+    collapseSidebar() {
+        this.sidebarExpanded = false;
+        document.getElementById('app').classList.add('sidebar-collapsed');
+    }
+
+    expandSidebar() {
+        this.sidebarExpanded = true;
+        document.getElementById('app').classList.remove('sidebar-collapsed');
+        // Clear auto-expand timer if it exists
+        if (this.autoExpandTimer) {
+            clearTimeout(this.autoExpandTimer);
+            this.autoExpandTimer = null;
+        }
+    }
+
+    startAutoExpandTimer() {
+        // Clear any existing timer
+        if (this.autoExpandTimer) {
+            clearTimeout(this.autoExpandTimer);
+        }
+        
+        // Set timer to expand after 5 seconds
+        this.autoExpandTimer = setTimeout(() => {
+            // Only auto-expand if time remaining is less than 10 seconds
+            if (this.timeRemaining < 10 && !this.sidebarExpanded) {
+                this.expandSidebar();
+            }
+        }, 5000);
     }
 }
 

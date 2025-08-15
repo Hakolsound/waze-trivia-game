@@ -744,10 +744,17 @@ body {
 
 .control-btn .material-icons {
   font-size: 24px;
+  color: currentColor;
 }
 
 .control-btn-large .material-icons {
   font-size: 28px;
+  color: currentColor;
+}
+
+/* Ensure start button icons are white */
+.btn-primary .material-icons {
+  color: white !important;
 }
 
 .control-text {

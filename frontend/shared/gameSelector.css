@@ -308,12 +308,14 @@
 }
 
 .btn-primary {
-    background: #00D4FF;
+    background: linear-gradient(135deg, #4CAF50, #2E7D32);
     color: white;
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.5);
 }
 
 .btn-primary:hover {
-    background: #0099cc;
+    background: linear-gradient(135deg, #2E7D32, #1B5E20);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.7);
 }
 
 .btn-secondary {

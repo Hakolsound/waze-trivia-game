@@ -9,6 +9,7 @@ class VirtualBuzzer {
         this.password = 'michal'; // Simple password storage
         
         this.initializeElements();
+        this.requestFullscreen();
         this.connectToServer();
         this.setupEventListeners();
     }
@@ -33,34 +34,77 @@ class VirtualBuzzer {
             passwordSubmit: document.getElementById('password-submit'),
             passwordCancel: document.getElementById('password-cancel'),
             
+            // Connection indicator
+            connectionIndicator: document.getElementById('connection-indicator'),
+            connectionDot: document.getElementById('connection-dot'),
+            
             // Error elements
             errorMessage: document.getElementById('error-message'),
             retryBtn: document.getElementById('retry-btn')
         };
     }
 
+    requestFullscreen() {
+        // Attempt to enter fullscreen on mobile devices
+        const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        if (isMobile) {
+            // Try to enter fullscreen after first user interaction
+            document.addEventListener('click', () => {
+                this.enterFullscreen();
+            }, { once: true });
+
+            document.addEventListener('touchstart', () => {
+                this.enterFullscreen();
+            }, { once: true });
+        }
+    }
+
+    enterFullscreen() {
+        try {
+            const element = document.documentElement;
+            
+            if (element.requestFullscreen) {
+                element.requestFullscreen();
+            } else if (element.webkitRequestFullscreen) {
+                element.webkitRequestFullscreen();
+            } else if (element.mozRequestFullScreen) {
+                element.mozRequestFullScreen();
+            } else if (element.msRequestFullscreen) {
+                element.msRequestFullscreen();
+            }
+        } catch (error) {
+            console.log('Fullscreen not supported or blocked:', error);
+        }
+    }
+
     connectToServer() {
         try {
+            this.updateConnectionStatus('connecting');
             this.socket = io();
             
             this.socket.on('connect', () => {
                 console.log('Connected to server');
+                this.updateConnectionStatus('connected');
                 this.requestGameData();
             });
 
             this.socket.on('disconnect', () => {
                 console.log('Disconnected from server');
+                this.updateConnectionStatus('disconnected');
                 this.showError('Connection lost. Please refresh the page.');
             });
 
             this.socket.on('connect_error', (error) => {
                 console.error('Connection error:', error);
+                this.updateConnectionStatus('error');
                 this.showError('Unable to connect to server');
             });
 
             this.setupSocketListeners();
         } catch (error) {
             console.error('Socket initialization error:', error);
+            this.updateConnectionStatus('error');
             this.showError('Failed to initialize connection');
         }
     }
@@ -139,6 +183,7 @@ class VirtualBuzzer {
         // Retry button
         if (this.elements.retryBtn) {
             this.elements.retryBtn.addEventListener('click', () => {
+                this.updateConnectionStatus('connecting');
                 this.connectToServer();
                 this.showTeamSelection();
             });
@@ -379,6 +424,29 @@ class VirtualBuzzer {
         
         // Go back to team selection
         this.showTeamSelection();
+    }
+
+    // Connection Status Methods
+    updateConnectionStatus(status) {
+        if (!this.elements.connectionDot) return;
+
+        // Remove all status classes
+        this.elements.connectionDot.classList.remove('connected', 'connecting', 'disconnected', 'error');
+        
+        // Add appropriate status class
+        switch (status) {
+            case 'connected':
+                this.elements.connectionDot.classList.add('connected');
+                break;
+            case 'connecting':
+                this.elements.connectionDot.classList.add('connecting');
+                break;
+            case 'disconnected':
+            case 'error':
+            default:
+                // Default red state (no additional class needed)
+                break;
+        }
     }
 }
 

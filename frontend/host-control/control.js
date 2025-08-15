@@ -217,7 +217,6 @@ class HostControl {
         
         // Floating action buttons
         this.elements.showBuzzerStatusBtn.addEventListener('click', () => this.showBuzzerStatusModal());
-        this.elements.awardPointsBtn.addEventListener('click', () => this.showManualPointsModal());
         
         // Answer evaluation modal
         this.elements.closeEvaluationBtn.addEventListener('click', () => this.hideAnswerEvaluationModal());
@@ -351,10 +350,19 @@ class HostControl {
             const teamItem = document.createElement('div');
             teamItem.className = 'team-score-item';
             teamItem.style.setProperty('--team-color', team.color || '#00D4FF');
-            teamItem.innerHTML = `
-                <span class="team-name">${team.name}</span>
-                <span class="team-score">${team.score}</span>
-            `;
+            
+            const scoreInput = document.createElement('input');
+            scoreInput.type = 'number';
+            scoreInput.className = 'team-score';
+            scoreInput.value = team.score || 0;
+            scoreInput.setAttribute('data-team-id', team.id);
+            
+            // Add event listener for score changes
+            scoreInput.addEventListener('change', (e) => this.updateTeamScore(team.id, parseInt(e.target.value) || 0));
+            scoreInput.addEventListener('blur', (e) => e.target.style.outline = 'none');
+            
+            teamItem.innerHTML = `<span class="team-name">${team.name}</span>`;
+            teamItem.appendChild(scoreInput);
             
             // Add crown for leader
             if (index === 0 && team.score > 0) {
@@ -1402,6 +1410,28 @@ class HostControl {
         } catch (error) {
             console.error('Failed to evaluate answer:', error);
             this.showToast('Failed to evaluate answer', 'error');
+        }
+    }
+
+    // Update team score directly
+    async updateTeamScore(teamId, newScore) {
+        const currentTeam = this.teams.find(t => t.id === teamId);
+        if (!currentTeam) return;
+
+        const pointsDifference = newScore - currentTeam.score;
+        
+        try {
+            await fetch(`/api/games/${this.currentGame.id}/award-points`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ groupId: teamId, points: pointsDifference })
+            });
+            
+            this.showToast(`Score updated: ${pointsDifference > 0 ? '+' : ''}${pointsDifference} points`, 'success');
+        } catch (error) {
+            this.showToast('Failed to update score', 'error');
+            // Revert the display
+            this.updateTeamDisplay();
         }
     }
 }

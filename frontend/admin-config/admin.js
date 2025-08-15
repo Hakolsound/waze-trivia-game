@@ -413,14 +413,28 @@ class AdminConfig {
         });
     }
 
-    showTeamModal(team = null) {
+    async showTeamModal(team = null) {
         this.editingItem = team;
         const title = team ? 'Edit Team' : 'Add New Team';
         document.getElementById('team-modal-title').textContent = title;
         
         this.elements.teamName.value = team ? team.name : '';
         this.elements.teamColor.value = team ? team.color : '#667eea';
-        this.elements.buzzerId.value = team ? team.buzzer_id : '';
+        
+        // Auto-assign buzzer ID for new teams
+        if (!team && this.currentGame) {
+            try {
+                const response = await fetch(`/api/groups/game/${this.currentGame}`);
+                const existingTeams = await response.json();
+                const nextBuzzerNumber = existingTeams.length + 1;
+                this.elements.buzzerId.value = nextBuzzerNumber.toString();
+            } catch (error) {
+                this.elements.buzzerId.value = '1';
+            }
+        } else {
+            this.elements.buzzerId.value = team ? team.buzzer_id : '';
+        }
+        
         this.elements.teamModal.classList.remove('hidden');
     }
 

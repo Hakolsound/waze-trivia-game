@@ -630,8 +630,8 @@ body {
   padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  max-height: 300px;
+  gap: 8px;
+  max-height: 450px;
   overflow-y: auto;
 }
 
@@ -639,12 +639,13 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
+  padding: 12px 16px;
   background: linear-gradient(135deg, var(--team-color, var(--waze-primary)), color-mix(in srgb, var(--team-color, var(--waze-primary)) 70%, white));
   color: white;
-  border-radius: 16px;
+  border-radius: 12px;
   box-shadow: var(--md-sys-elevation-level1);
   transition: all var(--md-sys-motion-duration-medium) var(--md-sys-motion-easing-standard);
+  min-height: 44px;
 }
 
 .team-score-item:hover {
@@ -663,6 +664,23 @@ body {
   border-radius: 12px;
   font-weight: 700;
   backdrop-filter: blur(10px);
+  border: none;
+  color: white;
+  font-family: inherit;
+  font-size: inherit;
+  width: 80px;
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--md-sys-motion-duration-short) ease;
+}
+
+.team-score:focus {
+  outline: 2px solid rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.team-score:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .no-teams {

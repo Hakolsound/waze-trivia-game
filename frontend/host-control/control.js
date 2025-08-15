@@ -284,39 +284,39 @@ class HostControl {
     }
 
     setupEventListeners() {
-        // Main game controls (removed loadGameBtn since we use global game selector now)
-        this.elements.startQuestionBtn.addEventListener('click', () => this.startQuestion());
-        this.elements.endQuestionBtn.addEventListener('click', () => this.endQuestion());
-        this.elements.nextQuestionBtn.addEventListener('click', () => this.nextQuestion());
-        this.elements.prevQuestionBtn.addEventListener('click', () => this.prevQuestion());
-        this.elements.questionSelect.addEventListener('change', (e) => this.jumpToQuestion(e.target.value));
-        this.elements.resetGameBtn.addEventListener('click', () => this.resetGame());
-        this.elements.endGameBtn.addEventListener('click', () => this.endGame());
+        // Main game controls (with null checks to prevent errors)
+        if (this.elements.startQuestionBtn) this.elements.startQuestionBtn.addEventListener('click', () => this.startQuestion());
+        if (this.elements.endQuestionBtn) this.elements.endQuestionBtn.addEventListener('click', () => this.endQuestion());
+        if (this.elements.nextQuestionBtn) this.elements.nextQuestionBtn.addEventListener('click', () => this.nextQuestion());
+        if (this.elements.prevQuestionBtn) this.elements.prevQuestionBtn.addEventListener('click', () => this.prevQuestion());
+        if (this.elements.questionSelect) this.elements.questionSelect.addEventListener('change', (e) => this.jumpToQuestion(e.target.value));
+        if (this.elements.resetGameBtn) this.elements.resetGameBtn.addEventListener('click', () => this.resetGame());
+        if (this.elements.endGameBtn) this.elements.endGameBtn.addEventListener('click', () => this.endGame());
         
         // Buzzer controls
-        this.elements.armBuzzersBtn.addEventListener('click', () => this.armBuzzers());
-        this.elements.disarmBuzzersBtn.addEventListener('click', () => this.disarmBuzzers());
+        if (this.elements.armBuzzersBtn) this.elements.armBuzzersBtn.addEventListener('click', () => this.armBuzzers());
+        if (this.elements.disarmBuzzersBtn) this.elements.disarmBuzzersBtn.addEventListener('click', () => this.disarmBuzzers());
         
         // Show answer evaluation modal
-        this.elements.showAnswersBtn.addEventListener('click', () => this.showAnswerEvaluationModal());
+        if (this.elements.showAnswersBtn) this.elements.showAnswersBtn.addEventListener('click', () => this.showAnswerEvaluationModal());
         
         // Floating action buttons
-        this.elements.showBuzzerStatusBtn.addEventListener('click', () => this.showBuzzerStatusModal());
+        if (this.elements.showBuzzerStatusBtn) this.elements.showBuzzerStatusBtn.addEventListener('click', () => this.showBuzzerStatusModal());
         
         // Answer evaluation modal
-        this.elements.closeEvaluationBtn.addEventListener('click', () => this.hideAnswerEvaluationModal());
-        this.elements.markCorrectBtn.addEventListener('click', () => this.markAnswer(true));
-        this.elements.markIncorrectBtn.addEventListener('click', () => this.markAnswer(false));
+        if (this.elements.closeEvaluationBtn) this.elements.closeEvaluationBtn.addEventListener('click', () => this.hideAnswerEvaluationModal());
+        if (this.elements.markCorrectBtn) this.elements.markCorrectBtn.addEventListener('click', () => this.markAnswer(true));
+        if (this.elements.markIncorrectBtn) this.elements.markIncorrectBtn.addEventListener('click', () => this.markAnswer(false));
         
         // Buzzer status modal
-        this.elements.closeBuzzerModalBtn.addEventListener('click', () => this.hideBuzzerStatusModal());
-        this.elements.modalRefreshBuzzersBtn.addEventListener('click', () => this.refreshModalBuzzerStatus());
-        this.elements.modalArmAllBuzzersBtn.addEventListener('click', () => this.modalArmAllBuzzers());
-        this.elements.modalDisarmAllBuzzersBtn.addEventListener('click', () => this.modalDisarmAllBuzzers());
+        if (this.elements.closeBuzzerModalBtn) this.elements.closeBuzzerModalBtn.addEventListener('click', () => this.hideBuzzerStatusModal());
+        if (this.elements.modalRefreshBuzzersBtn) this.elements.modalRefreshBuzzersBtn.addEventListener('click', () => this.refreshModalBuzzerStatus());
+        if (this.elements.modalArmAllBuzzersBtn) this.elements.modalArmAllBuzzersBtn.addEventListener('click', () => this.modalArmAllBuzzers());
+        if (this.elements.modalDisarmAllBuzzersBtn) this.elements.modalDisarmAllBuzzersBtn.addEventListener('click', () => this.modalDisarmAllBuzzers());
         
         // Manual points modal
-        this.elements.closePointsModalBtn.addEventListener('click', () => this.hideManualPointsModal());
-        this.elements.awardPointsSubmitBtn.addEventListener('click', () => this.awardManualPoints());
+        if (this.elements.closePointsModalBtn) this.elements.closePointsModalBtn.addEventListener('click', () => this.hideManualPointsModal());
+        if (this.elements.awardPointsSubmitBtn) this.elements.awardPointsSubmitBtn.addEventListener('click', () => this.awardManualPoints());
         
         // Close modals when clicking outside
         this.elements.answerEvaluationModal.addEventListener('click', (e) => {
@@ -482,19 +482,22 @@ class HostControl {
         const canStart = hasGame && hasQuestions && !this.isQuestionActive;
         const canEnd = this.isQuestionActive;
         
-        this.elements.startQuestionBtn.disabled = !canStart;
-        this.elements.endQuestionBtn.disabled = !canEnd;
-        this.elements.nextQuestionBtn.disabled = !hasGame || this.currentQuestionIndex >= this.questions.length - 1;
-        this.elements.prevQuestionBtn.disabled = !hasGame || this.currentQuestionIndex <= 0;
-        this.elements.armBuzzersBtn.disabled = !canStart;
-        this.elements.disarmBuzzersBtn.disabled = !this.isBuzzersArmed;
-        this.elements.awardPointsBtn.disabled = !hasGame;
-        this.elements.teamSelect.disabled = !hasGame;
-        this.elements.questionSelect.disabled = !hasGame;
+        // Add null checks to prevent errors
+        if (this.elements.startQuestionBtn) this.elements.startQuestionBtn.disabled = !canStart;
+        if (this.elements.endQuestionBtn) this.elements.endQuestionBtn.disabled = !canEnd;
+        if (this.elements.nextQuestionBtn) this.elements.nextQuestionBtn.disabled = !hasGame || this.currentQuestionIndex >= this.questions.length - 1;
+        if (this.elements.prevQuestionBtn) this.elements.prevQuestionBtn.disabled = !hasGame || this.currentQuestionIndex <= 0;
+        if (this.elements.armBuzzersBtn) this.elements.armBuzzersBtn.disabled = !canStart;
+        if (this.elements.disarmBuzzersBtn) this.elements.disarmBuzzersBtn.disabled = !this.isBuzzersArmed;
+        if (this.elements.awardPointsBtn) this.elements.awardPointsBtn.disabled = !hasGame;
+        if (this.elements.teamSelect) this.elements.teamSelect.disabled = !hasGame;
+        if (this.elements.questionSelect) this.elements.questionSelect.disabled = !hasGame;
     }
 
     updateBuzzerStatus() {
-        this.elements.buzzersArmedStatus.textContent = this.isBuzzersArmed ? 'Armed' : 'Disarmed';
+        if (this.elements.buzzersArmedStatus) {
+            this.elements.buzzersArmedStatus.textContent = this.isBuzzersArmed ? 'Armed' : 'Disarmed';
+        }
         this.updateQuestionControls();
     }
 

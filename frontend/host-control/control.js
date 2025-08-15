@@ -115,6 +115,12 @@ class HostControl {
             progressBarFill: document.getElementById('progress-bar-fill'),
             progressTimeText: document.getElementById('progress-time-text'),
             
+            // Question progress elements
+            currentQuestionNum: document.getElementById('current-question-num'),
+            totalQuestions: document.getElementById('total-questions'),
+            progressPercentage: document.getElementById('progress-percentage'),
+            questionProgressFill: document.getElementById('question-progress-fill'),
+            
             // Correct answer elements
             correctAnswerDisplay: document.getElementById('correct-answer-display'),
             correctAnswerText: document.getElementById('correct-answer-text'),
@@ -603,11 +609,44 @@ class HostControl {
                 <span class="time">${question.time_limit || 30}s</span>
             `;
         } else {
-            this.elements.questionText.textContent = 'No question selected';
+            this.elements.questionText.textContent = 'Select a game and start your first question...';
             this.elements.questionMeta.innerHTML = '';
             if (this.elements.correctAnswerDisplay) {
                 this.elements.correctAnswerDisplay.classList.add('hidden');
             }
+        }
+        
+        // Update question progress indicators
+        this.updateQuestionProgress();
+    }
+    
+    updateQuestionProgress() {
+        const totalQuestions = this.questions.length;
+        const currentNum = this.currentQuestionIndex + 1; // 1-based for display
+        const percentage = totalQuestions > 0 ? Math.round((currentNum / totalQuestions) * 100) : 0;
+        
+        // Update header progress
+        if (this.elements.questionProgress) {
+            this.elements.questionProgress.textContent = `Q ${currentNum}/${totalQuestions}`;
+        }
+        
+        // Update team count
+        if (this.elements.teamsCount) {
+            this.elements.teamsCount.textContent = `${this.teams.length}`;
+        }
+        
+        // Update question progress info
+        if (this.elements.currentQuestionNum) {
+            this.elements.currentQuestionNum.textContent = currentNum;
+        }
+        if (this.elements.totalQuestions) {
+            this.elements.totalQuestions.textContent = totalQuestions;
+        }
+        if (this.elements.progressPercentage) {
+            this.elements.progressPercentage.textContent = `${percentage}%`;
+        }
+        if (this.elements.questionProgressFill) {
+            this.elements.questionProgressFill.style.width = `${percentage}%`;
         }
     }
 

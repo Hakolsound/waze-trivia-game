@@ -19,8 +19,14 @@
             <div class="header-left">
                 <h1>🏆 Waze Trivia Host</h1>
                 <div class="game-stats">
-                    <span id="question-progress">Q 0/0</span>
-                    <span id="teams-count">0 Teams</span>
+                    <div class="stat-item">
+                        <span class="stat-label">Progress</span>
+                        <span id="question-progress" class="stat-value">Q 0/0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Teams</span>
+                        <span id="teams-count" class="stat-value">0</span>
+                    </div>
                 </div>
             </div>
             <div class="header-center">
@@ -60,7 +66,16 @@
                 <!-- Question Display Card -->
                 <div class="question-card">
                     <div class="card-header">
-                        <h2>📝 Current Question</h2>
+                        <h2>🎯 Active Question</h2>
+                        <div class="question-progress-info">
+                            <div class="question-counter">
+                                <span class="counter-text">Question <span id="current-question-num">1</span> of <span id="total-questions">10</span></span>
+                                <span class="progress-percentage" id="progress-percentage">10%</span>
+                            </div>
+                            <div class="question-progress-track">
+                                <div class="question-progress-fill" id="question-progress-fill" style="width: 10%;"></div>
+                            </div>
+                        </div>
                         <div class="question-meta-container">
                             <div class="question-meta" id="question-meta">
                                 <span class="points">100 pts</span>

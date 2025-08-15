@@ -36,6 +36,17 @@ app.use('/display', express.static(path.join(__dirname, '../frontend/game-displa
 app.use('/control', express.static(path.join(__dirname, '../frontend/host-control')));
 app.use('/shared', express.static(path.join(__dirname, '../frontend/shared')));
 
+// Serve admin static files at root level since admin is the default page
+app.get('/admin.css', (req, res) => {
+    res.setHeader('Content-Type', 'text/css');
+    res.sendFile(path.join(__dirname, '../frontend/admin-config/admin.css'));
+});
+
+app.get('/admin.js', (req, res) => {
+    res.setHeader('Content-Type', 'application/javascript');
+    res.sendFile(path.join(__dirname, '../frontend/admin-config/admin.js'));
+});
+
 const db = new Database();
 const gameService = new GameService(db, io);
 const esp32Service = new ESP32Service(io);

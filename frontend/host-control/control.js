@@ -165,7 +165,13 @@ class HostControl {
             awardPointsSubmitBtn: document.getElementById('award-points-submit-btn'),
             
             // Toast container
-            toastContainer: document.getElementById('toast-container')
+            toastContainer: document.getElementById('toast-container'),
+            
+            // Buzzer overlay elements
+            buzzerOverlay: document.getElementById('buzzer-overlay'),
+            toggleBuzzerOverlayBtn: document.getElementById('toggle-buzzer-overlay'),
+            onlineBuzzers: document.getElementById('online-buzzers'),
+            offlineBuzzers: document.getElementById('offline-buzzers')
         };
     }
 
@@ -310,6 +316,13 @@ class HostControl {
         // Refresh scores button
         if (this.elements.refreshScoresBtn) {
             this.elements.refreshScoresBtn.addEventListener('click', () => this.updateTeamDisplay());
+        }
+        
+        // Buzzer overlay controls
+        if (this.elements.toggleBuzzerOverlayBtn) {
+            this.elements.toggleBuzzerOverlayBtn.addEventListener('click', () => {
+                this.toggleBuzzerOverlay();
+            });
         }
     }
 
@@ -1447,6 +1460,108 @@ class HostControl {
             this.showToast('Failed to update score', 'error');
             // Revert the display
             this.updateTeamDisplay();
+        }
+    }
+
+    // Buzzer Overlay Methods
+    toggleBuzzerOverlay() {
+        if (!this.elements.buzzerOverlay) return;
+        
+        const isHidden = this.elements.buzzerOverlay.classList.contains('minimized');
+        
+        if (isHidden) {
+            this.elements.buzzerOverlay.classList.remove('minimized');
+            this.elements.toggleBuzzerOverlayBtn.textContent = 'Hide';
+            this.refreshBuzzerOverlayStatus();
+        } else {
+            this.elements.buzzerOverlay.classList.add('minimized');
+            this.elements.toggleBuzzerOverlayBtn.textContent = 'Show';
+        }
+    }
+
+    updateBuzzerOverlay() {
+        if (!this.buzzerDevices || !this.elements.onlineBuzzers || !this.elements.offlineBuzzers) return;
+        
+        const now = Date.now();
+        const staleThreshold = 60000; // 60 seconds
+        
+        const onlineBuzzers = [];
+        const offlineBuzzers = [];
+        
+        this.buzzerDevices.forEach(device => {
+            const timeSinceLastSeen = now - device.last_seen;
+            if (timeSinceLastSeen < staleThreshold) {
+                onlineBuzzers.push(device);
+            } else {
+                offlineBuzzers.push(device);
+            }
+        });
+        
+        // Update online buzzers
+        this.renderBuzzerOverlayList(this.elements.onlineBuzzers, onlineBuzzers, true);
+        
+        // Update offline buzzers
+        this.renderBuzzerOverlayList(this.elements.offlineBuzzers, offlineBuzzers, false);
+    }
+
+    renderBuzzerOverlayList(container, buzzers, isOnline) {
+        if (buzzers.length === 0) {
+            container.innerHTML = `<div class="no-buzzers">No ${isOnline ? 'online' : 'offline'} buzzers</div>`;
+            return;
+        }
+        
+        container.innerHTML = '';
+        
+        buzzers.forEach(device => {
+            const buzzerElement = document.createElement('div');
+            buzzerElement.className = `buzzer-item ${isOnline ? 'online' : 'offline'}`;
+            
+            const teamName = this.getTeamNameByBuzzerId(device.device_id);
+            const timeSinceLastSeen = Date.now() - device.last_seen;
+            const lastSeenText = this.formatLastSeen(timeSinceLastSeen);
+            
+            buzzerElement.innerHTML = `
+                <div class="buzzer-info">
+                    <div class="buzzer-header">
+                        <span class="buzzer-id">#${device.device_id}</span>
+                        <span class="buzzer-status-dot ${isOnline ? 'online' : 'offline'}"></span>
+                    </div>
+                    <div class="buzzer-details">
+                        ${teamName ? `<div class="team-name">${teamName}</div>` : '<div class="no-team">No team assigned</div>'}
+                        <div class="last-seen">${lastSeenText}</div>
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(buzzerElement);
+        });
+    }
+
+    getTeamNameByBuzzerId(buzzerId) {
+        const team = this.teams.find(team => team.buzzer_id === buzzerId);
+        return team ? team.name : null;
+    }
+
+    async refreshBuzzerOverlayStatus() {
+        try {
+            const response = await fetch('/api/buzzers/devices');
+            if (response.ok) {
+                const devices = await response.json();
+                const now = Date.now();
+                
+                // Update our device map with fresh data
+                this.buzzerDevices = new Map();
+                devices.forEach(device => {
+                    this.buzzerDevices.set(device.device_id, {
+                        ...device,
+                        last_seen: device.last_seen || now
+                    });
+                });
+                
+                this.updateBuzzerOverlay();
+            }
+        } catch (error) {
+            console.error('Failed to refresh buzzer status:', error);
         }
     }
 }

@@ -15,6 +15,10 @@
             <h1>🏆 Waze Trivia Admin</h1>
             <div class="nav-info" id="nav-info">
                 <span class="current-game-indicator" id="current-game-indicator">No Game Selected</span>
+                <div class="nav-actions">
+                    <button id="nav-open-display-btn" class="btn btn-secondary btn-small">🖥️ Display</button>
+                    <button id="nav-open-host-btn" class="btn btn-secondary btn-small">🎮 Host</button>
+                </div>
             </div>
         </nav>
         
@@ -22,17 +26,29 @@
         <div id="game-selector-container"></div>
 
         <main class="admin-main">
-            <!-- Game Selection View -->
-            <section id="games-selection" class="games-selection active">
-                <div class="section-header">
-                    <h2>📁 Select Game to Configure</h2>
-                    <button id="create-game-btn" class="btn btn-primary">+ Create New Game</button>
+            <!-- Game selection now handled by GlobalGameSelector -->
+            
+            <!-- Live Buzzer Status Overlay -->
+            <div id="buzzer-overlay" class="buzzer-overlay">
+                <div class="buzzer-overlay-header">
+                    <h3>🔔 Live Buzzer Status</h3>
+                    <button id="toggle-buzzer-overlay" class="btn btn-small btn-secondary">Hide</button>
                 </div>
-
-                <div class="games-grid" id="games-grid">
-                    <!-- Games will be populated here as cards -->
+                <div class="buzzer-overlay-content">
+                    <div class="buzzer-section">
+                        <h4>🟢 Online Buzzers</h4>
+                        <div id="online-buzzers" class="buzzer-list">
+                            <div class="no-buzzers">No online buzzers detected</div>
+                        </div>
+                    </div>
+                    <div class="buzzer-section">
+                        <h4>🔴 Offline Buzzers</h4>
+                        <div id="offline-buzzers" class="buzzer-list">
+                            <div class="no-buzzers">No offline buzzers</div>
+                        </div>
+                    </div>
                 </div>
-            </section>
+            </div>
 
             <!-- Game Configuration View -->
             <section id="game-configuration" class="game-configuration hidden">

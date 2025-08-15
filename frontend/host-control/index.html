@@ -252,6 +252,28 @@
             </div>
         </div>
 
+        <!-- Live Buzzer Status Overlay -->
+        <div id="buzzer-overlay" class="buzzer-overlay">
+            <div class="buzzer-overlay-header">
+                <h3>🔔 Live Buzzer Status</h3>
+                <button id="toggle-buzzer-overlay" class="btn btn-small btn-secondary">Hide</button>
+            </div>
+            <div class="buzzer-overlay-content">
+                <div class="buzzer-section">
+                    <h4>🟢 Online Buzzers</h4>
+                    <div id="online-buzzers" class="buzzer-list">
+                        <div class="no-buzzers">No online buzzers detected</div>
+                    </div>
+                </div>
+                <div class="buzzer-section">
+                    <h4>🔴 Offline Buzzers</h4>
+                    <div id="offline-buzzers" class="buzzer-list">
+                        <div class="no-buzzers">No offline buzzers</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Quick Actions Floating Panel -->
         <div class="floating-actions">
             <button id="show-buzzer-status-btn" class="fab" title="Show Buzzer Status">

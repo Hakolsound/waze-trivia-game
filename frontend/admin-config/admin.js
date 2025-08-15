@@ -8,6 +8,12 @@ class AdminConfig {
         this.setupSocketListeners();
         this.initializeElements();
         this.setupEventListeners();
+        
+        // Initialize buzzer overlay
+        this.buzzerDevices = new Map();
+        setTimeout(() => {
+            this.refreshBuzzerStatus();
+        }, 1000);
     }
 
     initializeGameSelector() {
@@ -59,17 +65,10 @@ class AdminConfig {
     }
 
     showAdminInterface() {
-        const gameSelection = document.getElementById('games-selection');
         const gameConfiguration = document.getElementById('game-configuration');
         
-        console.log('gameSelection element:', gameSelection);
         console.log('gameConfiguration element:', gameConfiguration);
         
-        if (gameSelection) {
-            gameSelection.classList.remove('active');
-            gameSelection.classList.add('hidden');
-            console.log('Hidden games-selection');
-        }
         if (gameConfiguration) {
             gameConfiguration.classList.remove('hidden');
             gameConfiguration.classList.add('active');
@@ -78,13 +77,9 @@ class AdminConfig {
     }
 
     hideAdminInterface() {
-        const gameSelection = document.getElementById('games-selection');
+        // No longer need to show games-selection since we use global game selector
         const gameConfiguration = document.getElementById('game-configuration');
         
-        if (gameSelection) {
-            gameSelection.classList.add('active');
-            gameSelection.classList.remove('hidden');
-        }
         if (gameConfiguration) {
             gameConfiguration.classList.add('hidden');
             gameConfiguration.classList.remove('active');
@@ -167,7 +162,17 @@ class AdminConfig {
             firebaseStatus: document.getElementById('firebase-status'),
             testAllBuzzersBtn: document.getElementById('test-all-buzzers-btn'),
             refreshSystemStatusBtn: document.getElementById('refresh-system-status-btn'),
-            backupDbBtn: document.getElementById('backup-db-btn')
+            backupDbBtn: document.getElementById('backup-db-btn'),
+            
+            // Buzzer overlay elements
+            buzzerOverlay: document.getElementById('buzzer-overlay'),
+            toggleBuzzerOverlayBtn: document.getElementById('toggle-buzzer-overlay'),
+            onlineBuzzers: document.getElementById('online-buzzers'),
+            offlineBuzzers: document.getElementById('offline-buzzers'),
+            
+            // Navigation buttons
+            navOpenDisplayBtn: document.getElementById('nav-open-display-btn'),
+            navOpenHostBtn: document.getElementById('nav-open-host-btn')
         };
     }
 
@@ -281,6 +286,26 @@ class AdminConfig {
                 this.backupDatabase();
             });
         }
+        
+        // Buzzer overlay controls
+        if (this.elements.toggleBuzzerOverlayBtn) {
+            this.elements.toggleBuzzerOverlayBtn.addEventListener('click', () => {
+                this.toggleBuzzerOverlay();
+            });
+        }
+        
+        // Navigation buttons
+        if (this.elements.navOpenDisplayBtn) {
+            this.elements.navOpenDisplayBtn.addEventListener('click', () => {
+                window.open('/display', '_blank', 'width=1920,height=1080');
+            });
+        }
+
+        if (this.elements.navOpenHostBtn) {
+            this.elements.navOpenHostBtn.addEventListener('click', () => {
+                window.open('/control', '_blank', 'width=1400,height=900');
+            });
+        }
     }
 
     setupSocketListeners() {
@@ -291,6 +316,19 @@ class AdminConfig {
 
         this.socket.on('disconnect', () => {
             console.log('Disconnected from server');
+        });
+
+        // Buzzer monitoring listeners
+        this.socket.on('esp32-device', (data) => {
+            this.updateBuzzerDevice(data);
+        });
+
+        this.socket.on('buzzer-heartbeat', (data) => {
+            this.updateBuzzerHeartbeat(data);
+        });
+
+        this.socket.on('esp32-status', (data) => {
+            this.updateESP32Status(data);
         });
     }
 
@@ -798,6 +836,173 @@ class AdminConfig {
         } catch (error) {
             console.error('Failed to backup database:', error);
             this.showToast('Failed to backup database', 'error');
+        }
+    }
+
+    // Buzzer Overlay Methods
+    toggleBuzzerOverlay() {
+        if (!this.elements.buzzerOverlay) return;
+        
+        const isHidden = this.elements.buzzerOverlay.classList.contains('minimized');
+        
+        if (isHidden) {
+            this.elements.buzzerOverlay.classList.remove('minimized');
+            this.elements.toggleBuzzerOverlayBtn.textContent = 'Hide';
+            this.refreshBuzzerStatus();
+        } else {
+            this.elements.buzzerOverlay.classList.add('minimized');
+            this.elements.toggleBuzzerOverlayBtn.textContent = 'Show';
+        }
+    }
+
+    updateBuzzerDevice(data) {
+        if (!this.buzzerDevices) {
+            this.buzzerDevices = new Map();
+        }
+        
+        const deviceId = data.device_id || data.id;
+        const now = Date.now();
+        
+        this.buzzerDevices.set(deviceId, {
+            ...data,
+            last_seen: now,
+            status: 'online'
+        });
+        
+        this.updateBuzzerOverlay();
+    }
+
+    updateBuzzerHeartbeat(data) {
+        if (!this.buzzerDevices) {
+            this.buzzerDevices = new Map();
+        }
+        
+        const deviceId = data.device_id || data.id;
+        const now = Date.now();
+        
+        if (this.buzzerDevices.has(deviceId)) {
+            const device = this.buzzerDevices.get(deviceId);
+            device.last_seen = now;
+            device.status = 'online';
+            this.buzzerDevices.set(deviceId, device);
+        } else {
+            // Create new device entry from heartbeat
+            this.buzzerDevices.set(deviceId, {
+                device_id: deviceId,
+                name: `Buzzer ${deviceId}`,
+                last_seen: now,
+                status: 'online',
+                ...data
+            });
+        }
+        
+        this.updateBuzzerOverlay();
+    }
+
+    updateESP32Status(data) {
+        // Update ESP32 connection status in system panel
+        if (this.elements.hardwareStatus) {
+            this.elements.hardwareStatus.textContent = data.connected ? 'Connected' : 'Disconnected';
+            this.elements.hardwareStatus.className = `status-indicator ${data.connected ? 'healthy' : 'error'}`;
+        }
+    }
+
+    getTeamNameByBuzzerId(buzzerId) {
+        if (!this.currentGame || !this.currentGame.groups) return null;
+        const team = this.currentGame.groups.find(team => team.buzzer_id === buzzerId);
+        return team ? team.name : null;
+    }
+
+    updateBuzzerOverlay() {
+        if (!this.buzzerDevices || !this.elements.onlineBuzzers || !this.elements.offlineBuzzers) return;
+        
+        const now = Date.now();
+        const staleThreshold = 60000; // 60 seconds
+        
+        const onlineBuzzers = [];
+        const offlineBuzzers = [];
+        
+        this.buzzerDevices.forEach(device => {
+            const timeSinceLastSeen = now - device.last_seen;
+            if (timeSinceLastSeen < staleThreshold) {
+                onlineBuzzers.push(device);
+            } else {
+                offlineBuzzers.push(device);
+            }
+        });
+        
+        // Update online buzzers
+        this.renderBuzzerList(this.elements.onlineBuzzers, onlineBuzzers, true);
+        
+        // Update offline buzzers
+        this.renderBuzzerList(this.elements.offlineBuzzers, offlineBuzzers, false);
+    }
+
+    renderBuzzerList(container, buzzers, isOnline) {
+        if (buzzers.length === 0) {
+            container.innerHTML = `<div class="no-buzzers">No ${isOnline ? 'online' : 'offline'} buzzers</div>`;
+            return;
+        }
+        
+        container.innerHTML = '';
+        
+        buzzers.forEach(device => {
+            const buzzerElement = document.createElement('div');
+            buzzerElement.className = `buzzer-item ${isOnline ? 'online' : 'offline'}`;
+            
+            const teamName = this.getTeamNameByBuzzerId(device.device_id);
+            const timeSinceLastSeen = Date.now() - device.last_seen;
+            const lastSeenText = this.formatLastSeen(timeSinceLastSeen);
+            
+            buzzerElement.innerHTML = `
+                <div class="buzzer-info">
+                    <div class="buzzer-header">
+                        <span class="buzzer-id">#${device.device_id}</span>
+                        <span class="buzzer-status-dot ${isOnline ? 'online' : 'offline'}"></span>
+                    </div>
+                    <div class="buzzer-details">
+                        ${teamName ? `<div class="team-name">${teamName}</div>` : '<div class="no-team">No team assigned</div>'}
+                        <div class="last-seen">${lastSeenText}</div>
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(buzzerElement);
+        });
+    }
+
+    formatLastSeen(milliseconds) {
+        const seconds = Math.floor(milliseconds / 1000);
+        
+        if (seconds < 60) {
+            return `${seconds}s ago`;
+        } else if (seconds < 3600) {
+            return `${Math.floor(seconds / 60)}m ago`;
+        } else {
+            return `${Math.floor(seconds / 3600)}h ago`;
+        }
+    }
+
+    async refreshBuzzerStatus() {
+        try {
+            const response = await fetch('/api/buzzers/devices');
+            if (response.ok) {
+                const devices = await response.json();
+                const now = Date.now();
+                
+                // Update our device map with fresh data
+                this.buzzerDevices = new Map();
+                devices.forEach(device => {
+                    this.buzzerDevices.set(device.device_id, {
+                        ...device,
+                        last_seen: device.last_seen || now
+                    });
+                });
+                
+                this.updateBuzzerOverlay();
+            }
+        } catch (error) {
+            console.error('Failed to refresh buzzer status:', error);
         }
     }
 

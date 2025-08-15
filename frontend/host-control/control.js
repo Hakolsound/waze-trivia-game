@@ -393,6 +393,87 @@ class HostControl {
                 this.saveThresholdSetting();
             });
         }
+        
+        // Keyboard shortcuts
+        this.setupKeyboardShortcuts();
+    }
+    
+    setupKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            // Don't trigger shortcuts if user is typing in an input field
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
+                return;
+            }
+            
+            // Don't trigger shortcuts if a modal is open (except for Escape)
+            const modalOpen = !document.getElementById('answer-evaluation-modal').classList.contains('hidden') ||
+                            !document.getElementById('buzzer-status-modal').classList.contains('hidden') ||
+                            !document.getElementById('manual-points-modal').classList.contains('hidden') ||
+                            !document.getElementById('game-actions-modal').classList.contains('hidden');
+                            
+            if (modalOpen && e.key !== 'Escape') {
+                return;
+            }
+            
+            switch (e.key) {
+                case ' ': // Space - Start Question or Evaluate Answers
+                    e.preventDefault();
+                    if (this.isQuestionActive && this.buzzerOrder.length > 0) {
+                        this.showAnswerEvaluationModal();
+                    } else if (!this.isQuestionActive) {
+                        this.startQuestion();
+                    }
+                    break;
+                    
+                case 'ArrowLeft': // Left Arrow - Previous Question
+                    e.preventDefault();
+                    this.prevQuestion();
+                    break;
+                    
+                case 'ArrowRight': // Right Arrow - Next Question  
+                    e.preventDefault();
+                    this.nextQuestion();
+                    break;
+                    
+                case 'Escape': // Escape - End Question or Close Modals
+                    e.preventDefault();
+                    if (modalOpen) {
+                        this.hideAnswerEvaluationModal();
+                        this.hideBuzzerStatusModal();
+                        this.hideManualPointsModal();
+                        this.hideGameActionsModal();
+                    } else if (this.isQuestionActive) {
+                        this.endQuestion();
+                    }
+                    break;
+                    
+                case 'j':
+                case 'J': // J - Jump to Question
+                    e.preventDefault();
+                    this.showQuestionSelectModal();
+                    break;
+                    
+                case 'g':
+                case 'G': // G - Change Game
+                    e.preventDefault();
+                    if (this.gameSelector) {
+                        this.gameSelector.showGameSelector();
+                    }
+                    break;
+                    
+                case 'd':
+                case 'D': // D - Open Display
+                    e.preventDefault();
+                    window.open('/display', '_blank');
+                    break;
+                    
+                case 'a':
+                case 'A': // A - Open Admin
+                    e.preventDefault();
+                    window.open('/admin', '_blank');
+                    break;
+            }
+        });
     }
 
     // Game loading is now handled by the global game selector

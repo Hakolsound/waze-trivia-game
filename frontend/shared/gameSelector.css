@@ -20,14 +20,15 @@
 }
 
 .game-selector-content {
-    background: white;
+    background: rgba(30, 30, 50, 0.98);
     border-radius: 20px;
     max-width: 600px;
     width: 90%;
     max-height: 80vh;
     overflow: hidden;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     animation: slideIn 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .game-selector-header {
@@ -92,8 +93,8 @@
 }
 
 .game-selector-item {
-    background: #f9fafb;
-    border: 2px solid #e5e7eb;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
     border-radius: 12px;
     padding: 20px;
     margin-bottom: 16px;
@@ -121,14 +122,14 @@
     margin: 0 0 8px 0;
     font-size: 1.2rem;
     font-weight: 600;
-    color: #1f2937;
+    color: #e0e0e0;
 }
 
 .game-meta {
     display: flex;
     gap: 16px;
     font-size: 0.9rem;
-    color: #6b7280;
+    color: #b0b0b0;
 }
 
 .game-selector-item-actions {

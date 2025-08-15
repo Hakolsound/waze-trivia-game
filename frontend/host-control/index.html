@@ -24,9 +24,14 @@
                 </div>
             </div>
             <div class="header-center">
+                <div class="current-game-info">
+                    <span class="current-game-label">Current Game:</span>
+                    <strong id="current-game-name">No Game Loaded</strong>
+                </div>
                 <div class="header-actions">
-                    <button id="nav-open-display-btn" class="btn btn-small btn-secondary">🖥️ Display</button>
-                    <button id="nav-open-admin-btn" class="btn btn-small btn-secondary">⚙️ Admin</button>
+                    <button id="change-game-btn" class="btn btn-small btn-primary">Change Game <kbd>G</kbd></button>
+                    <button id="nav-open-display-btn" class="btn btn-small btn-secondary">🖥️ Display <kbd>D</kbd></button>
+                    <button id="nav-open-admin-btn" class="btn btn-small btn-secondary">⚙️ Admin <kbd>A</kbd></button>
                 </div>
             </div>
             <div class="header-right">
@@ -89,27 +94,63 @@
 
                 <!-- Main Control Row -->
                 <div class="main-controls">
-                    <button id="prev-question-btn" class="control-icon btn-secondary" title="Previous Question" disabled>
-                        <span class="material-icons">skip_previous</span>
+                    <button id="prev-question-btn" class="control-btn btn-secondary" title="Previous Question [←]" disabled>
+                        <div class="control-icon">
+                            <span class="material-icons">skip_previous</span>
+                        </div>
+                        <div class="control-text">
+                            <span class="control-label">Previous</span>
+                            <kbd>←</kbd>
+                        </div>
                     </button>
-                    <button id="start-question-btn" class="control-icon control-icon-large btn-primary" title="Start Question" disabled>
-                        <span class="material-icons">play_arrow</span>
+                    <button id="start-question-btn" class="control-btn control-btn-large btn-primary" title="Start Question [Space]" disabled>
+                        <div class="control-icon">
+                            <span class="material-icons">play_arrow</span>
+                        </div>
+                        <div class="control-text">
+                            <span class="control-label">START</span>
+                            <kbd>Space</kbd>
+                        </div>
                     </button>
-                    <button id="show-answers-btn" class="control-icon control-icon-large btn-success hidden" title="Evaluate Answers">
-                        <span class="material-icons">quiz</span>
+                    <button id="show-answers-btn" class="control-btn control-btn-large btn-success hidden" title="Evaluate Answers [Space]">
+                        <div class="control-icon">
+                            <span class="material-icons">quiz</span>
+                        </div>
+                        <div class="control-text">
+                            <span class="control-label">EVALUATE</span>
+                            <kbd>Space</kbd>
+                        </div>
                     </button>
-                    <button id="next-question-btn" class="control-icon btn-secondary" title="Next Question" disabled>
-                        <span class="material-icons">skip_next</span>
+                    <button id="next-question-btn" class="control-btn btn-secondary" title="Next Question [→]" disabled>
+                        <div class="control-icon">
+                            <span class="material-icons">skip_next</span>
+                        </div>
+                        <div class="control-text">
+                            <span class="control-label">Next</span>
+                            <kbd>→</kbd>
+                        </div>
                     </button>
                 </div>
 
                 <!-- Quick Actions Bar -->
                 <div class="quick-actions">
-                    <button id="show-question-select-btn" class="control-icon btn-secondary" title="Jump to Question" disabled>
-                        <span class="material-icons">list</span>
+                    <button id="show-question-select-btn" class="control-btn btn-secondary" title="Jump to Question [J]" disabled>
+                        <div class="control-icon">
+                            <span class="material-icons">list</span>
+                        </div>
+                        <div class="control-text">
+                            <span class="control-label">Jump</span>
+                            <kbd>J</kbd>
+                        </div>
                     </button>
-                    <button id="end-question-btn" class="control-icon btn-warning" title="End Question" disabled>
-                        <span class="material-icons">stop</span>
+                    <button id="end-question-btn" class="control-btn btn-warning" title="End Question [Esc]" disabled>
+                        <div class="control-icon">
+                            <span class="material-icons">stop</span>
+                        </div>
+                        <div class="control-text">
+                            <span class="control-label">End</span>
+                            <kbd>Esc</kbd>
+                        </div>
                     </button>
                     <!-- Hidden select for question jumping -->
                     <select id="question-select" class="question-selector hidden" disabled>

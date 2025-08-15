@@ -378,14 +378,12 @@ class AdminConfig {
         
         // Listen for any ESP32 related events
         this.socket.on('esp32-device-data', (data) => {
-            console.log('=== ESP32 DEVICE DATA RECEIVED ===', data);
             if (data.esp32_data) {
                 this.parseESP32DeviceData(data.esp32_data, data.timestamp);
             }
         });
         
         this.socket.on('esp32-status', (data) => {
-            console.log('=== ESP32 STATUS RECEIVED ===', data);
             this.updateESP32Status(data);
         });
     }
@@ -1062,7 +1060,6 @@ class AdminConfig {
                 ...existingDevice // Keep any additional data (but override status)
             };
             
-            console.log(`Setting device ${deviceId} data:`, deviceData);
             this.buzzerDevices.set(deviceId, deviceData);
             
             this.updateBuzzerSidebar();
@@ -1086,22 +1083,15 @@ class AdminConfig {
         const onlineBuzzers = [];
         const offlineBuzzers = [];
         
-        console.log('UpdateBuzzerSidebar - Current devices:', Array.from(this.buzzerDevices.values()));
-        console.log('Threshold:', staleThreshold / 1000, 'seconds');
-        
         this.buzzerDevices.forEach(device => {
             const timeSinceLastSeen = now - device.last_seen;
             const isRecent = timeSinceLastSeen < staleThreshold;
             const isOnlineReported = device.online === true;
             
-            console.log(`Device ${device.device_id}: online=${isOnlineReported}, recent=${isRecent} (${Math.floor(timeSinceLastSeen/1000)}s ago)`);
-            
             // Device is online ONLY if ESP32 reported online=true AND data is recent
             if (isOnlineReported && isRecent) {
-                console.log(`Adding device ${device.device_id} to ONLINE list`);
                 onlineBuzzers.push(device);
             } else {
-                console.log(`Adding device ${device.device_id} to OFFLINE list`);
                 offlineBuzzers.push(device);
             }
         });
@@ -1219,7 +1209,9 @@ class AdminConfig {
     getOnlineThreshold() {
         if (this.elements.onlineThreshold) {
             const value = parseInt(this.elements.onlineThreshold.value);
-            return value * 1000; // Convert seconds to milliseconds
+            // Ensure minimum threshold of 10 seconds to prevent constant offline/online switching
+            const minValue = Math.max(value, 10);
+            return minValue * 1000; // Convert seconds to milliseconds
         }
         return 60000; // Default 60 seconds
     }

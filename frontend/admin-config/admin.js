@@ -455,7 +455,13 @@ class AdminConfig {
         }
 
         this.elements.questionTabs.innerHTML = questions.map((question, index) => `
-            <div class="question-tab ${index === 0 ? 'active' : ''}" data-question-id="${question.id}">
+            <div class="question-tab ${index === 0 ? 'active' : ''}" 
+                 data-question-id="${question.id}" 
+                 draggable="true"
+                 ondragstart="admin.handleQuestionDragStart(event)"
+                 ondragover="admin.handleQuestionDragOver(event)"
+                 ondrop="admin.handleQuestionDrop(event)"
+                 ondragend="admin.handleQuestionDragEnd(event)">
                 <span>Q${question.question_order || index + 1}</span>
                 <button class="question-tab-close" onclick="admin.deleteQuestion('${question.id}')">&times;</button>
             </div>
@@ -564,9 +570,12 @@ class AdminConfig {
     showQuestionEditor(question = null) {
         this.editingQuestion = question;
         
+        // Get default time from current game branding/settings
+        const defaultTime = (this.currentGame?.default_question_time) || 30;
+        
         if (this.elements.questionText) this.elements.questionText.value = question ? question.text : '';
         if (this.elements.correctAnswer) this.elements.correctAnswer.value = question ? question.correct_answer : '';
-        if (this.elements.timeLimit) this.elements.timeLimit.value = question ? question.time_limit : 30;
+        if (this.elements.timeLimit) this.elements.timeLimit.value = question ? question.time_limit : defaultTime;
         if (this.elements.questionPoints) this.elements.questionPoints.value = question ? question.points : 100;
         if (this.elements.mediaUrl) this.elements.mediaUrl.value = question ? question.media_url || '' : '';
         
@@ -631,6 +640,67 @@ class AdminConfig {
         } catch (error) {
             console.error('Failed to delete question:', error);
             this.showToast('Failed to delete question', 'error');
+        }
+    }
+
+    // Drag and Drop handlers for question tabs
+    handleQuestionDragStart(e) {
+        e.dataTransfer.setData('text/plain', e.target.dataset.questionId);
+        e.target.classList.add('dragging');
+    }
+
+    handleQuestionDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    }
+
+    handleQuestionDrop(e) {
+        e.preventDefault();
+        const draggedQuestionId = e.dataTransfer.getData('text/plain');
+        const dropTargetId = e.target.closest('.question-tab').dataset.questionId;
+        
+        if (draggedQuestionId !== dropTargetId) {
+            this.reorderQuestions(draggedQuestionId, dropTargetId);
+        }
+    }
+
+    handleQuestionDragEnd(e) {
+        e.target.classList.remove('dragging');
+    }
+
+    async reorderQuestions(draggedId, dropTargetId) {
+        if (!this.currentGame) return;
+        
+        try {
+            // Get current questions
+            const response = await fetch(`/api/questions/game/${this.currentGame.id}`);
+            const questions = await response.json();
+            
+            // Find positions
+            const draggedIndex = questions.findIndex(q => q.id === draggedId);
+            const targetIndex = questions.findIndex(q => q.id === dropTargetId);
+            
+            if (draggedIndex === -1 || targetIndex === -1) return;
+            
+            // Reorder array
+            const [draggedQuestion] = questions.splice(draggedIndex, 1);
+            questions.splice(targetIndex, 0, draggedQuestion);
+            
+            // Create new order array
+            const questionIds = questions.map(q => q.id);
+            
+            // Send reorder request
+            await fetch(`/api/questions/game/${this.currentGame.id}/reorder`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ questionIds })
+            });
+            
+            this.showToast('Questions reordered successfully', 'success');
+            this.loadQuestions(this.currentGame.id);
+        } catch (error) {
+            console.error('Failed to reorder questions:', error);
+            this.showToast('Failed to reorder questions', 'error');
         }
     }
 

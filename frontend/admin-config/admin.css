@@ -284,6 +284,7 @@ body {
     gap: 2px;
     min-width: fit-content;
     padding-bottom: 8px;
+    align-items: flex-start;
 }
 
 .question-tab {
@@ -319,8 +320,10 @@ body {
 }
 
 .question-tab.dragging {
-    opacity: 0.5;
-    transform: rotate(5deg);
+    opacity: 0.6;
+    transform: rotate(2deg) scale(1.02);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    z-index: 10;
 }
 
 .question-tab-close {
@@ -350,12 +353,12 @@ body {
 }
 
 .add-question-tab {
-    background: transparent;
+    background: var(--gray-200);
     border: 2px dashed var(--gray-300);
     color: var(--gray-400);
-    border-radius: 8px;
-    width: 40px;
-    height: 40px;
+    border-radius: 8px 8px 0 0;
+    min-width: 48px;
+    height: 44px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -363,6 +366,8 @@ body {
     cursor: pointer;
     transition: all 0.3s ease;
     flex-shrink: 0;
+    margin-top: 0;
+    font-weight: bold;
 }
 
 .add-question-tab:hover {

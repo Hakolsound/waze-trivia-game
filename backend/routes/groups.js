@@ -12,6 +12,18 @@ module.exports = (gameService) => {
     }
   });
 
+  router.get('/:id', async (req, res) => {
+    try {
+      const group = await gameService.db.get('SELECT * FROM groups WHERE id = ?', [req.params.id]);
+      if (!group) {
+        return res.status(404).json({ error: 'Team not found' });
+      }
+      res.json(group);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   router.post('/game/:gameId', async (req, res) => {
     try {
       const { v4: uuidv4 } = require('uuid');

@@ -2109,6 +2109,29 @@ kbd {
     box-shadow: 0 0 0 1px rgba(244, 67, 54, 0.3);
 }
 
+/* Virtual Buzzer Styles */
+.buzzer-item.virtual {
+    background: rgba(76, 175, 80, 0.1);
+    border-color: rgba(76, 175, 80, 0.3);
+}
+
+.buzzer-item.virtual.armed {
+    background: rgba(255, 193, 7, 0.15);
+    border-color: rgba(255, 193, 7, 0.4);
+    animation: buzzerArmedPulse 1.8s ease-in-out infinite;
+}
+
+.status-dot.virtual {
+    background: #4CAF50;
+    box-shadow: 0 0 0 1px rgba(76, 175, 80, 0.3);
+}
+
+.status-dot.virtual.armed {
+    background: #FFC107;
+    box-shadow: 0 0 0 1px rgba(255, 193, 7, 0.4), 0 0 4px rgba(255, 193, 7, 0.6);
+    animation: dotArmedGlow 1.2s ease-in-out infinite alternate;
+}
+
 .no-buzzers {
     text-align: center;
     padding: 12px 8px;

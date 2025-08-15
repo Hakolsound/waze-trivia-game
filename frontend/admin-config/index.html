@@ -133,7 +133,8 @@
                                 </div>
                             </div>
                             <div class="system-actions">
-                                <button id="test-all-buzzers-btn" class="btn btn-info">Test All Buzzers</button>
+                                <button id="test-buzzer-connectivity-btn" class="btn btn-info">🔔 Test Buzzer Connectivity</button>
+                                <button id="test-all-buzzers-btn" class="btn btn-secondary">Test All Buzzers</button>
                                 <button id="refresh-system-status-btn" class="btn btn-secondary">Refresh Status</button>
                                 <button id="backup-db-btn" class="btn btn-warning">Backup Database</button>
                             </div>
@@ -263,6 +264,35 @@
                 </div>
             </div>
 
+            <!-- Buzzer Connectivity Test Modal -->
+            <div id="buzzer-test-modal" class="modal hidden">
+                <div class="modal-content large">
+                    <div class="modal-header">
+                        <h3>🔔 Buzzer Connectivity Test</h3>
+                        <button id="close-buzzer-test-btn" class="btn btn-secondary">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="buzzer-test-instructions">
+                            <p>🎯 <strong>Instructions:</strong> Press each team's buzzer to test connectivity. Teams will light up green when their buzzer is pressed.</p>
+                            <div class="test-status">
+                                <span class="status-indicator" id="test-status-indicator">Ready to test</span>
+                                <button id="reset-buzzer-test-btn" class="btn btn-small btn-secondary">Reset Test</button>
+                            </div>
+                        </div>
+                        
+                        <div class="buzzer-test-grid" id="buzzer-test-grid">
+                            <!-- Team cards will be populated here -->
+                        </div>
+                        
+                        <div class="buzzer-test-controls">
+                            <div class="test-progress">
+                                <span id="test-progress-text">Waiting for buzzer presses...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Toast Container -->
             <div id="toast-container" class="toast-container"></div>
     </div>

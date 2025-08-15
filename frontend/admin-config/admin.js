@@ -180,9 +180,18 @@ class AdminConfig {
             dbStatus: document.getElementById('db-status'),
             hardwareStatus: document.getElementById('hardware-status'),
             firebaseStatus: document.getElementById('firebase-status'),
+            testBuzzerConnectivityBtn: document.getElementById('test-buzzer-connectivity-btn'),
             testAllBuzzersBtn: document.getElementById('test-all-buzzers-btn'),
             refreshSystemStatusBtn: document.getElementById('refresh-system-status-btn'),
             backupDbBtn: document.getElementById('backup-db-btn'),
+            
+            // Buzzer test modal elements
+            buzzerTestModal: document.getElementById('buzzer-test-modal'),
+            closeBuzzerTestBtn: document.getElementById('close-buzzer-test-btn'),
+            buzzerTestGrid: document.getElementById('buzzer-test-grid'),
+            testStatusIndicator: document.getElementById('test-status-indicator'),
+            resetBuzzerTestBtn: document.getElementById('reset-buzzer-test-btn'),
+            testProgressText: document.getElementById('test-progress-text'),
             
             // Buzzer sidebar elements
             buzzerSidebar: document.getElementById('buzzer-sidebar'),
@@ -297,6 +306,12 @@ class AdminConfig {
             });
         }
 
+        if (this.elements.testBuzzerConnectivityBtn) {
+            this.elements.testBuzzerConnectivityBtn.addEventListener('click', () => {
+                this.showBuzzerTestModal();
+            });
+        }
+
         if (this.elements.testAllBuzzersBtn) {
             this.elements.testAllBuzzersBtn.addEventListener('click', () => {
                 this.testAllBuzzers();
@@ -306,6 +321,19 @@ class AdminConfig {
         if (this.elements.backupDbBtn) {
             this.elements.backupDbBtn.addEventListener('click', () => {
                 this.backupDatabase();
+            });
+        }
+        
+        // Buzzer test modal
+        if (this.elements.closeBuzzerTestBtn) {
+            this.elements.closeBuzzerTestBtn.addEventListener('click', () => {
+                this.hideBuzzerTestModal();
+            });
+        }
+        
+        if (this.elements.resetBuzzerTestBtn) {
+            this.elements.resetBuzzerTestBtn.addEventListener('click', () => {
+                this.resetBuzzerTest();
             });
         }
         
@@ -357,6 +385,13 @@ class AdminConfig {
 
         this.socket.on('buzzer-heartbeat', (data) => {
             this.updateBuzzerHeartbeat(data);
+        });
+        
+        // Buzzer press listener for test mode
+        this.socket.on('buzzer-press', (data) => {
+            if (this.buzzerTestState && this.buzzerTestState.isActive) {
+                this.handleBuzzerTestPress(data);
+            }
         });
 
         // Test if socket is working at all
@@ -1246,6 +1281,157 @@ class AdminConfig {
         setTimeout(() => {
             toast.remove();
         }, 3000);
+    }
+    
+    // Buzzer Test Modal Methods
+    showBuzzerTestModal() {
+        if (!this.currentGame) {
+            this.showToast('Please select a game first', 'error');
+            return;
+        }
+        
+        this.buzzerTestState = {
+            testedBuzzers: new Set(),
+            isActive: false
+        };
+        
+        this.renderBuzzerTestGrid();
+        this.elements.buzzerTestModal.classList.remove('hidden');
+        this.startBuzzerTest();
+    }
+    
+    hideBuzzerTestModal() {
+        this.elements.buzzerTestModal.classList.add('hidden');
+        this.stopBuzzerTest();
+    }
+    
+    async renderBuzzerTestGrid() {
+        if (!this.currentGame || !this.elements.buzzerTestGrid) return;
+        
+        try {
+            const response = await fetch(`/api/groups/game/${this.currentGame.id}`);
+            const teams = await response.json();
+            
+            this.elements.buzzerTestGrid.innerHTML = '';
+            
+            teams.forEach(team => {
+                const card = document.createElement('div');
+                card.className = 'buzzer-test-card';
+                card.dataset.teamId = team.id;
+                card.dataset.buzzerId = team.buzzer_id;
+                
+                card.innerHTML = `
+                    <div class="buzzer-test-team-name">${team.name}</div>
+                    <div class="buzzer-test-buzzer-id">Buzzer ID: ${team.buzzer_id}</div>
+                    <div class="buzzer-test-status waiting">
+                        <span class="material-icons">radio_button_unchecked</span>
+                        <span>Waiting for press...</span>
+                    </div>
+                `;
+                
+                this.elements.buzzerTestGrid.appendChild(card);
+            });
+            
+            this.updateTestProgress();
+        } catch (error) {
+            console.error('Failed to load teams for buzzer test:', error);
+            this.showToast('Failed to load teams', 'error');
+        }
+    }
+    
+    async startBuzzerTest() {
+        if (!this.currentGame) return;
+        
+        this.buzzerTestState.isActive = true;
+        this.elements.testStatusIndicator.textContent = 'Testing active - Press buzzers now!';
+        this.elements.testStatusIndicator.className = 'status-indicator testing';
+        
+        try {
+            // Arm all buzzers for testing
+            await fetch(`/api/buzzers/arm/${this.currentGame.id}`, { method: 'POST' });
+            this.showToast('Buzzer test started - Press each buzzer!', 'info');
+        } catch (error) {
+            console.error('Failed to arm buzzers for test:', error);
+            this.showToast('Failed to start buzzer test', 'error');
+        }
+    }
+    
+    async stopBuzzerTest() {
+        this.buzzerTestState.isActive = false;
+        
+        try {
+            // Disarm all buzzers
+            await fetch('/api/buzzers/disarm', { method: 'POST' });
+        } catch (error) {
+            console.error('Failed to disarm buzzers after test:', error);
+        }
+    }
+    
+    resetBuzzerTest() {
+        this.buzzerTestState.testedBuzzers.clear();
+        
+        // Reset all card states
+        const cards = this.elements.buzzerTestGrid.querySelectorAll('.buzzer-test-card');
+        cards.forEach(card => {
+            card.className = 'buzzer-test-card';
+            const status = card.querySelector('.buzzer-test-status');
+            status.className = 'buzzer-test-status waiting';
+            status.innerHTML = `
+                <span class="material-icons">radio_button_unchecked</span>
+                <span>Waiting for press...</span>
+            `;
+        });
+        
+        this.updateTestProgress();
+        
+        if (this.buzzerTestState.isActive) {
+            this.startBuzzerTest();
+        }
+    }
+    
+    updateTestProgress() {
+        const totalTeams = this.elements.buzzerTestGrid.querySelectorAll('.buzzer-test-card').length;
+        const testedCount = this.buzzerTestState.testedBuzzers.size;
+        
+        if (testedCount === 0) {
+            this.elements.testProgressText.textContent = `Waiting for buzzer presses... (0/${totalTeams})`;
+        } else if (testedCount < totalTeams) {
+            this.elements.testProgressText.textContent = `Testing in progress: ${testedCount}/${totalTeams} buzzers tested`;
+        } else {
+            this.elements.testProgressText.textContent = `✅ All buzzers tested successfully! (${testedCount}/${totalTeams})`;
+            this.elements.testStatusIndicator.textContent = 'All buzzers working!';
+            this.elements.testStatusIndicator.className = 'status-indicator tested';
+        }
+    }
+    
+    handleBuzzerTestPress(data) {
+        if (!this.buzzerTestState.isActive) return;
+        
+        const { buzzerId, groupId } = data;
+        
+        // Find the card for this buzzer
+        const card = this.elements.buzzerTestGrid.querySelector(`[data-buzzer-id="${buzzerId}"]`) ||
+                    this.elements.buzzerTestGrid.querySelector(`[data-team-id="${groupId}"]`);
+        
+        if (card && !this.buzzerTestState.testedBuzzers.has(buzzerId)) {
+            // Mark as tested
+            this.buzzerTestState.testedBuzzers.add(buzzerId);
+            
+            // Update card appearance
+            card.classList.add('tested');
+            const status = card.querySelector('.buzzer-test-status');
+            status.className = 'buzzer-test-status tested';
+            status.innerHTML = `
+                <span class="material-icons">check_circle</span>
+                <span>Buzzer working!</span>
+            `;
+            
+            this.updateTestProgress();
+            
+            // Show success toast
+            const teamName = card.querySelector('.buzzer-test-team-name').textContent;
+            this.showToast(`✅ ${teamName} buzzer tested successfully!`, 'success');
+        }
     }
 }
 

@@ -267,7 +267,7 @@ class HostControl {
             
             // Disarm buzzers when question ends naturally (timeout)
             if (this.isBuzzersArmed) {
-                await this.disarmBuzzers();
+                await this.disarmBuzzers(true, 'question-end');
             }
             
             this.updateQuestionControls();
@@ -790,7 +790,7 @@ class HostControl {
             
             // Disarm buzzers when question ends
             if (this.isBuzzersArmed) {
-                await this.disarmBuzzers();
+                await this.disarmBuzzers(true, 'question-end');
             }
             
             this.showToast('Question ended', 'info');
@@ -803,7 +803,7 @@ class HostControl {
         if (this.currentQuestionIndex < this.questions.length - 1) {
             // Disarm buzzers when navigating to next question
             if (this.isBuzzersArmed) {
-                await this.disarmBuzzers();
+                await this.disarmBuzzers(true, 'navigation');
             }
             
             this.currentQuestionIndex++;
@@ -816,7 +816,7 @@ class HostControl {
         if (this.currentQuestionIndex > 0) {
             // Disarm buzzers when navigating to previous question
             if (this.isBuzzersArmed) {
-                await this.disarmBuzzers();
+                await this.disarmBuzzers(true, 'navigation');
             }
             
             this.currentQuestionIndex--;
@@ -829,7 +829,7 @@ class HostControl {
         if (index !== '' && index >= 0 && index < this.questions.length) {
             // Disarm buzzers when jumping to a different question
             if (this.isBuzzersArmed) {
-                await this.disarmBuzzers();
+                await this.disarmBuzzers(true, 'navigation');
             }
             
             this.currentQuestionIndex = parseInt(index);
@@ -888,15 +888,48 @@ class HostControl {
         }
     }
 
-    async disarmBuzzers() {
+    async disarmBuzzers(showToast = true, source = 'manual') {
         try {
             await fetch('/api/buzzers/disarm', {
                 method: 'POST'
             });
-            this.showToast('Buzzers disarmed', 'info');
+            
+            if (showToast) {
+                // Debounce toast notifications to prevent spam
+                this.debouncedDisarmToast(source);
+            }
         } catch (error) {
             this.showToast('Failed to disarm buzzers', 'error');
         }
+    }
+
+    debouncedDisarmToast(source) {
+        // Clear existing timeout
+        if (this.disarmToastTimeout) {
+            clearTimeout(this.disarmToastTimeout);
+        }
+        
+        // Track sources for grouping
+        if (!this.pendingDisarmSources) {
+            this.pendingDisarmSources = new Set();
+        }
+        this.pendingDisarmSources.add(source);
+        
+        // Set a short delay to collect multiple disarm calls
+        this.disarmToastTimeout = setTimeout(() => {
+            let message = 'Buzzers disarmed';
+            
+            if (this.pendingDisarmSources.has('navigation') && this.pendingDisarmSources.size > 1) {
+                message = 'Buzzers disarmed (navigation)';
+            } else if (this.pendingDisarmSources.has('question-end')) {
+                message = 'Buzzers disarmed (question ended)';
+            } else if (this.pendingDisarmSources.has('game-action') && this.pendingDisarmSources.size > 1) {
+                message = 'Buzzers disarmed (game action)';
+            }
+            
+            this.showToast(message, 'info');
+            this.pendingDisarmSources.clear();
+        }, 100); // 100ms delay to group rapid calls
     }
 
     async testBuzzers() {
@@ -937,7 +970,7 @@ class HostControl {
         try {
             // Disarm buzzers before resetting
             if (this.isBuzzersArmed) {
-                await this.disarmBuzzers();
+                await this.disarmBuzzers(true, 'game-action');
             }
             
             await fetch(`/api/games/${this.currentGame.id}/reset`, {
@@ -985,7 +1018,7 @@ class HostControl {
         try {
             // Disarm buzzers before ending game
             if (this.isBuzzersArmed) {
-                await this.disarmBuzzers();
+                await this.disarmBuzzers(true, 'game-action');
             }
             
             await fetch(`/api/games/${this.currentGame.id}/status`, {

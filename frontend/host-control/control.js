@@ -1082,6 +1082,8 @@ class HostControl {
         // Show current answerer highlight if this is the first buzzer
         if (this.buzzerOrder.length === 1) {
             this.showCurrentAnswererHighlight(data);
+            // Auto-show answer evaluation modal when first team buzzes
+            this.showAnswerEvaluationModal();
         }
     }
 
@@ -1371,47 +1373,6 @@ class HostControl {
         }
     }
 
-    async markAnswer(isCorrect) {
-        if (!this.currentGame || this.currentBuzzerPosition === -1) {
-            this.showToast('No active buzzer to evaluate', 'error');
-            return;
-        }
-
-        try {
-            const response = await fetch(`/api/games/${this.currentGame.id}/evaluate-answer`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    isCorrect,
-                    buzzerPosition: this.currentBuzzerPosition
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to evaluate answer');
-            }
-
-            const result = await response.json();
-            
-            // Mark this buzzer as evaluated locally
-            if (this.buzzerOrder[this.currentBuzzerPosition]) {
-                this.buzzerOrder[this.currentBuzzerPosition].evaluated = true;
-                this.buzzerOrder[this.currentBuzzerPosition].isCorrect = isCorrect;
-            }
-
-            const statusMessage = isCorrect ? 'Correct answer!' : 'Incorrect answer';
-            this.showToast(statusMessage, isCorrect ? 'success' : 'warning');
-
-            // Update the evaluation interface for next buzzer
-            setTimeout(() => {
-                this.updateAnswerEvaluation();
-            }, 500);
-
-        } catch (error) {
-            console.error('Failed to evaluate answer:', error);
-            this.showToast('Failed to evaluate answer', 'error');
-        }
-    }
 
     handleAnswerEvaluated(data) {
         // Add to evaluation history
@@ -1881,17 +1842,31 @@ class HostControl {
             // Update buzzer results display
             this.updateBuzzerResults();
 
-            // Update the evaluation interface for next buzzer
-            setTimeout(() => {
-                this.updateAnswerEvaluation();
-                // Show next answerer if available
-                if (!isCorrect) {
+            // Handle game flow based on answer correctness
+            if (isCorrect) {
+                // Hide modal and prepare for next question if answer is correct
+                setTimeout(() => {
+                    this.hideAnswerEvaluationModal();
+                    // Auto-advance to next question if available
+                    if (result.questionComplete) {
+                        this.nextQuestion();
+                    }
+                }, 1000);
+            } else {
+                // Update the evaluation interface for next buzzer if answer is wrong
+                setTimeout(() => {
+                    this.updateAnswerEvaluation();
+                    // Show next answerer if available
                     const nextBuzzer = this.buzzerOrder.find(b => !b.evaluated);
                     if (nextBuzzer) {
                         this.showCurrentAnswererHighlight(nextBuzzer);
+                    } else {
+                        // No more teams to answer - hide modal and prepare next question
+                        this.hideAnswerEvaluationModal();
+                        this.nextQuestion();
                     }
-                }
-            }, 500);
+                }, 500);
+            }
 
         } catch (error) {
             console.error('Failed to evaluate answer:', error);

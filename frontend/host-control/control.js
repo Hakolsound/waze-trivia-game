@@ -594,12 +594,29 @@ class HostControl {
             const health = await healthResponse.json();
             const buzzerStatus = await buzzerResponse.json();
 
-            this.elements.dbStatus.textContent = health.services.database ? 'Connected' : 'Disconnected';
-            this.elements.hardwareStatus.textContent = buzzerStatus.connected ? 'Connected' : 'Disconnected';
-            this.elements.firebaseStatus.textContent = health.services.firebase ? 'Connected' : 'Disconnected';
-            this.elements.esp32Status.textContent = buzzerStatus.connected ? 'Connected' : 'Disconnected';
+            // Only update elements that exist (for backwards compatibility)
+            if (this.elements.dbStatus) {
+                this.elements.dbStatus.textContent = health.services.database ? 'Connected' : 'Disconnected';
+            }
+            if (this.elements.hardwareStatus) {
+                this.elements.hardwareStatus.textContent = buzzerStatus.connected ? 'Connected' : 'Disconnected';
+            }
+            if (this.elements.firebaseStatus) {
+                this.elements.firebaseStatus.textContent = health.services.firebase ? 'Connected' : 'Disconnected';
+            }
+            if (this.elements.esp32Status) {
+                this.elements.esp32Status.textContent = buzzerStatus.connected ? 'Connected' : 'Disconnected';
+            }
+
+            // Log status for debugging (can be removed later)
+            console.log('System Status:', {
+                database: health.services.database ? 'Connected' : 'Disconnected',
+                esp32: buzzerStatus.connected ? 'Connected' : 'Disconnected',
+                firebase: health.services.firebase ? 'Connected' : 'Disconnected'
+            });
 
         } catch (error) {
+            console.error('System status check failed:', error);
             this.showToast('Failed to refresh system status', 'error');
         }
     }

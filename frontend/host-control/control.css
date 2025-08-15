@@ -975,6 +975,35 @@ kbd {
   transform: none;
 }
 
+.rank-badge {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 16px;
+  text-align: center;
+  margin-right: 8px;
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+
+.team-score-item:first-child .rank-badge {
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  color: #333;
+}
+
+.team-score-item:nth-child(2) .rank-badge {
+  background: linear-gradient(135deg, #C0C0C0, #999999);
+  color: #333;
+}
+
+.team-score-item:nth-child(3) .rank-badge {
+  background: linear-gradient(135deg, #CD7F32, #A0522D);
+  color: #fff;
+}
+
 .team-score-item .team-name {
   font-weight: 600;
   font-size: 11px;

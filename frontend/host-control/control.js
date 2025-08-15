@@ -148,6 +148,7 @@ class HostControl {
             armBuzzersBtn: document.getElementById('arm-buzzers-btn'),
             disarmBuzzersBtn: document.getElementById('disarm-buzzers-btn'),
             buzzerResults: document.getElementById('buzzer-results'),
+            resetScoresBtn: document.getElementById('reset-scores-btn'),
             resetGameBtn: document.getElementById('reset-game-btn'),
             endGameBtn: document.getElementById('end-game-btn'),
             
@@ -329,6 +330,7 @@ class HostControl {
         if (this.elements.prevQuestionBtn) this.elements.prevQuestionBtn.addEventListener('click', () => this.prevQuestion());
         if (this.elements.questionSelect) this.elements.questionSelect.addEventListener('change', (e) => this.jumpToQuestion(e.target.value));
         if (this.elements.showQuestionSelectBtn) this.elements.showQuestionSelectBtn.addEventListener('click', () => this.showQuestionSelectModal());
+        if (this.elements.resetScoresBtn) this.elements.resetScoresBtn.addEventListener('click', () => this.resetAllScores());
         if (this.elements.resetGameBtn) this.elements.resetGameBtn.addEventListener('click', () => this.resetGame());
         if (this.elements.endGameBtn) this.elements.endGameBtn.addEventListener('click', () => this.endGame());
         
@@ -570,13 +572,23 @@ class HostControl {
             scoreInput.addEventListener('change', (e) => this.updateTeamScore(team.id, parseInt(e.target.value) || 0));
             scoreInput.addEventListener('blur', (e) => e.target.style.outline = 'none');
             
-            teamItem.innerHTML = `<span class="team-name">${team.name}</span>`;
-            teamItem.appendChild(scoreInput);
+            // Add ranking number and team name
+            const rankBadge = document.createElement('span');
+            rankBadge.className = 'rank-badge';
+            rankBadge.textContent = index + 1;
+            
+            const teamNameSpan = document.createElement('span');
+            teamNameSpan.className = 'team-name';
+            teamNameSpan.textContent = team.name;
             
             // Add crown for leader
             if (index === 0 && team.score > 0) {
-                teamItem.querySelector('.team-name').innerHTML += ' 👑';
+                teamNameSpan.textContent += ' 👑';
             }
+            
+            teamItem.appendChild(rankBadge);
+            teamItem.appendChild(teamNameSpan);
+            teamItem.appendChild(scoreInput);
             
             this.elements.teamsScoring.appendChild(teamItem);
             
@@ -933,6 +945,35 @@ class HostControl {
             });
         } catch (error) {
             this.showToast('Failed to reset game', 'error');
+        }
+    }
+
+    async resetAllScores() {
+        if (!this.currentGame || !confirm('Are you sure you want to reset all team scores to 0? This cannot be undone.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/games/${this.currentGame.id}/reset-scores`, {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                // Update local teams data
+                this.teams.forEach(team => {
+                    team.score = 0;
+                });
+                
+                // Refresh the scoreboard
+                this.updateTeamsDisplay(false);
+                
+                this.showToast('All team scores have been reset to 0', 'success');
+            } else {
+                throw new Error('Failed to reset scores');
+            }
+        } catch (error) {
+            console.error('Failed to reset scores:', error);
+            this.showToast('Failed to reset scores', 'error');
         }
     }
 

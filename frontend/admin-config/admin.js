@@ -1144,7 +1144,9 @@ class AdminConfig {
     formatLastSeen(milliseconds) {
         const seconds = Math.floor(milliseconds / 1000);
         
-        if (seconds < 60) {
+        if (seconds <= 0) {
+            return 'now';
+        } else if (seconds < 60) {
             return `${seconds}s ago`;
         } else if (seconds < 3600) {
             return `${Math.floor(seconds / 60)}m ago`;

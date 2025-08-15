@@ -42,40 +42,15 @@
                 </div>
 
                 <div class="config-tabs">
-                    <button class="config-tab active" data-tab="branding">🎨 Branding</button>
-                    <button class="config-tab" data-tab="teams">👥 Teams</button>
+                    <button class="config-tab active" data-tab="teams">👥 Teams</button>
                     <button class="config-tab" data-tab="questions">❓ Questions</button>
-                    <button class="config-tab" data-tab="system">⚙️ System</button>
+                    <button class="config-tab" data-tab="system">⚙️ Settings</button>
+                    <button class="config-tab" data-tab="branding">🎨 Branding</button>
                 </div>
 
                 <div class="config-content">
-                    <!-- Branding Configuration -->
-                    <div id="branding-config" class="config-panel active">
-                        <div class="panel">
-                            <h3>🎨 Visual Identity & Branding</h3>
-                            <div class="branding-grid">
-                                <div class="brand-section">
-                                    <label for="primary-color">Primary Color:</label>
-                                    <input type="color" id="primary-color" value="#00D4FF">
-                                </div>
-                                <div class="brand-section">
-                                    <label for="secondary-color">Secondary Color:</label>
-                                    <input type="color" id="secondary-color" value="#FF6B35">
-                                </div>
-                                <div class="brand-section">
-                                    <label for="game-logo">Logo Upload:</label>
-                                    <input type="file" id="game-logo" accept="image/*">
-                                </div>
-                                <div class="brand-section">
-                                    <label for="game-description">Game Description:</label>
-                                    <input type="text" id="game-description" placeholder="Waze Team Building 2024">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Teams Configuration -->
-                    <div id="teams-config" class="config-panel">
+                    <div id="teams-config" class="config-panel active">
                         <div class="panel">
                             <div class="panel-header">
                                 <h3>👥 Team Management</h3>
@@ -158,6 +133,31 @@
                                         📥 Import from CSV
                                         <input type="file" id="import-questions-csv" accept=".csv" style="display: none;">
                                     </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Branding Configuration -->
+                    <div id="branding-config" class="config-panel">
+                        <div class="panel">
+                            <h3>🎨 Visual Identity & Branding</h3>
+                            <div class="branding-grid">
+                                <div class="brand-section">
+                                    <label for="primary-color">Primary Color:</label>
+                                    <input type="color" id="primary-color" value="#00D4FF">
+                                </div>
+                                <div class="brand-section">
+                                    <label for="secondary-color">Secondary Color:</label>
+                                    <input type="color" id="secondary-color" value="#FF6B35">
+                                </div>
+                                <div class="brand-section">
+                                    <label for="game-logo">Logo Upload:</label>
+                                    <input type="file" id="game-logo" accept="image/*">
+                                </div>
+                                <div class="brand-section">
+                                    <label for="game-description">Game Description:</label>
+                                    <input type="text" id="game-description" placeholder="Waze Team Building 2024">
                                 </div>
                             </div>
                         </div>

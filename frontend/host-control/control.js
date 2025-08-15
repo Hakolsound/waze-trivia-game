@@ -110,6 +110,11 @@ class HostControl {
             timerCountdown: document.getElementById('timer-countdown'),
             timerLabel: document.getElementById('timer-label'),
             
+            // Progress bar timer elements
+            questionProgressBar: document.getElementById('question-progress-bar'),
+            progressBarFill: document.getElementById('progress-bar-fill'),
+            progressTimeText: document.getElementById('progress-time-text'),
+            
             // Correct answer elements
             correctAnswerDisplay: document.getElementById('correct-answer-display'),
             correctAnswerText: document.getElementById('correct-answer-text'),
@@ -1440,31 +1445,85 @@ class HostControl {
 
     // Timer Methods
     startTimer() {
-        if (!this.elements.liveTimer || !this.questionStartTime) return;
+        if (!this.questionStartTime) return;
 
-        this.elements.liveTimer.classList.remove('hidden');
+        // Show both timers
+        if (this.elements.liveTimer) {
+            this.elements.liveTimer.classList.remove('hidden');
+        }
+        if (this.elements.questionProgressBar) {
+            this.elements.questionProgressBar.classList.remove('hidden');
+        }
+        
         this.stopTimer(); // Clear any existing timer
         
         const updateTimer = () => {
             const elapsed = Math.floor((Date.now() - this.questionStartTime) / 1000);
             const remaining = Math.max(0, this.questionTimeLimit - elapsed);
             
-            this.elements.timerCountdown.textContent = remaining;
+            // Update circular timer
+            if (this.elements.timerCountdown) {
+                this.elements.timerCountdown.textContent = remaining;
+            }
             
-            // Update progress indicator
+            // Update progress bar timer
+            if (this.elements.progressTimeText) {
+                this.elements.progressTimeText.textContent = `${remaining}s remaining`;
+            }
+            
+            // Calculate progress percentage (0-100, where 0 is full time, 100 is no time)
             const progress = Math.min(100, (elapsed / this.questionTimeLimit) * 100);
-            const timerCircle = this.elements.liveTimer.querySelector('.timer-circle');
+            const remainingPercentage = Math.max(0, 100 - progress);
+            
+            // Update circular timer progress
+            const timerCircle = this.elements.liveTimer?.querySelector('.timer-circle');
             if (timerCircle) {
                 timerCircle.style.setProperty('--timer-progress', `${progress}%`);
             }
             
-            // Change style based on remaining time
-            if (remaining <= 5) {
-                this.elements.liveTimer.classList.add('critical');
-            } else {
-                this.elements.liveTimer.classList.remove('critical');
+            // Update progress bar fill
+            if (this.elements.progressBarFill) {
+                this.elements.progressBarFill.style.width = `${remainingPercentage}%`;
             }
             
+            // Change colors and styles based on remaining time
+            const warningThreshold = this.questionTimeLimit * 0.3; // 30% of time remaining
+            const criticalThreshold = this.questionTimeLimit * 0.1; // 10% of time remaining
+            
+            // Reset classes
+            if (this.elements.liveTimer) {
+                this.elements.liveTimer.classList.remove('critical');
+            }
+            if (this.elements.questionProgressBar) {
+                this.elements.questionProgressBar.classList.remove('warning', 'critical');
+            }
+            if (this.elements.progressBarFill) {
+                this.elements.progressBarFill.classList.remove('warning', 'critical');
+            }
+            
+            // Apply state-based styling
+            if (remaining <= criticalThreshold) {
+                // Critical state - red
+                if (this.elements.liveTimer) {
+                    this.elements.liveTimer.classList.add('critical');
+                }
+                if (this.elements.questionProgressBar) {
+                    this.elements.questionProgressBar.classList.add('critical');
+                }
+                if (this.elements.progressBarFill) {
+                    this.elements.progressBarFill.classList.add('critical');
+                }
+            } else if (remaining <= warningThreshold) {
+                // Warning state - orange
+                if (this.elements.questionProgressBar) {
+                    this.elements.questionProgressBar.classList.add('warning');
+                }
+                if (this.elements.progressBarFill) {
+                    this.elements.progressBarFill.classList.add('warning');
+                }
+            }
+            
+            // Auto-stop when time is up
             if (remaining <= 0) {
                 this.stopTimer();
             }
@@ -1479,9 +1538,21 @@ class HostControl {
             clearInterval(this.questionTimer);
             this.questionTimer = null;
         }
+        
+        // Hide and reset circular timer
         if (this.elements.liveTimer) {
             this.elements.liveTimer.classList.add('hidden');
             this.elements.liveTimer.classList.remove('critical');
+        }
+        
+        // Hide and reset progress bar timer
+        if (this.elements.questionProgressBar) {
+            this.elements.questionProgressBar.classList.add('hidden');
+            this.elements.questionProgressBar.classList.remove('warning', 'critical');
+        }
+        if (this.elements.progressBarFill) {
+            this.elements.progressBarFill.classList.remove('warning', 'critical');
+            this.elements.progressBarFill.style.width = '100%'; // Reset to full width
         }
     }
 

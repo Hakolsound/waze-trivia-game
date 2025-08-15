@@ -71,10 +71,12 @@ body {
 
 /* Compact Header */
 .compact-header {
-  background: linear-gradient(135deg, var(--waze-primary), var(--waze-secondary));
+  background: rgba(20, 20, 35, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   padding: 8px 16px;
-  color: white;
-  box-shadow: var(--md-sys-elevation-level2);
+  color: #e0e0e0;
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -342,6 +344,96 @@ body {
   50% { transform: scale(1.05); box-shadow: var(--md-sys-elevation-level4); }
 }
 
+/* Question Progress Bar Timer */
+.question-progress-bar {
+  margin: 16px 0;
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  animation: progressBarPulse 2s ease-in-out infinite;
+}
+
+.progress-bar-container {
+  position: relative;
+  height: 40px;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4CAF50 0%, #8BC34A 50%, #CDDC39 100%);
+  transition: width 1s linear;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  animation: shimmer 2s infinite;
+}
+
+.progress-bar-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Progress bar states */
+.progress-bar-fill.warning {
+  background: linear-gradient(90deg, #FF9800 0%, #FFC107 50%, #FFEB3B 100%);
+}
+
+.progress-bar-fill.critical {
+  background: linear-gradient(90deg, #F44336 0%, #E91E63 50%, #FF5722 100%);
+  animation: criticalFlash 0.5s ease-in-out infinite alternate;
+}
+
+.question-progress-bar.warning {
+  border-color: #FF9800;
+}
+
+.question-progress-bar.critical {
+  border-color: #F44336;
+  animation: criticalPulse 0.8s ease-in-out infinite;
+}
+
+@keyframes progressBarPulse {
+  0%, 100% { 
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3); 
+  }
+  50% { 
+    box-shadow: 0 4px 16px rgba(76, 175, 80, 0.5); 
+  }
+}
+
+@keyframes shimmer {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+@keyframes criticalFlash {
+  0% { opacity: 1; }
+  100% { opacity: 0.7; }
+}
+
 /* Current Answering Team Highlight */
 .current-answerer-highlight {
   background: linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(138, 43, 226, 0.15));
@@ -519,9 +611,9 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding: 16px 20px;
+  padding: 20px;
   border: none;
-  border-radius: 16px;
+  border-radius: 50%;
   color: white;
   cursor: pointer;
   transition: all var(--md-sys-motion-duration-medium) var(--md-sys-motion-easing-standard);
@@ -529,7 +621,8 @@ body {
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  min-width: 90px;
+  width: 100px;
+  height: 100px;
 }
 
 .control-btn:hover:not(:disabled) {
@@ -545,8 +638,9 @@ body {
 }
 
 .control-btn-large {
-  min-width: 120px;
-  padding: 20px 24px;
+  width: 120px;
+  height: 120px;
+  padding: 24px;
 }
 
 .control-btn .control-icon {
@@ -642,9 +736,9 @@ kbd {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--waze-primary), var(--waze-primary-dark));
+  background: linear-gradient(135deg, #4CAF50, #2E7D32);
   color: white;
-  box-shadow: 0 2px 8px rgba(0, 212, 255, 0.3);
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
   animation: primaryShine 2s ease-in-out infinite alternate;
 }
 
@@ -656,9 +750,9 @@ kbd {
 }
 
 .btn-warning {
-  background: linear-gradient(135deg, var(--waze-warning), #FFB74D);
+  background: linear-gradient(135deg, #F44336, #D32F2F);
   color: white;
-  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
+  box-shadow: 0 2px 8px rgba(244, 67, 54, 0.4);
 }
 
 .btn-danger {
@@ -681,8 +775,8 @@ kbd {
 }
 
 @keyframes primaryShine {
-  0% { box-shadow: 0 2px 8px rgba(0, 212, 255, 0.3); }
-  100% { box-shadow: 0 4px 16px rgba(0, 212, 255, 0.6); }
+  0% { box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4); }
+  100% { box-shadow: 0 4px 16px rgba(76, 175, 80, 0.7); }
 }
 
 @keyframes successShine {
@@ -1505,13 +1599,14 @@ kbd {
 /* Buzzer Sidebar */
 .buzzer-sidebar {
     width: 280px;
-    background: white;
-    border-left: 1px solid var(--md-sys-color-outline);
-    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.05);
+    background: rgba(25, 25, 40, 0.98);
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.4);
     min-height: calc(100vh - 120px);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
+    backdrop-filter: blur(10px);
 }
 
 .buzzer-sidebar.collapsed {
@@ -1547,12 +1642,12 @@ kbd {
 
 .buzzer-sidebar-header {
     padding: 12px 16px;
-    border-bottom: 1px solid var(--md-sys-color-outline);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: linear-gradient(135deg, var(--waze-primary) 0%, var(--waze-purple) 100%);
-    color: white;
+    background: rgba(30, 30, 50, 0.9);
+    color: #e0e0e0;
     flex-shrink: 0;
     gap: 8px;
 }
@@ -1599,8 +1694,8 @@ kbd {
 }
 
 .buzzer-settings {
-    background: var(--md-sys-color-surface-variant);
-    border: 1px solid var(--md-sys-color-outline);
+    background: rgba(20, 20, 30, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 4px;
     padding: 8px;
     display: flex;
@@ -1611,13 +1706,14 @@ kbd {
     bottom: 0;
     z-index: 10;
     margin-top: auto;
-    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(5px);
 }
 
 .buzzer-settings label {
     font-size: 10px;
     font-weight: 500;
-    color: var(--md-sys-color-on-surface);
+    color: #e0e0e0;
     white-space: nowrap;
 }
 
@@ -1648,7 +1744,7 @@ kbd {
 .buzzer-section h4 {
     font-size: 10px;
     font-weight: 600;
-    color: var(--md-sys-color-on-surface);
+    color: #e0e0e0;
     margin-bottom: 4px;
     display: flex;
     align-items: center;
@@ -1666,8 +1762,8 @@ kbd {
 .buzzer-item {
     padding: 6px 8px;
     border-radius: 6px;
-    background: var(--md-sys-color-surface-variant);
-    border: 1px solid var(--md-sys-color-outline);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     transition: all 0.2s ease;
     font-size: 11px;
 }
@@ -1700,7 +1796,7 @@ kbd {
 .buzzer-id {
     font-weight: 600;
     font-size: 11px;
-    color: var(--md-sys-color-on-surface);
+    color: #e0e0e0;
     line-height: 1;
 }
 
@@ -1713,7 +1809,7 @@ kbd {
 .team-name {
     font-size: 10px;
     font-weight: 500;
-    color: var(--md-sys-color-on-surface);
+    color: #e0e0e0;
     line-height: 1.2;
     text-align: center;
 }
@@ -1754,7 +1850,7 @@ kbd {
 .no-buzzers {
     text-align: center;
     padding: 12px 8px;
-    color: var(--md-sys-color-outline);
+    color: #888;
     font-style: italic;
     font-size: 10px;
 }

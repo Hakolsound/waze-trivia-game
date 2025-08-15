@@ -169,6 +169,17 @@ class GameDisplay {
                 }, 250);
             }
         });
+
+        // Fullscreen keyboard shortcuts
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'f' || e.key === 'F') {
+                e.preventDefault();
+                this.enterFullscreen();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                this.exitFullscreen();
+            }
+        });
     }
 
     // State Management
@@ -666,6 +677,32 @@ class GameDisplay {
                 this.expandSidebar();
             }
         }, 5000);
+    }
+
+    // Fullscreen Methods
+    enterFullscreen() {
+        const element = document.documentElement;
+        if (element.requestFullscreen) {
+            element.requestFullscreen();
+        } else if (element.webkitRequestFullscreen) {
+            element.webkitRequestFullscreen();
+        } else if (element.mozRequestFullScreen) {
+            element.mozRequestFullScreen();
+        } else if (element.msRequestFullscreen) {
+            element.msRequestFullscreen();
+        }
+    }
+
+    exitFullscreen() {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        } else if (document.mozCancelFullScreen) {
+            document.mozCancelFullScreen();
+        } else if (document.msExitFullscreen) {
+            document.msExitFullscreen();
+        }
     }
 }
 

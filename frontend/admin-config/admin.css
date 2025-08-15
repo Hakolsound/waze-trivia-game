@@ -98,7 +98,11 @@ body {
     gap: 8px;
 }
 
-.current-game-indicator {
+/* Current Game Indicator - Bottom Left */
+.current-game-indicator-bottom {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
     background: rgba(25, 25, 40, 0.95);
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 8px;
@@ -111,10 +115,18 @@ body {
     font-size: 0.9rem;
     color: #ffffff;
     font-weight: 600;
-    max-width: 250px;
+    max-width: 280px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    z-index: 1000;
+    pointer-events: none;
+    transition: all var(--md-sys-motion-duration-medium) var(--md-sys-motion-easing-standard);
+}
+
+.current-game-indicator-bottom:before {
+    content: '🎮';
+    margin-right: 4px;
 }
 
 /* Main Content Layout */

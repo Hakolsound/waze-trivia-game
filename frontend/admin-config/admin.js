@@ -181,7 +181,6 @@ class AdminConfig {
             hardwareStatus: document.getElementById('hardware-status'),
             firebaseStatus: document.getElementById('firebase-status'),
             testBuzzerConnectivityBtn: document.getElementById('test-buzzer-connectivity-btn'),
-            testAllBuzzersBtn: document.getElementById('test-all-buzzers-btn'),
             refreshSystemStatusBtn: document.getElementById('refresh-system-status-btn'),
             backupDbBtn: document.getElementById('backup-db-btn'),
             
@@ -309,12 +308,6 @@ class AdminConfig {
         if (this.elements.testBuzzerConnectivityBtn) {
             this.elements.testBuzzerConnectivityBtn.addEventListener('click', () => {
                 this.showBuzzerTestModal();
-            });
-        }
-
-        if (this.elements.testAllBuzzersBtn) {
-            this.elements.testAllBuzzersBtn.addEventListener('click', () => {
-                this.testAllBuzzers();
             });
         }
 
@@ -896,22 +889,6 @@ class AdminConfig {
         if (element) {
             element.className = `status-indicator ${status}`;
             element.textContent = status.charAt(0).toUpperCase() + status.slice(1);
-        }
-    }
-
-    async testAllBuzzers() {
-        try {
-            const response = await fetch('/api/buzzers/test-all', { method: 'POST' });
-            const result = await response.json();
-            
-            if (result.success) {
-                this.showToast('Buzzer test completed', 'success');
-            } else {
-                this.showToast('Buzzer test failed', 'error');
-            }
-        } catch (error) {
-            console.error('Failed to test buzzers:', error);
-            this.showToast('Failed to test buzzers', 'error');
         }
     }
 

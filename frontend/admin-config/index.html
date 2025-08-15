@@ -14,7 +14,6 @@
         <nav class="admin-nav">
             <h1>🏆 Waze Trivia Admin</h1>
             <div class="nav-info" id="nav-info">
-                <span class="current-game-indicator" id="current-game-indicator">No Game Selected</span>
                 <div class="nav-actions">
                     <button id="nav-open-display-btn" class="btn btn-secondary btn-small">🖥️ Display</button>
                     <button id="nav-open-host-btn" class="btn btn-secondary btn-small">🎮 Host</button>
@@ -134,7 +133,6 @@
                             </div>
                             <div class="system-actions">
                                 <button id="test-buzzer-connectivity-btn" class="btn btn-info">🔔 Test Buzzer Connectivity</button>
-                                <button id="test-all-buzzers-btn" class="btn btn-secondary">Test All Buzzers</button>
                                 <button id="refresh-system-status-btn" class="btn btn-secondary">Refresh Status</button>
                                 <button id="backup-db-btn" class="btn btn-warning">Backup Database</button>
                             </div>
@@ -292,6 +290,9 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Current Game Indicator - Bottom Left -->
+            <div class="current-game-indicator-bottom" id="current-game-indicator">No Game Selected</div>
             
             <!-- Toast Container -->
             <div id="toast-container" class="toast-container"></div>

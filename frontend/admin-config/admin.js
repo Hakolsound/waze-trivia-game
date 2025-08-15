@@ -126,6 +126,9 @@ class AdminConfig {
             // Load branding
             await this.loadBranding(game.id);
             
+            // Load scoring settings
+            await this.loadScoringSettings();
+            
             // Update UI title
             const titleElement = document.getElementById('current-game-title');
             if (titleElement) {
@@ -188,6 +191,11 @@ class AdminConfig {
             gameLogo: document.getElementById('game-logo'),
             gameDescription: document.getElementById('game-description'),
             saveBrandingBtn: document.getElementById('save-branding-btn'),
+            
+            // Scoring settings elements
+            timeBasedScoring: document.getElementById('time-based-scoring'),
+            timeBasedDetails: document.getElementById('time-based-details'),
+            saveScoringSettingsBtn: document.getElementById('save-scoring-settings-btn'),
             
             // System elements
             dbStatus: document.getElementById('db-status'),
@@ -262,6 +270,19 @@ class AdminConfig {
         if (this.elements.saveBrandingBtn) {
             this.elements.saveBrandingBtn.addEventListener('click', () => {
                 this.saveBrandingDataWithToast();
+            });
+        }
+
+        // Scoring settings
+        if (this.elements.timeBasedScoring) {
+            this.elements.timeBasedScoring.addEventListener('change', () => {
+                this.toggleTimeBasedDetails();
+            });
+        }
+        
+        if (this.elements.saveScoringSettingsBtn) {
+            this.elements.saveScoringSettingsBtn.addEventListener('click', () => {
+                this.saveScoringSettingsWithToast();
             });
         }
 
@@ -1964,6 +1985,76 @@ class AdminConfig {
             console.error('Failed to upload logo:', error);
             this.showToast('Failed to upload logo', 'error');
             return null;
+        }
+    }
+
+    // Scoring Settings Methods
+    toggleTimeBasedDetails() {
+        if (this.elements.timeBasedScoring && this.elements.timeBasedDetails) {
+            if (this.elements.timeBasedScoring.checked) {
+                this.elements.timeBasedDetails.style.display = 'flex';
+            } else {
+                this.elements.timeBasedDetails.style.display = 'none';
+            }
+        }
+    }
+
+    async loadScoringSettings() {
+        if (!this.currentGame) return;
+
+        try {
+            const response = await fetch(`/api/games/${this.currentGame.id}/scoring-settings`);
+            if (response.ok) {
+                const settings = await response.json();
+                if (this.elements.timeBasedScoring) {
+                    this.elements.timeBasedScoring.checked = settings.timeBasedScoring;
+                    this.toggleTimeBasedDetails();
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load scoring settings:', error);
+        }
+    }
+
+    async saveScoringSettings() {
+        if (!this.currentGame) return;
+
+        const settings = {
+            timeBasedScoring: this.elements.timeBasedScoring ? this.elements.timeBasedScoring.checked : false
+        };
+
+        try {
+            const response = await fetch(`/api/games/${this.currentGame.id}/scoring-settings`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(settings)
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to save scoring settings');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Failed to save scoring settings:', error);
+            throw error;
+        }
+    }
+
+    async saveScoringSettingsWithToast() {
+        if (!this.currentGame) {
+            this.showToast('No game selected', 'error');
+            return;
+        }
+
+        try {
+            await this.saveScoringSettings();
+            this.showToast('Scoring settings saved successfully', 'success');
+        } catch (error) {
+            console.error('Failed to save scoring settings:', error);
+            this.showToast('Failed to save scoring settings', 'error');
         }
     }
 }

@@ -153,7 +153,21 @@ class GameService {
       throw new Error('Buzzer entry not found at position ' + buzzerPosition);
     }
 
-    const pointsToAward = isCorrect ? currentQuestion.points : -Math.floor(currentQuestion.points * 0.5);
+    // Calculate points based on time-based scoring setting
+    let pointsToAward;
+    if (isCorrect) {
+      if (game.time_based_scoring) {
+        // Calculate time remaining when buzzer was pressed
+        const timeElapsed = buzzerEntry.deltaMs;
+        const timeRemaining = Math.max(0, currentQuestion.time_limit * 1000 - timeElapsed);
+        pointsToAward = this.calculateTimeBasedPoints(currentQuestion.points, timeRemaining, currentQuestion.time_limit * 1000);
+      } else {
+        pointsToAward = currentQuestion.points;
+      }
+    } else {
+      // Incorrect answers still lose half points regardless of time-based scoring
+      pointsToAward = -Math.floor(currentQuestion.points * 0.5);
+    }
     
     // Award or deduct points
     await this.awardPoints(gameId, buzzerEntry.groupId, pointsToAward);
@@ -305,6 +319,16 @@ class GameService {
     this.io.to('control-panel').emit('buzzer-pressed', buzzerEntry);
   }
 
+  // Calculate time-based points (decreases linearly from max to 0)
+  calculateTimeBasedPoints(originalPoints, timeRemaining, totalTime) {
+    if (timeRemaining <= 0) return 0;
+    if (timeRemaining >= totalTime) return originalPoints;
+    
+    // Linear decrease from original points to 0
+    const ratio = timeRemaining / totalTime;
+    return Math.ceil(originalPoints * ratio);
+  }
+
   async awardPoints(gameId, groupId, points) {
     await this.db.run(
       'UPDATE groups SET score = score + ? WHERE id = ? AND game_id = ?',
@@ -425,6 +449,28 @@ class GameService {
     };
     
     return this.updateGameBranding(gameId, defaultBranding);
+  }
+
+  // Scoring Settings Methods
+  async updateScoringSettings(gameId, settings) {
+    const game = await this.getGame(gameId);
+    if (!game) throw new Error('Game not found');
+
+    await this.db.run(
+      'UPDATE games SET time_based_scoring = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [settings.timeBasedScoring ? 1 : 0, gameId]
+    );
+
+    return this.getGame(gameId);
+  }
+
+  async getScoringSettings(gameId) {
+    const game = await this.getGame(gameId);
+    if (!game) throw new Error('Game not found');
+
+    return {
+      timeBasedScoring: Boolean(game.time_based_scoring)
+    };
   }
 
   // Global Game Management Methods

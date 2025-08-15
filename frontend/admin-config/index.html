@@ -112,6 +112,32 @@
                             </div>
                         </div>
                         
+                        <!-- Game Scoring Configuration -->
+                        <div class="panel">
+                            <h3>🎯 Scoring Settings</h3>
+                            <div class="scoring-settings">
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <label for="time-based-scoring">⏱️ Time-Based Point Deduction</label>
+                                        <p class="setting-description">When enabled, points decrease over time. Faster answers get more points!</p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="time-based-scoring">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="setting-item time-based-details" id="time-based-details" style="display: none;">
+                                    <div class="setting-info">
+                                        <label>📊 Preview:</label>
+                                        <p class="setting-description">30s timer: 100pts → 90pts → 80pts → ... → 0pts at timeout</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="panel-actions">
+                                <button id="save-scoring-settings-btn" class="btn btn-primary">💾 Save Scoring Settings</button>
+                            </div>
+                        </div>
+                        
                         <!-- Question Data Management -->
                         <div class="panel">
                             <h3>📊 Question Data Management</h3>

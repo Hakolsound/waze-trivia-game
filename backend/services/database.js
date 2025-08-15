@@ -48,6 +48,7 @@ class Database {
         show_scores BOOLEAN DEFAULT 1,
         auto_advance BOOLEAN DEFAULT 0,
         game_description TEXT DEFAULT '',
+        time_based_scoring BOOLEAN DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`,
@@ -99,6 +100,16 @@ class Database {
 
     for (const table of tables) {
       await this.run(table);
+    }
+    
+    // Add time_based_scoring column to existing games if it doesn't exist
+    try {
+      await this.run('ALTER TABLE games ADD COLUMN time_based_scoring BOOLEAN DEFAULT 0');
+    } catch (error) {
+      // Column probably already exists, which is fine
+      if (!error.message.includes('duplicate column name')) {
+        console.error('Error adding time_based_scoring column:', error.message);
+      }
     }
   }
 

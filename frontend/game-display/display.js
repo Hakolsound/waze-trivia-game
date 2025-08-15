@@ -201,7 +201,10 @@ class GameDisplay {
         
         // Update question content
         this.elements.questionText.textContent = question.text;
-        this.elements.questionPoints.textContent = `${question.points || 100} Points`;
+        
+        // Store base points for time-based calculation
+        this.basePoints = question.points || 100;
+        this.elements.questionPoints.textContent = `${this.basePoints} Points`;
         
         // Handle media
         if (question.media_url) {
@@ -414,6 +417,12 @@ class GameDisplay {
             // Format: "13s" for >10s, "3s" for <=10s, no "remaining"
             this.elements.timerText.textContent = `${seconds}s`;
             
+            // Update points display for time-based scoring (if enabled and we have game data)
+            if (this.currentGame && this.currentGame.time_based_scoring && this.basePoints && this.currentState === 'question') {
+                const currentPoints = this.calculateTimeBasedPoints(this.basePoints, timeRemaining, totalTime);
+                this.elements.questionPoints.textContent = `${currentPoints} Points`;
+            }
+            
             // Check if sidebar should auto-expand when time <= 10 seconds
             if (seconds <= 10 && !this.sidebarExpanded && this.currentState === 'question') {
                 // Only expand if no auto-expand timer is running (to avoid double expansion)
@@ -426,6 +435,11 @@ class GameDisplay {
             this.elements.timerText.textContent = 'Time up!';
             // Force timer to 0% when showing "Time up!"
             this.elements.timerProgress.style.width = '0%';
+            
+            // Show 0 points when time is up for time-based scoring
+            if (this.currentGame && this.currentGame.time_based_scoring) {
+                this.elements.questionPoints.textContent = '0 Points';
+            }
         }
     }
 
@@ -546,6 +560,16 @@ class GameDisplay {
 
     hideMessage() {
         this.elements.messageOverlay.classList.add('hidden');
+    }
+
+    // Time-based scoring calculation (matches backend logic)
+    calculateTimeBasedPoints(originalPoints, timeRemaining, totalTime) {
+        if (timeRemaining <= 0) return 0;
+        if (timeRemaining >= totalTime) return originalPoints;
+        
+        // Linear decrease from original points to 0
+        const ratio = timeRemaining / totalTime;
+        return Math.ceil(originalPoints * ratio);
     }
 
     // Dynamic Text Sizing

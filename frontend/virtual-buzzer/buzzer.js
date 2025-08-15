@@ -89,6 +89,11 @@ class VirtualBuzzer {
                 this.requestGameData();
             });
 
+            // Add listener to confirm game room joining
+            this.socket.on('game-joined', (data) => {
+                console.log('Virtual buzzer successfully joined game room:', data);
+            });
+
             this.socket.on('disconnect', () => {
                 console.log('Disconnected from server');
                 this.updateConnectionStatus('disconnected');
@@ -113,6 +118,10 @@ class VirtualBuzzer {
         // Global game events
         this.socket.on('global-game-changed', (data) => {
             this.currentGame = data.game;
+            // Join the new game room if we have a current game and selected team
+            if (this.currentGame && this.selectedTeam) {
+                this.socket.emit('join-game', this.currentGame.id);
+            }
             this.updateTeamSelection();
         });
 
@@ -286,6 +295,12 @@ class VirtualBuzzer {
         // Show buzzer screen
         this.showBuzzerScreen();
         
+        // Join the current game room to receive buzzer events
+        if (this.currentGame) {
+            console.log('Virtual buzzer joining game room:', this.currentGame.id);
+            this.socket.emit('join-game', this.currentGame.id);
+        }
+        
         // Register with server as virtual buzzer for this team
         this.socket.emit('virtual-buzzer-register', {
             buzzerId: this.buzzerId,
@@ -366,6 +381,7 @@ class VirtualBuzzer {
     }
 
     handleBuzzersArmed(data) {
+        console.log('Virtual buzzer received buzzers-armed event:', data);
         if (this.selectedTeam && this.currentState !== 'pressed') {
             this.currentState = 'armed';
             this.updateBuzzerState();
@@ -378,12 +394,14 @@ class VirtualBuzzer {
     }
 
     handleBuzzersDisarmed(data) {
+        console.log('Virtual buzzer received buzzers-disarmed event:', data);
         // Always reset to idle when buzzers are disarmed, regardless of current state
         this.currentState = 'idle';
         this.updateBuzzerState();
     }
 
     handleQuestionEnd(data) {
+        console.log('Virtual buzzer received question-end event:', data);
         // Ensure buzzer resets to idle when question ends
         this.currentState = 'idle';
         this.updateBuzzerState();

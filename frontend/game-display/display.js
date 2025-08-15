@@ -13,6 +13,11 @@ class GameDisplay {
         this.sidebarExpanded = true;
         this.autoExpandTimer = null;
         
+        // Performance optimization caches
+        this.lastTimerPercentage = -1;
+        this.lastDisplayedSeconds = -1;
+        this.lastDisplayedPoints = -1;
+        
         this.initializeGameSelector();
         this.initializeElements();
         this.setupSocketListeners();
@@ -387,8 +392,15 @@ class GameDisplay {
     // Timer Methods
     startTimer() {
         this.clearTimer();
-        const updateInterval = 1000 / 50; // 50 FPS = 20ms intervals
-        const decrementPerUpdate = 1 / 50; // Decrease by 1/50th of a second each update
+        
+        // Reset performance caches
+        this.lastTimerPercentage = -1;
+        this.lastDisplayedSeconds = -1;
+        this.lastDisplayedPoints = -1;
+        
+        // Gentle 10 FPS update for smooth audience experience
+        const updateInterval = 1000 / 10; // 10 FPS = 100ms intervals  
+        const decrementPerUpdate = 1 / 10; // Decrease by 1/10th of a second each update
         
         this.questionTimer = setInterval(() => {
             this.timeRemaining -= decrementPerUpdate;
@@ -421,17 +433,28 @@ class GameDisplay {
             percentage = Math.max(0, (timeRemaining / totalTime) * 100);
         }
         
-        this.elements.timerProgress.style.width = `${percentage}%`;
+        // Only update timer progress if it changed significantly (avoid micro-updates)
+        const roundedPercentage = Math.round(percentage * 10) / 10; // Round to 1 decimal
+        if (this.lastTimerPercentage !== roundedPercentage) {
+            this.elements.timerProgress.style.width = `${roundedPercentage}%`;
+            this.lastTimerPercentage = roundedPercentage;
+        }
         
         const seconds = Math.max(0, Math.ceil(timeRemaining)); // Round up to show whole seconds
         if (seconds > 0) {
-            // Format: "13s" for >10s, "3s" for <=10s, no "remaining"
-            this.elements.timerText.textContent = `${seconds}s`;
+            // Only update timer text if seconds changed
+            if (this.lastDisplayedSeconds !== seconds) {
+                this.elements.timerText.textContent = `${seconds}s`;
+                this.lastDisplayedSeconds = seconds;
+            }
             
-            // Update points display for time-based scoring (if enabled and we have game data)
+            // Update points display for time-based scoring (only when points change)
             if (this.currentGame && this.currentGame.time_based_scoring && this.basePoints && this.currentState === 'question') {
                 const currentPoints = this.calculateTimeBasedPoints(this.basePoints, timeRemaining, totalTime);
-                this.elements.questionPoints.textContent = `${currentPoints} Points`;
+                if (this.lastDisplayedPoints !== currentPoints) {
+                    this.elements.questionPoints.textContent = `${currentPoints} Points`;
+                    this.lastDisplayedPoints = currentPoints;
+                }
             }
             
             // Check if sidebar should auto-expand when time <= 10 seconds

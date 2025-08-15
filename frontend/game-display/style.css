@@ -67,6 +67,9 @@ body {
   position: relative;
   font-optical-sizing: auto;
   font-variation-settings: 'wght' 400;
+  /* Gentle performance optimizations for audience display */
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 body::before {
@@ -85,8 +88,8 @@ body::before {
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0px) rotate(0deg); }
-  50% { transform: translateY(-20px) rotate(1deg); }
+  0%, 100% { transform: translate3d(0, 0px, 0) rotate(0deg); }
+  50% { transform: translate3d(0, -20px, 0) rotate(1deg); }
 }
 
 #app {
@@ -314,11 +317,13 @@ h1.question-text,
   flex-shrink: 0;
   height: fit-content;
   align-self: flex-start;
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 @keyframes pointsPulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+  0%, 100% { transform: scale3d(1, 1, 1); }
+  50% { transform: scale3d(1.05, 1.05, 1); }
 }
 
 /* Timer Progress Bar */
@@ -351,9 +356,11 @@ h1.question-text,
   height: 100%;
   background: linear-gradient(90deg, var(--success), var(--warning), var(--error));
   border-radius: 100px;
-  transition: width 0.02s linear;
+  transition: width 0.1s linear;
   position: relative;
   box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+  will-change: width;
+  transform: translateZ(0);
 }
 
 .timer-progress::after {

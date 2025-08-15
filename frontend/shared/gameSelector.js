@@ -221,8 +221,19 @@ class GlobalGameSelector {
             modal.classList.add('hidden');
         }
 
-        if (list && this.games.length > 0) {
-            list.innerHTML = this.games.map(game => `
+        if (list) {
+            // Add create new game button
+            let createGameHTML = `
+                <div class="game-selector-create-new">
+                    <button id="create-new-game-btn" class="btn btn-success game-selector-create-btn">
+                        <span class="create-icon">➕</span>
+                        <span class="create-text">Create New Game</span>
+                    </button>
+                </div>
+            `;
+            
+            if (this.games.length > 0) {
+                list.innerHTML = createGameHTML + '<div class="games-divider"><span>Or select existing game:</span></div>' + this.games.map(game => `
                 <div class="game-selector-item ${this.currentGame?.id === game.id ? 'selected' : ''}"
                      data-game-id="${game.id}">
                     <div class="game-selector-item-content">
@@ -243,6 +254,17 @@ class GlobalGameSelector {
                     </div>
                 </div>
             `).join('');
+            } else {
+                list.innerHTML = createGameHTML + '<div class="no-games-message">No games found. Create your first game to get started!</div>';
+            }
+            
+            // Add click handler for create new game button
+            const createBtn = document.getElementById('create-new-game-btn');
+            if (createBtn) {
+                createBtn.addEventListener('click', () => {
+                    this.showCreateGameModal();
+                });
+            }
 
             // Add click handlers for select buttons
             list.querySelectorAll('.select-game-btn').forEach(btn => {
@@ -379,6 +401,147 @@ class GlobalGameSelector {
 
     hasCurrentGame() {
         return !!this.currentGame;
+    }
+    
+    showCreateGameModal() {
+        // Create modal HTML
+        const modalHTML = `
+            <div id="create-game-modal" class="game-selector-modal">
+                <div class="game-selector-content create-game-content">
+                    <div class="game-selector-header">
+                        <h2>🎮 Create New Game</h2>
+                        <p>Set up a new trivia game</p>
+                        <button id="close-create-game-modal" class="game-selector-close" title="Close (Esc)">×</button>
+                    </div>
+                    <div class="game-selector-body">
+                        <form id="create-game-form" class="create-game-form">
+                            <div class="form-group">
+                                <label for="new-game-name">Game Name:</label>
+                                <input type="text" id="new-game-name" class="form-input" placeholder="Enter game name..." required>
+                            </div>
+                            <div class="form-group">
+                                <label for="new-game-description">Description (optional):</label>
+                                <input type="text" id="new-game-description" class="form-input" placeholder="Brief description...">
+                            </div>
+                        </form>
+                    </div>
+                    <div class="game-selector-actions">
+                        <button id="create-game-submit" class="btn btn-primary">Create Game</button>
+                        <button id="cancel-create-game" class="btn btn-secondary">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Add modal to page
+        const existingModal = document.getElementById('create-game-modal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Set up event listeners
+        const modal = document.getElementById('create-game-modal');
+        const form = document.getElementById('create-game-form');
+        const nameInput = document.getElementById('new-game-name');
+        const descInput = document.getElementById('new-game-description');
+        const submitBtn = document.getElementById('create-game-submit');
+        const cancelBtn = document.getElementById('cancel-create-game');
+        const closeBtn = document.getElementById('close-create-game-modal');
+        
+        const closeModal = () => {
+            modal.remove();
+        };
+        
+        // Focus on name input
+        nameInput.focus();
+        
+        // Event listeners
+        closeBtn.addEventListener('click', closeModal);
+        cancelBtn.addEventListener('click', closeModal);
+        
+        // Form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const gameName = nameInput.value.trim();
+            const gameDescription = descInput.value.trim();
+            
+            if (!gameName) {
+                this.showToast('Please enter a game name', 'error');
+                return;
+            }
+            
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creating...';
+            
+            try {
+                const success = await this.createNewGame(gameName, gameDescription);
+                if (success) {
+                    closeModal();
+                }
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create Game';
+            }
+        });
+        
+        // Click submit button directly
+        submitBtn.addEventListener('click', () => {
+            form.dispatchEvent(new Event('submit'));
+        });
+        
+        // ESC key
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
+        
+        // Click outside to close
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+    }
+    
+    async createNewGame(name, description = '') {
+        try {
+            const response = await fetch('/api/games', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: name,
+                    description: description
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to create game');
+            }
+            
+            const newGame = await response.json();
+            
+            // Refresh games list
+            await this.loadAvailableGames();
+            
+            // Auto-select the new game
+            await this.setCurrentGame(newGame.id);
+            
+            this.showToast(`Game "${name}" created successfully!`, 'success');
+            return true;
+            
+        } catch (error) {
+            console.error('Failed to create game:', error);
+            this.showToast('Failed to create game', 'error');
+            return false;
+        }
     }
 
     showToast(message, type = 'info') {

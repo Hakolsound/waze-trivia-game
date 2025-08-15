@@ -82,7 +82,7 @@ app.get('/control', (req, res) => {
 });
 
 app.get('/admin', (req, res) => {
-  res.redirect('/');
+  res.sendFile(path.join(__dirname, '../frontend/admin-config/index.html'));
 });
 
 io.on('connection', (socket) => {

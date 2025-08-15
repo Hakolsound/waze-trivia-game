@@ -40,8 +40,10 @@ class AdminConfig {
         this.gameSelector = new GlobalGameSelector({
             socket: this.socket,
             containerSelector: '#game-selector-container',
-            showIfNoGame: false,
-            allowGameChange: true
+            showIfNoGame: true,
+            allowGameChange: true,
+            showCreateGame: true,
+            autoShow: true
         });
 
         // Listen for game changes

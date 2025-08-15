@@ -351,6 +351,7 @@ class AdminConfig {
         
         // Listen for ESP32 device data from server logs
         this.socket.on('esp32-device-data', (data) => {
+            console.log('Received ESP32 device data:', data);
             if (data.esp32_data) {
                 this.parseESP32DeviceData(data.esp32_data, data.timestamp);
             }
@@ -1014,7 +1015,7 @@ class AdminConfig {
             }
             
             const existingDevice = this.buzzerDevices.get(deviceId);
-            this.buzzerDevices.set(deviceId, {
+            const deviceData = {
                 device_id: deviceId,
                 name: `Buzzer ${deviceId}`,
                 last_seen: lastSeen,
@@ -1027,7 +1028,10 @@ class AdminConfig {
                 reported_online: reportedOnline,
                 time_since_last_seen: timeSinceLastSeen,
                 ...existingDevice // Keep any additional data (but override status)
-            });
+            };
+            
+            console.log(`Setting device ${deviceId} data:`, deviceData);
+            this.buzzerDevices.set(deviceId, deviceData);
             
             this.updateBuzzerSidebar();
         } catch (error) {
@@ -1050,15 +1054,22 @@ class AdminConfig {
         const onlineBuzzers = [];
         const offlineBuzzers = [];
         
+        console.log('UpdateBuzzerSidebar - Current devices:', Array.from(this.buzzerDevices.values()));
+        console.log('Threshold:', staleThreshold / 1000, 'seconds');
+        
         this.buzzerDevices.forEach(device => {
             const timeSinceLastSeen = now - device.last_seen;
             const isRecent = timeSinceLastSeen < staleThreshold;
             const isOnlineReported = device.online === true;
             
+            console.log(`Device ${device.device_id}: online=${isOnlineReported}, recent=${isRecent} (${Math.floor(timeSinceLastSeen/1000)}s ago)`);
+            
             // Device is online ONLY if ESP32 reported online=true AND data is recent
             if (isOnlineReported && isRecent) {
+                console.log(`Adding device ${device.device_id} to ONLINE list`);
                 onlineBuzzers.push(device);
             } else {
+                console.log(`Adding device ${device.device_id} to OFFLINE list`);
                 offlineBuzzers.push(device);
             }
         });

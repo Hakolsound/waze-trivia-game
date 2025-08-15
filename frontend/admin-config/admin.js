@@ -1413,18 +1413,29 @@ class AdminConfig {
                 return;
             }
             
+            console.log('About to import questions:', questions);
+            
             // Import questions to the current game
+            let importedCount = 0;
             for (const question of questions) {
-                await this.addQuestionToGame(question);
+                try {
+                    await this.addQuestionToGame(question);
+                    importedCount++;
+                } catch (error) {
+                    console.error('Failed to import question:', question, error);
+                    errorCount++;
+                }
             }
             
             // Reset file input
             event.target.value = '';
             
             // Reload questions to show imported ones
-            await this.loadQuestions(this.currentGame.id);
+            if (importedCount > 0) {
+                await this.loadQuestions(this.currentGame.id);
+            }
             
-            let message = `📥 Successfully imported ${questions.length} questions!`;
+            let message = `📥 Successfully imported ${importedCount} questions!`;
             if (errorCount > 0) {
                 message += ` (${errorCount} rows had errors and were skipped)`;
             }
@@ -1433,7 +1444,7 @@ class AdminConfig {
             
         } catch (error) {
             console.error('Failed to import CSV:', error);
-            this.showToast('Failed to import CSV file', 'error');
+            this.showToast(`Failed to import CSV file: ${error.message}`, 'error');
         }
     }
     
@@ -1470,19 +1481,17 @@ class AdminConfig {
     }
     
     async addQuestionToGame(questionData) {
-        const response = await fetch('/api/questions', {
+        const response = await fetch(`/api/questions/game/${this.currentGame.id}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                ...questionData,
-                game_id: this.currentGame.id
-            })
+            body: JSON.stringify(questionData)
         });
         
         if (!response.ok) {
-            throw new Error('Failed to add question');
+            const errorText = await response.text();
+            throw new Error(`Failed to add question: ${errorText}`);
         }
         
         return response.json();

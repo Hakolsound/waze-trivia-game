@@ -318,5 +318,15 @@ module.exports = (gameService) => {
     }
   });
 
+  // Get available teams for virtual buzzers
+  router.get('/:id/available-teams-virtual', async (req, res) => {
+    try {
+      const availableTeams = await gameService.getAvailableTeamsForVirtual(req.params.id);
+      res.json(availableTeams);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return router;
 };

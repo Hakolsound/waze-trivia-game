@@ -6,6 +6,7 @@ class GameService {
     this.io = io;
     this.activeGames = new Map();
     this.currentGlobalGame = null; // Global current game for all frontend apps
+    this.buzzerActivity = new Map(); // Track last activity for each buzzer
   }
 
   async createGame(gameData) {
@@ -294,10 +295,14 @@ class GameService {
   }
 
   async handleBuzzerPress(data) {
-    const { gameId, groupId, timestamp, buzzer_id } = data;
+    const { gameId, groupId, timestamp, buzzer_id, buzzerId } = data;
     const gameState = this.activeGames.get(gameId);
     
     if (!gameState) return;
+
+    // Track buzzer activity for virtual buzzer availability
+    const actualBuzzerId = buzzerId || buzzer_id || `physical_${groupId}`;
+    this.updateBuzzerActivity(actualBuzzerId, groupId);
 
     const deltaMs = timestamp - gameState.startTime;
     const buzzerEntry = {
@@ -494,6 +499,42 @@ class GameService {
       virtualBuzzersEnabled: Boolean(game.virtual_buzzers_enabled),
       buzzerOfflineThreshold: game.buzzer_offline_threshold || 120
     };
+  }
+
+  // Buzzer Activity Tracking Methods
+  updateBuzzerActivity(buzzerId, groupId) {
+    this.buzzerActivity.set(buzzerId, {
+      groupId: groupId,
+      lastSeen: Date.now(),
+      isPhysical: !buzzerId.startsWith('virtual_')
+    });
+  }
+
+  async getAvailableTeamsForVirtual(gameId) {
+    const game = await this.getGame(gameId);
+    if (!game || !game.virtual_buzzers_enabled) {
+      return [];
+    }
+
+    const offlineThreshold = (game.buzzer_offline_threshold || 120) * 1000; // Convert to milliseconds
+    const now = Date.now();
+    
+    return game.groups.filter(team => {
+      // Find any buzzer activity for this team
+      let hasRecentPhysicalBuzzer = false;
+      
+      for (const [buzzerId, activity] of this.buzzerActivity) {
+        if (activity.groupId === team.id && activity.isPhysical) {
+          if (now - activity.lastSeen < offlineThreshold) {
+            hasRecentPhysicalBuzzer = true;
+            break;
+          }
+        }
+      }
+      
+      // Team is available for virtual buzzer if no recent physical buzzer activity
+      return !hasRecentPhysicalBuzzer;
+    });
   }
 
   // Global Game Management Methods

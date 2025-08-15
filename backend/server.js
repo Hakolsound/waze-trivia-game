@@ -116,9 +116,47 @@ io.on('connection', (socket) => {
   socket.on('buzzer-press', (data) => {
     gameService.handleBuzzerPress(data);
   });
+
+  // Virtual buzzer events
+  socket.on('virtual-buzzer-register', (data) => {
+    console.log('Virtual buzzer registered:', data);
+    // Track virtual buzzer registration
+    socket.virtualBuzzerId = data.buzzerId;
+    socket.virtualGroupId = data.groupId;
+    socket.virtualTeamName = data.teamName;
+    
+    // Join game rooms for real-time updates
+    if (gameService.getCurrentGlobalGame()) {
+      socket.join(`game-${gameService.getCurrentGlobalGame()}`);
+    }
+  });
+
+  socket.on('request-global-game', async () => {
+    try {
+      const gameStatus = await gameService.getGlobalGameStatus();
+      socket.emit('global-game-changed', gameStatus);
+    } catch (error) {
+      console.error('Error sending global game status:', error);
+    }
+  });
+
+  socket.on('request-teams', () => {
+    // Send current teams if game is active
+    if (gameService.getCurrentGlobalGame()) {
+      gameService.getCurrentGlobalGameData().then(game => {
+        if (game && game.groups) {
+          socket.emit('teams-updated', game.groups);
+        }
+      });
+    }
+  });
   
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
+    // Clean up virtual buzzer registration
+    if (socket.virtualBuzzerId) {
+      console.log('Virtual buzzer disconnected:', socket.virtualBuzzerId);
+    }
   });
 });
 
@@ -133,6 +171,7 @@ async function initialize() {
       console.log(`Game Display: http://localhost:${PORT}/display`);
       console.log(`Host Control: http://localhost:${PORT}/control`);
       console.log(`Admin Panel: http://localhost:${PORT}/admin`);
+      console.log(`Virtual Buzzer: http://pi.local:${PORT}/virtual-buzzer`);
     });
   } catch (error) {
     console.error('Failed to initialize server:', error);

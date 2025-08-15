@@ -248,12 +248,20 @@ class VirtualBuzzer {
     }
 
     async getAvailableTeams(offlineThreshold) {
-        // In a real implementation, we'd check which physical buzzers are online
-        // For now, we'll return all teams as available
-        return this.teams.filter(team => {
-            // TODO: Check if team's physical buzzer has been offline for more than offlineThreshold seconds
-            return true;
-        });
+        if (!this.currentGame) return [];
+
+        try {
+            const response = await fetch(`/api/games/${this.currentGame.id}/available-teams-virtual`);
+            if (response.ok) {
+                return await response.json();
+            } else {
+                console.error('Failed to get available teams:', response.statusText);
+                return [];
+            }
+        } catch (error) {
+            console.error('Failed to fetch available teams:', error);
+            return [];
+        }
     }
 
     selectTeam(team) {

@@ -41,6 +41,8 @@ class GameDisplay {
             this.teamNames.clear();
             if (game.groups) {
                 game.groups.forEach(team => {
+                    // Map both groupId and buzzer_id for compatibility
+                    this.teamNames.set(team.id, team.name);
                     this.teamNames.set(team.buzzer_id || team.id, team.name);
                 });
             }
@@ -76,6 +78,7 @@ class GameDisplay {
             // Logo elements
             gameLogo: document.getElementById('game-logo'),
             logoPlaceholder: document.getElementById('logo-placeholder'),
+            gameDescriptionDisplay: document.getElementById('game-description-display'),
             
             // Question elements
             questionText: document.getElementById('question-text'),
@@ -122,11 +125,11 @@ class GameDisplay {
         });
 
         // Question events
-        this.socket.on('question-started', (data) => {
+        this.socket.on('question-start', (data) => {
             this.handleQuestionStarted(data);
         });
 
-        this.socket.on('question-ended', (data) => {
+        this.socket.on('question-end', (data) => {
             this.handleQuestionEnded(data);
         });
 
@@ -140,11 +143,7 @@ class GameDisplay {
             this.handleBuzzerPressed(data);
         });
 
-        this.socket.on('buzzer-result', (data) => {
-            this.handleBuzzerResult(data);
-        });
-
-        this.socket.on('answer-result', (data) => {
+        this.socket.on('answer-evaluated', (data) => {
             this.handleAnswerResult(data);
         });
 
@@ -231,14 +230,18 @@ class GameDisplay {
         console.log('Buzzer pressed:', data);
         
         // Add to buzzer queue if not already there
-        const existingIndex = this.buzzerQueue.findIndex(item => item.buzzerId === data.buzzerId);
+        const buzzerId = data.buzzer_id || data.buzzerId;
+        const groupId = data.groupId;
+        const existingIndex = this.buzzerQueue.findIndex(item => item.buzzerId === buzzerId || item.groupId === groupId);
         if (existingIndex === -1) {
-            const teamName = this.teamNames.get(data.buzzerId) || `Team ${data.buzzerId}`;
+            // Try to get team name using groupId first, then buzzer_id
+            const teamName = this.teamNames.get(groupId) || this.teamNames.get(buzzerId) || `Team ${buzzerId}`;
             const buzzerItem = {
-                buzzerId: data.buzzerId,
+                buzzerId: buzzerId,
+                groupId: groupId,
                 teamName: teamName,
                 timestamp: data.timestamp,
-                deltaTime: data.deltaTime || 0,
+                deltaTime: (data.deltaMs || data.deltaTime || 0) / 1000, // Convert ms to seconds
                 order: this.buzzerQueue.length + 1
             };
             
@@ -258,19 +261,27 @@ class GameDisplay {
     }
 
     handleAnswerResult(data) {
+        // Convert backend data format to display format
+        const displayData = {
+            correct: data.isCorrect,
+            buzzerId: data.groupId, // Backend uses groupId as identifier
+            points: Math.abs(data.pointsAwarded),
+            isCorrect: data.isCorrect
+        };
+        
         // Show answer feedback
-        this.showAnswerFeedback(data);
+        this.showAnswerFeedback(displayData);
         
         // Update buzzer queue to show result
-        this.updateBuzzerQueueWithResult(data);
+        this.updateBuzzerQueueWithResult(displayData);
         
         // Clear after delay
         setTimeout(() => {
-            if (data.correct) {
+            if (data.isCorrect) {
                 this.showIdleState();
             } else {
                 // Remove the incorrect team from queue and continue
-                this.removeFromBuzzerQueue(data.buzzerId);
+                this.removeFromBuzzerQueue(data.groupId);
             }
         }, 3000);
     }
@@ -278,6 +289,8 @@ class GameDisplay {
     handleTeamsUpdated(teams) {
         // Update team names mapping
         teams.forEach(team => {
+            // Map both groupId and buzzer_id for compatibility
+            this.teamNames.set(team.id, team.name);
             this.teamNames.set(team.buzzer_id || team.id, team.name);
         });
     }
@@ -292,6 +305,13 @@ class GameDisplay {
     updateGameBranding(game) {
         if (game.name) {
             this.elements.gameTitle.textContent = game.name;
+        }
+        
+        // Handle description
+        if (game.game_description) {
+            this.elements.gameDescriptionDisplay.textContent = game.game_description;
+        } else {
+            this.elements.gameDescriptionDisplay.textContent = game.name || 'Hakol Trivia Game';
         }
         
         // Handle logo

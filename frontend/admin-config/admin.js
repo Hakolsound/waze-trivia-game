@@ -147,6 +147,7 @@ class AdminConfig {
             changeGameBtn: document.getElementById('change-game-btn'),
             openDisplayBtn: document.getElementById('open-display-btn'),
             openHostBtn: document.getElementById('open-host-btn'),
+            saveAllBtn: document.getElementById('save-all-btn'),
             
             // Team elements
             addTeamBtn: document.getElementById('add-team-btn'),
@@ -248,6 +249,12 @@ class AdminConfig {
         if (this.elements.openHostBtn) {
             this.elements.openHostBtn.addEventListener('click', () => {
                 window.open('/control', '_blank', 'width=1400,height=900');
+            });
+        }
+
+        if (this.elements.saveAllBtn) {
+            this.elements.saveAllBtn.addEventListener('click', () => {
+                this.saveAllGameData();
             });
         }
 
@@ -1850,6 +1857,89 @@ class AdminConfig {
         
         this.switchConfigTab(tabName);
         return true;
+    }
+    
+    // Save all game data including branding
+    async saveAllGameData() {
+        if (!this.currentGame) {
+            this.showToast('No game selected', 'error');
+            return;
+        }
+        
+        try {
+            // Save branding data
+            await this.saveBrandingData();
+            this.showToast('Game data saved successfully', 'success');
+        } catch (error) {
+            console.error('Failed to save game data:', error);
+            this.showToast('Failed to save game data', 'error');
+        }
+    }
+    
+    // Save branding data including logo and description
+    async saveBrandingData() {
+        if (!this.currentGame) return;
+        
+        const brandingData = {
+            primary_color: this.elements.primaryColor?.value || '#00D4FF',
+            secondary_color: this.elements.secondaryColor?.value || '#FF6B35',
+            game_description: this.elements.gameDescription?.value || ''
+        };
+        
+        // Handle logo upload if a file is selected
+        const logoFile = this.elements.gameLogo?.files[0];
+        if (logoFile) {
+            const logoUrl = await this.uploadGameLogo(logoFile);
+            if (logoUrl) {
+                brandingData.logo_url = logoUrl;
+            }
+        }
+        
+        // Save branding data to server
+        const response = await fetch(`/api/games/${this.currentGame.id}/branding`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(brandingData)
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to save branding data');
+        }
+        
+        // Update current game data
+        this.currentGame.description = brandingData.game_description;
+        if (brandingData.logo_url) {
+            this.currentGame.logo_url = brandingData.logo_url;
+        }
+        
+        return brandingData;
+    }
+    
+    // Upload game logo file
+    async uploadGameLogo(file) {
+        if (!this.currentGame || !file) return null;
+        
+        const formData = new FormData();
+        formData.append('logo', file);
+        formData.append('gameId', this.currentGame.id);
+        
+        try {
+            const response = await fetch('/api/games/upload-logo', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to upload logo');
+            }
+            
+            const result = await response.json();
+            return result.logoUrl;
+        } catch (error) {
+            console.error('Failed to upload logo:', error);
+            this.showToast('Failed to upload logo', 'error');
+            return null;
+        }
     }
 }
 

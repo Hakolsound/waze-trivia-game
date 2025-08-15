@@ -190,6 +190,15 @@ module.exports = (gameService) => {
     }
   });
 
+  router.post('/:id/reset-scores', async (req, res) => {
+    try {
+      const game = await gameService.resetScores(req.params.id);
+      res.json(game);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   router.post('/:id/evaluate-answer', async (req, res) => {
     try {
       const { isCorrect, buzzerPosition = 0 } = req.body;

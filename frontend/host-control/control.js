@@ -1012,7 +1012,7 @@ class HostControl {
                 });
                 
                 // Refresh the scoreboard
-                this.updateTeamsDisplay(false);
+                this.updateTeamDisplay(false);
                 
                 this.showToast('All team scores have been reset to 0', 'success');
             } else {

@@ -404,6 +404,22 @@ class GameService {
     return this.getGame(gameId);
   }
 
+  async resetScores(gameId) {
+    await this.db.run(
+      'UPDATE groups SET score = 0 WHERE game_id = ?',
+      [gameId]
+    );
+
+    // Get updated game data with reset scores
+    const game = await this.getGame(gameId);
+    
+    // Notify all clients about score reset
+    this.io.to(`game-${gameId}`).emit('teams-updated', game.groups);
+    this.io.to('control-panel').emit('teams-updated', game.groups);
+    
+    return game;
+  }
+
   // Branding methods
   async getGameBranding(gameId) {
     const game = await this.db.get('SELECT * FROM games WHERE id = ?', [gameId]);

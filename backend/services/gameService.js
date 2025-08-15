@@ -76,11 +76,23 @@ class GameService {
     );
 
     const currentQuestion = game.questions[questionIndex];
+    // Clear any existing timeout for this game
+    const existingGameState = this.activeGames.get(gameId);
+    if (existingGameState && existingGameState.timeoutId) {
+      clearTimeout(existingGameState.timeoutId);
+    }
+
+    // Set up the new timeout
+    const timeoutId = setTimeout(() => {
+      this.endQuestion(gameId);
+    }, currentQuestion.time_limit * 1000);
+
     this.activeGames.set(gameId, {
       questionId: currentQuestion.id,
       startTime: Date.now(),
       buzzerOrder: [],
-      timeLimit: currentQuestion.time_limit * 1000
+      timeLimit: currentQuestion.time_limit * 1000,
+      timeoutId: timeoutId
     });
 
     this.io.to(`game-${gameId}`).emit('question-start', {
@@ -92,9 +104,7 @@ class GameService {
 
     this.io.to('control-panel').emit('buzzers-armed', { gameId, questionId: currentQuestion.id });
 
-    setTimeout(() => {
-      this.endQuestion(gameId);
-    }, currentQuestion.time_limit * 1000);
+    // Timeout is now handled above in the activeGames setup
 
     return currentQuestion;
   }
@@ -102,6 +112,11 @@ class GameService {
   async endQuestion(gameId) {
     const gameState = this.activeGames.get(gameId);
     if (!gameState) return;
+
+    // Clear the timeout if it exists
+    if (gameState.timeoutId) {
+      clearTimeout(gameState.timeoutId);
+    }
 
     await this.db.run(
       'UPDATE games SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
@@ -114,6 +129,9 @@ class GameService {
     });
 
     this.io.to('control-panel').emit('buzzers-disarmed', { gameId });
+
+    // Remove the game state to prevent any lingering timers
+    this.activeGames.delete(gameId);
   }
 
   async evaluateAnswer(gameId, isCorrect, buzzerPosition = 0) {
@@ -334,6 +352,12 @@ class GameService {
       'DELETE FROM buzzer_events WHERE game_id = ?',
       [gameId]
     );
+
+    // Clear any running timers before deleting the game state
+    const gameState = this.activeGames.get(gameId);
+    if (gameState && gameState.timeoutId) {
+      clearTimeout(gameState.timeoutId);
+    }
 
     this.activeGames.delete(gameId);
 

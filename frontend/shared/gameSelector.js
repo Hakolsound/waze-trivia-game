@@ -208,23 +208,110 @@ class GlobalGameSelector {
                         </div>
                     </div>
                     <div class="game-selector-item-actions">
-                        ${this.currentGame?.id === game.id ? 
-                            '<span class="current-badge">Current</span>' : 
-                            '<button class="btn btn-primary btn-small select-game-btn">Select</button>'
-                        }
+                        <div class="action-buttons">
+                            ${this.currentGame?.id === game.id ? 
+                                '<span class="current-badge">Current</span>' : 
+                                '<button class="btn btn-primary btn-small select-game-btn">Select</button>'
+                            }
+                            <button class="btn btn-danger btn-small delete-game-btn" title="Delete Game">🗑️</button>
+                        </div>
                     </div>
                 </div>
             `).join('');
 
-            // Add click handlers
+            // Add click handlers for select buttons
             list.querySelectorAll('.select-game-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const item = btn.closest('.game-selector-item');
                     const gameId = item.dataset.gameId;
-                    this.setCurrentGame(gameId);
+                    
+                    if (this.currentGame) {
+                        // Show confirmation if switching games
+                        this.confirmGameSwitch(gameId);
+                    } else {
+                        this.setCurrentGame(gameId);
+                    }
                 });
             });
+
+            // Add click handlers for delete buttons
+            list.querySelectorAll('.delete-game-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const item = btn.closest('.game-selector-item');
+                    const gameId = item.dataset.gameId;
+                    const gameName = this.games.find(g => g.id === gameId)?.name || 'Unknown Game';
+                    
+                    this.confirmGameDelete(gameId, gameName);
+                });
+            });
+        }
+    }
+
+    confirmGameSwitch(newGameId) {
+        const newGame = this.games.find(g => g.id === newGameId);
+        const currentGameName = this.currentGame?.name || 'current game';
+        const newGameName = newGame?.name || 'selected game';
+        
+        if (confirm(`⚠️ Switch from "${currentGameName}" to "${newGameName}"?\n\nThis will change the current game for all interfaces (Admin, Host Control, and Game Display).\n\nAny unsaved changes will be lost.`)) {
+            this.setCurrentGame(newGameId);
+        }
+    }
+
+    confirmGameDelete(gameId, gameName) {
+        const isCurrentGame = this.currentGame?.id === gameId;
+        const warningMessage = isCurrentGame 
+            ? `🚨 DELETE CURRENT GAME: "${gameName}"?\n\n⚠️ WARNING: This game is currently active!\n\n❌ This will PERMANENTLY DELETE:\n• All teams and their scores\n• All questions and answers\n• All game history and statistics\n• Game branding and settings\n\n💥 THIS ACTION CANNOT BE UNDONE!\n\nType the game name to confirm deletion:`
+            : `🗑️ DELETE GAME: "${gameName}"?\n\n❌ This will PERMANENTLY DELETE:\n• All teams and their scores\n• All questions and answers\n• All game history and statistics\n• Game branding and settings\n\n💥 THIS ACTION CANNOT BE UNDONE!\n\nType the game name to confirm deletion:`;
+        
+        const confirmation = prompt(warningMessage);
+        
+        if (confirmation === gameName) {
+            this.deleteGame(gameId, isCurrentGame);
+        } else if (confirmation !== null) {
+            alert('❌ Game name does not match. Deletion cancelled for safety.');
+        }
+    }
+
+    async deleteGame(gameId, isCurrentGame) {
+        try {
+            const response = await fetch(`/api/games/${gameId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                this.showToast('Game deleted successfully', 'success');
+                
+                // If we deleted the current game, clear the current selection
+                if (isCurrentGame) {
+                    await this.clearCurrentGame();
+                }
+                
+                // Reload the games list
+                await this.loadAvailableGames();
+                
+                // Show the game selector if no game is selected
+                if (!this.currentGame) {
+                    const modal = document.getElementById('game-selector-modal');
+                    if (modal) {
+                        modal.classList.remove('hidden');
+                    }
+                }
+            } else {
+                this.showToast('Failed to delete game', 'error');
+            }
+        } catch (error) {
+            console.error('Failed to delete game:', error);
+            this.showToast('Failed to delete game', 'error');
+        }
+    }
+
+    // Method to force show the game selector (used by admin interface)
+    showGameSelector() {
+        const modal = document.getElementById('game-selector-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
         }
     }
 

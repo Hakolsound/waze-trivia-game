@@ -124,6 +124,11 @@ class AdminConfig {
             // Back button
             backToGamesBtn: document.getElementById('back-to-games-btn'),
             
+            // New action buttons
+            changeGameBtn: document.getElementById('change-game-btn'),
+            openDisplayBtn: document.getElementById('open-display-btn'),
+            openHostBtn: document.getElementById('open-host-btn'),
+            
             // Team elements
             addTeamBtn: document.getElementById('add-team-btn'),
             teamsContainer: document.getElementById('teams-container'),
@@ -180,6 +185,25 @@ class AdminConfig {
         if (this.elements.backToGamesBtn) {
             this.elements.backToGamesBtn.addEventListener('click', () => {
                 this.gameSelector.clearCurrentGame();
+            });
+        }
+
+        // New action buttons
+        if (this.elements.changeGameBtn) {
+            this.elements.changeGameBtn.addEventListener('click', () => {
+                this.gameSelector.showGameSelector();
+            });
+        }
+
+        if (this.elements.openDisplayBtn) {
+            this.elements.openDisplayBtn.addEventListener('click', () => {
+                window.open('/display', '_blank', 'width=1920,height=1080');
+            });
+        }
+
+        if (this.elements.openHostBtn) {
+            this.elements.openHostBtn.addEventListener('click', () => {
+                window.open('/control', '_blank', 'width=1400,height=900');
             });
         }
 

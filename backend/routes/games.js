@@ -216,6 +216,32 @@ module.exports = (gameService) => {
     }
   });
 
+  // Delete a game
+  router.delete('/:id', async (req, res) => {
+    try {
+      const gameId = req.params.id;
+      
+      // Check if this is the current global game
+      const currentGlobalGame = gameService.getCurrentGlobalGame();
+      
+      // Delete all related data
+      await gameService.db.run('DELETE FROM buzzer_events WHERE game_id = ?', [gameId]);
+      await gameService.db.run('DELETE FROM questions WHERE game_id = ?', [gameId]);
+      await gameService.db.run('DELETE FROM groups WHERE game_id = ?', [gameId]);
+      await gameService.db.run('DELETE FROM games WHERE id = ?', [gameId]);
+      
+      // If this was the current global game, clear it
+      if (currentGlobalGame === gameId) {
+        await gameService.setCurrentGlobalGame(null);
+      }
+      
+      res.json({ success: true, message: 'Game deleted successfully' });
+    } catch (error) {
+      console.error('Failed to delete game:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Global Game Management Routes
   
   // Get current global game status

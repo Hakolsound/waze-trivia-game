@@ -17,6 +17,10 @@ class AdminConfig {
         
         this.currentGame = null;
         this.gameSelector = null;
+        this.currentQuestion = null;
+        this.originalQuestionData = null;
+        this.hasUnsavedChanges = false;
+        this.pendingNavigation = null;
         
         this.initializeGameSelector();
         this.setupSocketListeners();
@@ -170,6 +174,13 @@ class AdminConfig {
             deleteQuestionBtn: document.getElementById('delete-question-btn'),
             closeQuestionEditorBtn: document.getElementById('close-question-editor-btn'),
             
+            // Unsaved changes modal elements
+            unsavedChangesModal: document.getElementById('unsaved-changes-modal'),
+            saveAndContinueBtn: document.getElementById('save-and-continue-btn'),
+            discardAndContinueBtn: document.getElementById('discard-and-continue-btn'),
+            cancelNavigationBtn: document.getElementById('cancel-navigation-btn'),
+            unsavedChangesPreview: document.getElementById('unsaved-changes-preview'),
+            
             // Branding elements
             primaryColor: document.getElementById('primary-color'),
             secondaryColor: document.getElementById('secondary-color'),
@@ -216,7 +227,7 @@ class AdminConfig {
         if (this.elements.configTabs) {
             this.elements.configTabs.forEach(tab => {
                 tab.addEventListener('click', (e) => {
-                    this.switchConfigTab(e.target.dataset.tab);
+                    this.safeSwitchConfigTab(e.target.dataset.tab);
                 });
             });
         }
@@ -374,6 +385,25 @@ class AdminConfig {
         if (this.elements.navOpenHostBtn) {
             this.elements.navOpenHostBtn.addEventListener('click', () => {
                 window.open('/control', '_blank', 'width=1400,height=900');
+            });
+        }
+        
+        // Unsaved changes modal event listeners
+        if (this.elements.saveAndContinueBtn) {
+            this.elements.saveAndContinueBtn.addEventListener('click', () => {
+                this.handleSaveAndContinue();
+            });
+        }
+        
+        if (this.elements.discardAndContinueBtn) {
+            this.elements.discardAndContinueBtn.addEventListener('click', () => {
+                this.handleDiscardAndContinue();
+            });
+        }
+        
+        if (this.elements.cancelNavigationBtn) {
+            this.elements.cancelNavigationBtn.addEventListener('click', () => {
+                this.handleCancelNavigation();
             });
         }
     }
@@ -605,8 +635,10 @@ class AdminConfig {
     renderQuestionTabs(questions) {
         if (!this.elements.questionTabs) return;
 
+        const addButtonHtml = '<button id="add-question-tab-btn" class="add-question-tab" title="Add New Question">+</button>';
+
         if (questions.length === 0) {
-            this.elements.questionTabs.innerHTML = '';
+            this.elements.questionTabs.innerHTML = addButtonHtml;
             if (this.elements.questionEditor) {
                 this.elements.questionEditor.innerHTML = `
                     <div class="no-question-selected">
@@ -628,16 +660,24 @@ class AdminConfig {
                 <span>Q${question.question_order || index + 1}</span>
                 <button class="question-tab-close" onclick="admin.deleteQuestion('${question.id}')">&times;</button>
             </div>
-        `).join('');
+        `).join('') + addButtonHtml;
 
         // Add click handlers
         this.elements.questionTabs.querySelectorAll('.question-tab').forEach(tab => {
             tab.addEventListener('click', (e) => {
                 if (!e.target.classList.contains('question-tab-close')) {
-                    this.selectQuestion(tab.dataset.questionId);
+                    this.safeSelectQuestion(tab.dataset.questionId);
                 }
             });
         });
+
+        // Re-attach event listener for add button (since it was recreated)
+        const addBtn = document.getElementById('add-question-tab-btn');
+        if (addBtn) {
+            addBtn.addEventListener('click', () => {
+                this.addNewQuestion();
+            });
+        }
 
         // Select first question by default
         if (questions.length > 0) {
@@ -661,6 +701,14 @@ class AdminConfig {
             const question = await response.json();
             
             this.currentQuestion = question;
+            this.originalQuestionData = {
+                text: question.text,
+                correct_answer: question.correct_answer,
+                time_limit: question.time_limit,
+                points: question.points,
+                media_url: question.media_url || ''
+            };
+            this.hasUnsavedChanges = false;
             
             if (this.elements.questionEditor) {
                 this.elements.questionEditor.innerHTML = `
@@ -693,6 +741,11 @@ class AdminConfig {
                         </div>
                     </div>
                 `;
+                
+                // Set up change tracking for the form
+                setTimeout(() => {
+                    this.trackQuestionChanges();
+                }, 100);
             }
         } catch (error) {
             console.error('Failed to load question:', error);
@@ -719,6 +772,8 @@ class AdminConfig {
             });
             
             this.showToast('Question saved successfully', 'success');
+            this.hasUnsavedChanges = false;
+            this.updateSaveButtonState();
             this.loadQuestions(this.currentGame.id);
         } catch (error) {
             console.error('Failed to save question:', error);
@@ -1649,6 +1704,152 @@ class AdminConfig {
             const teamName = card.querySelector('.buzzer-test-team-name').textContent;
             this.showToast(`✅ ${teamName} buzzer tested successfully!`, 'success');
         }
+    }
+    
+    // Unsaved Changes Management
+    checkForUnsavedChanges() {
+        if (!this.currentQuestion || !this.originalQuestionData) {
+            return false;
+        }
+        
+        const currentData = this.getCurrentQuestionFormData();
+        return !this.compareQuestionData(this.originalQuestionData, currentData);
+    }
+    
+    getCurrentQuestionFormData() {
+        return {
+            text: document.getElementById('edit-question-text')?.value || '',
+            correct_answer: document.getElementById('edit-correct-answer')?.value || '',
+            time_limit: parseInt(document.getElementById('edit-time-limit')?.value || '30'),
+            points: parseInt(document.getElementById('edit-question-points')?.value || '100'),
+            media_url: document.getElementById('edit-media-url')?.value || ''
+        };
+    }
+    
+    compareQuestionData(original, current) {
+        return original.text === current.text &&
+               original.correct_answer === current.correct_answer &&
+               original.time_limit === current.time_limit &&
+               original.points === current.points &&
+               (original.media_url || '') === (current.media_url || '');
+    }
+    
+    trackQuestionChanges() {
+        const formElements = ['edit-question-text', 'edit-correct-answer', 'edit-time-limit', 'edit-question-points', 'edit-media-url'];
+        
+        formElements.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.addEventListener('input', () => {
+                    this.hasUnsavedChanges = this.checkForUnsavedChanges();
+                    this.updateSaveButtonState();
+                });
+            }
+        });
+    }
+    
+    updateSaveButtonState() {
+        const saveBtn = document.querySelector('.btn.btn-primary[onclick*="saveCurrentQuestion"]');
+        if (saveBtn) {
+            if (this.hasUnsavedChanges) {
+                saveBtn.style.background = 'linear-gradient(135deg, #ff6b35, #f7931e)';
+                saveBtn.style.boxShadow = '0 2px 8px rgba(255, 107, 53, 0.5)';
+            } else {
+                saveBtn.style.background = '';
+                saveBtn.style.boxShadow = '';
+            }
+        }
+    }
+    
+    showUnsavedChangesModal(pendingAction) {
+        this.pendingNavigation = pendingAction;
+        
+        // Show changes preview
+        if (this.elements.unsavedChangesPreview) {
+            const original = this.originalQuestionData;
+            const current = this.getCurrentQuestionFormData();
+            let changes = [];
+            
+            if (original.text !== current.text) {
+                changes.push(`<div class="change-item"><strong>Question:</strong> "${original.text}" → "${current.text}"</div>`);
+            }
+            if (original.correct_answer !== current.correct_answer) {
+                changes.push(`<div class="change-item"><strong>Answer:</strong> "${original.correct_answer}" → "${current.correct_answer}"</div>`);
+            }
+            if (original.time_limit !== current.time_limit) {
+                changes.push(`<div class="change-item"><strong>Time Limit:</strong> ${original.time_limit}s → ${current.time_limit}s</div>`);
+            }
+            if (original.points !== current.points) {
+                changes.push(`<div class="change-item"><strong>Points:</strong> ${original.points} → ${current.points}</div>`);
+            }
+            if ((original.media_url || '') !== (current.media_url || '')) {
+                changes.push(`<div class="change-item"><strong>Media URL:</strong> "${original.media_url || 'none'}" → "${current.media_url || 'none'}"</div>`);
+            }
+            
+            this.elements.unsavedChangesPreview.innerHTML = changes.length > 0 ? 
+                `<div class="changes-list">${changes.join('')}</div>` : 
+                '<div class="no-changes">No specific changes detected</div>';
+        }
+        
+        this.elements.unsavedChangesModal?.classList.remove('hidden');
+    }
+    
+    hideUnsavedChangesModal() {
+        this.elements.unsavedChangesModal?.classList.add('hidden');
+        this.pendingNavigation = null;
+    }
+    
+    async handleSaveAndContinue() {
+        try {
+            await this.saveCurrentQuestion();
+            this.hasUnsavedChanges = false;
+            this.hideUnsavedChangesModal();
+            
+            if (this.pendingNavigation) {
+                this.pendingNavigation();
+            }
+        } catch (error) {
+            console.error('Failed to save question:', error);
+            this.showToast('Failed to save question. Please try again.', 'error');
+        }
+    }
+    
+    handleDiscardAndContinue() {
+        this.hasUnsavedChanges = false;
+        this.hideUnsavedChangesModal();
+        
+        if (this.pendingNavigation) {
+            this.pendingNavigation();
+        }
+    }
+    
+    handleCancelNavigation() {
+        this.hideUnsavedChangesModal();
+    }
+    
+    // Modified navigation methods to check for unsaved changes
+    safeSelectQuestion(questionId) {
+        if (this.hasUnsavedChanges) {
+            this.showUnsavedChangesModal(() => {
+                this.selectQuestion(questionId);
+            });
+            return false;
+        }
+        
+        this.selectQuestion(questionId);
+        return true;
+    }
+    
+    safeSwitchConfigTab(tabName) {
+        if (this.hasUnsavedChanges) {
+            this.showUnsavedChangesModal(() => {
+                this.switchConfigTab(tabName);
+            });
+            return false;
+        }
+        
+        this.switchConfigTab(tabName);
+        return true;
     }
 }
 

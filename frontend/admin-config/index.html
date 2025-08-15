@@ -315,6 +315,26 @@
                 </div>
             </div>
             
+            <!-- Unsaved Changes Modal -->
+            <div id="unsaved-changes-modal" class="modal hidden">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>⚠️ Unsaved Changes</h3>
+                    </div>
+                    <div class="modal-body">
+                        <p>You have unsaved changes to the current question. What would you like to do?</p>
+                        <div class="unsaved-changes-preview" id="unsaved-changes-preview">
+                            <!-- Changes summary will be shown here -->
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" id="save-and-continue-btn" class="btn btn-primary">💾 Save & Continue</button>
+                        <button type="button" id="discard-and-continue-btn" class="btn btn-danger">🗑️ Discard Changes</button>
+                        <button type="button" id="cancel-navigation-btn" class="btn btn-secondary">❌ Cancel</button>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Current Game Indicator - Bottom Left -->
             <div class="current-game-indicator-bottom" id="current-game-indicator">No Game Selected</div>
             

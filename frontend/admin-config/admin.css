@@ -1143,6 +1143,53 @@ textarea {
     transition: all 0.2s ease;
 }
 
+/* Unsaved Changes Modal Styles */
+.unsaved-changes-preview {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 16px 0;
+    border-left: 4px solid var(--md-sys-color-warning);
+}
+
+.changes-list .change-item {
+    background: rgba(255, 107, 53, 0.1);
+    border: 1px solid rgba(255, 107, 53, 0.3);
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.changes-list .change-item:last-child {
+    margin-bottom: 0;
+}
+
+.changes-list .change-item strong {
+    color: var(--md-sys-color-warning);
+}
+
+.no-changes {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+    padding: 20px;
+}
+
+/* Save Button Visual Feedback */
+.btn.btn-primary[onclick*="saveCurrentQuestion"].unsaved {
+    background: linear-gradient(135deg, #ff6b35, #f7931e) !important;
+    box-shadow: 0 2px 8px rgba(255, 107, 53, 0.5) !important;
+    animation: pulse-save 2s infinite;
+}
+
+@keyframes pulse-save {
+    0% { box-shadow: 0 2px 8px rgba(255, 107, 53, 0.5); }
+    50% { box-shadow: 0 4px 12px rgba(255, 107, 53, 0.7); }
+    100% { box-shadow: 0 2px 8px rgba(255, 107, 53, 0.5); }
+}
+
 /* Buzzer Sidebar */
 .buzzer-sidebar {
     width: 280px;

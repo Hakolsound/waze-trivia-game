@@ -75,7 +75,7 @@ body {
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   padding: 8px 16px;
-  color: #e0e0e0;
+  color: #ffffff;
   box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
   display: flex;
   align-items: center;
@@ -242,7 +242,7 @@ body {
 .card-header h2 {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #e0e0e0;
+  color: #ffffff;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -555,7 +555,7 @@ body {
   font-size: 1.8rem;
   line-height: 1.4;
   font-weight: 600;
-  color: #e0e0e0;
+  color: #ffffff;
   margin: 0;
 }
 
@@ -736,9 +736,9 @@ kbd {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #4CAF50, #2E7D32);
+  background: linear-gradient(135deg, #81C784, #4CAF50);
   color: white;
-  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
+  box-shadow: 0 2px 8px rgba(129, 199, 132, 0.5);
   animation: primaryShine 2s ease-in-out infinite alternate;
 }
 
@@ -775,8 +775,8 @@ kbd {
 }
 
 @keyframes primaryShine {
-  0% { box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4); }
-  100% { box-shadow: 0 4px 16px rgba(76, 175, 80, 0.7); }
+  0% { box-shadow: 0 2px 8px rgba(129, 199, 132, 0.5); }
+  100% { box-shadow: 0 4px 16px rgba(129, 199, 132, 0.8); }
 }
 
 @keyframes successShine {
@@ -856,7 +856,7 @@ kbd {
 .panel-header h3 {
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--md-sys-color-on-surface);
+  color: #ffffff;
   margin: 0;
 }
 
@@ -1647,7 +1647,7 @@ kbd {
     justify-content: space-between;
     align-items: center;
     background: rgba(30, 30, 50, 0.9);
-    color: #e0e0e0;
+    color: #ffffff;
     flex-shrink: 0;
     gap: 8px;
 }
@@ -1713,7 +1713,7 @@ kbd {
 .buzzer-settings label {
     font-size: 10px;
     font-weight: 500;
-    color: #e0e0e0;
+    color: #ffffff;
     white-space: nowrap;
 }
 
@@ -1744,7 +1744,7 @@ kbd {
 .buzzer-section h4 {
     font-size: 10px;
     font-weight: 600;
-    color: #e0e0e0;
+    color: #ffffff;
     margin-bottom: 4px;
     display: flex;
     align-items: center;
@@ -1796,7 +1796,7 @@ kbd {
 .buzzer-id {
     font-weight: 600;
     font-size: 11px;
-    color: #e0e0e0;
+    color: #ffffff;
     line-height: 1;
 }
 
@@ -1809,7 +1809,7 @@ kbd {
 .team-name {
     font-size: 10px;
     font-weight: 500;
-    color: #e0e0e0;
+    color: #ffffff;
     line-height: 1.2;
     text-align: center;
 }

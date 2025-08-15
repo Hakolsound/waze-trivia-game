@@ -256,6 +256,7 @@ class HostControl {
             this.isQuestionActive = false;
             this.buzzerOrder = data.buzzerOrder || [];
             this.stopTimer();
+            this.hideTimers();
             this.updateQuestionControls();
             this.updateBuzzerResults();
             this.hideCurrentAnswererHighlight();
@@ -1447,6 +1448,8 @@ class HostControl {
     startTimer() {
         if (!this.questionStartTime) return;
 
+        this.stopTimer(); // Clear any existing timer first
+        
         // Show both timers
         if (this.elements.liveTimer) {
             this.elements.liveTimer.classList.remove('hidden');
@@ -1454,8 +1457,6 @@ class HostControl {
         if (this.elements.questionProgressBar) {
             this.elements.questionProgressBar.classList.remove('hidden');
         }
-        
-        this.stopTimer(); // Clear any existing timer
         
         const updateTimer = () => {
             const elapsed = Math.floor((Date.now() - this.questionStartTime) / 1000);
@@ -1534,11 +1535,14 @@ class HostControl {
     }
 
     stopTimer() {
+        // Clear the interval first
         if (this.questionTimer) {
             clearInterval(this.questionTimer);
             this.questionTimer = null;
         }
-        
+    }
+    
+    hideTimers() {
         // Hide and reset circular timer
         if (this.elements.liveTimer) {
             this.elements.liveTimer.classList.add('hidden');

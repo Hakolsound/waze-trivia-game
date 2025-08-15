@@ -1790,6 +1790,13 @@ kbd {
     color: #ffffff;
     flex-shrink: 0;
     gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.buzzer-sidebar-header.armed {
+    background: rgba(255, 193, 7, 0.15);
+    border-bottom: 1px solid rgba(255, 193, 7, 0.3);
+    animation: pulseArmed 2s ease-in-out infinite;
 }
 
 .buzzer-sidebar-header h3 {
@@ -1797,6 +1804,53 @@ kbd {
     font-weight: 600;
     margin: 0;
     flex: 1;
+    position: relative;
+}
+
+.buzzer-sidebar-header.armed h3::before {
+    content: "⚡ ";
+    color: #FFC107;
+    animation: armedGlow 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes pulseArmed {
+    0%, 100% { 
+        box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4);
+    }
+    50% { 
+        box-shadow: 0 0 0 4px rgba(255, 193, 7, 0.1);
+    }
+}
+
+@keyframes armedGlow {
+    0% { 
+        text-shadow: 0 0 5px rgba(255, 193, 7, 0.8);
+        opacity: 0.8;
+    }
+    100% { 
+        text-shadow: 0 0 10px rgba(255, 193, 7, 1), 0 0 15px rgba(255, 193, 7, 0.6);
+        opacity: 1;
+    }
+}
+
+@keyframes buzzerArmedPulse {
+    0%, 100% { 
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4);
+    }
+    50% { 
+        transform: scale(1.02);
+        box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.2);
+    }
+}
+
+@keyframes dotArmedGlow {
+    0% { 
+        box-shadow: 0 0 0 1px rgba(255, 193, 7, 0.4), 0 0 4px rgba(255, 193, 7, 0.6);
+    }
+    100% { 
+        box-shadow: 0 0 0 1px rgba(255, 193, 7, 0.6), 0 0 6px rgba(255, 193, 7, 0.8);
+    }
 }
 
 .buzzer-counter {
@@ -1913,6 +1967,12 @@ kbd {
     border-color: rgba(76, 175, 80, 0.3);
 }
 
+.buzzer-item.online.armed {
+    background: rgba(255, 193, 7, 0.15);
+    border-color: rgba(255, 193, 7, 0.4);
+    animation: buzzerArmedPulse 1.8s ease-in-out infinite;
+}
+
 .buzzer-item.offline {
     background: rgba(244, 67, 54, 0.1);
     border-color: rgba(244, 67, 54, 0.3);
@@ -1980,6 +2040,12 @@ kbd {
 .buzzer-status-dot.online {
     background: #4CAF50;
     box-shadow: 0 0 0 1px rgba(76, 175, 80, 0.3);
+}
+
+.buzzer-status-dot.online.armed {
+    background: #FFC107;
+    box-shadow: 0 0 0 1px rgba(255, 193, 7, 0.4), 0 0 4px rgba(255, 193, 7, 0.6);
+    animation: dotArmedGlow 1.2s ease-in-out infinite alternate;
 }
 
 .buzzer-status-dot.offline {

@@ -258,11 +258,17 @@ class HostControl {
             this.hideCurrentAnswererHighlight();
         });
 
-        this.socket.on('question-end', (data) => {
+        this.socket.on('question-end', async (data) => {
             this.isQuestionActive = false;
             this.buzzerOrder = data.buzzerOrder || [];
             this.stopTimer();
             this.hideTimers();
+            
+            // Disarm buzzers when question ends naturally (timeout)
+            if (this.isBuzzersArmed) {
+                await this.disarmBuzzers();
+            }
+            
             this.updateQuestionControls();
             this.updateBuzzerResults();
             this.hideCurrentAnswererHighlight();
@@ -679,7 +685,39 @@ class HostControl {
         if (this.elements.buzzersArmedStatus) {
             this.elements.buzzersArmedStatus.textContent = this.isBuzzersArmed ? 'Armed' : 'Disarmed';
         }
+        
+        // Update buzzer sidebar header armed state
+        const buzzerSidebarHeader = document.querySelector('.buzzer-sidebar-header');
+        if (buzzerSidebarHeader) {
+            buzzerSidebarHeader.classList.toggle('armed', this.isBuzzersArmed);
+        }
+        
+        // Refresh buzzer sidebar to show/hide armed states on individual items
+        this.updateBuzzerSidebar();
+        
         this.updateQuestionControls();
+    }
+
+    clearArmedIndicators() {
+        // Remove armed class from sidebar header
+        const buzzerSidebarHeader = document.querySelector('.buzzer-sidebar-header');
+        if (buzzerSidebarHeader) {
+            buzzerSidebarHeader.classList.remove('armed');
+        }
+        
+        // Remove armed classes from all buzzer items and status dots
+        const buzzerItems = document.querySelectorAll('.buzzer-item.armed');
+        buzzerItems.forEach(item => {
+            item.classList.remove('armed');
+        });
+        
+        const armedStatusDots = document.querySelectorAll('.buzzer-status-dot.armed');
+        armedStatusDots.forEach(dot => {
+            dot.classList.remove('armed');
+        });
+        
+        // Note: We don't change this.isBuzzersArmed here as that's managed by socket events
+        // This method only removes visual indicators while keeping the logical state intact
     }
 
     updateBuzzerResults() {
@@ -737,30 +775,51 @@ class HostControl {
             await fetch(`/api/games/${this.currentGame.id}/end-question`, {
                 method: 'POST'
             });
+            
+            // Disarm buzzers when question ends
+            if (this.isBuzzersArmed) {
+                await this.disarmBuzzers();
+            }
+            
             this.showToast('Question ended', 'info');
         } catch (error) {
             this.showToast('Failed to end question', 'error');
         }
     }
 
-    nextQuestion() {
+    async nextQuestion() {
         if (this.currentQuestionIndex < this.questions.length - 1) {
+            // Disarm buzzers when navigating to next question
+            if (this.isBuzzersArmed) {
+                await this.disarmBuzzers();
+            }
+            
             this.currentQuestionIndex++;
             this.updateQuestionDisplay();
             this.updateQuestionControls();
         }
     }
 
-    prevQuestion() {
+    async prevQuestion() {
         if (this.currentQuestionIndex > 0) {
+            // Disarm buzzers when navigating to previous question
+            if (this.isBuzzersArmed) {
+                await this.disarmBuzzers();
+            }
+            
             this.currentQuestionIndex--;
             this.updateQuestionDisplay();
             this.updateQuestionControls();
         }
     }
 
-    jumpToQuestion(index) {
+    async jumpToQuestion(index) {
         if (index !== '' && index >= 0 && index < this.questions.length) {
+            // Disarm buzzers when jumping to a different question
+            if (this.isBuzzersArmed) {
+                await this.disarmBuzzers();
+            }
+            
             this.currentQuestionIndex = parseInt(index);
             this.updateQuestionDisplay();
             this.updateQuestionControls();
@@ -864,6 +923,11 @@ class HostControl {
         }
 
         try {
+            // Disarm buzzers before resetting
+            if (this.isBuzzersArmed) {
+                await this.disarmBuzzers();
+            }
+            
             await fetch(`/api/games/${this.currentGame.id}/reset`, {
                 method: 'POST'
             });
@@ -878,6 +942,11 @@ class HostControl {
         }
 
         try {
+            // Disarm buzzers before ending game
+            if (this.isBuzzersArmed) {
+                await this.disarmBuzzers();
+            }
+            
             await fetch(`/api/games/${this.currentGame.id}/status`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -927,6 +996,11 @@ class HostControl {
     }
 
     handleBuzzerPress(data) {
+        // Clear armed indicators when first buzzer activity begins
+        if (this.buzzerOrder.length === 0 && this.isBuzzersArmed) {
+            this.clearArmedIndicators();
+        }
+        
         this.buzzerOrder.push(data);
         this.updateBuzzerResults();
         this.updateAnswerEvaluation();
@@ -1834,17 +1908,22 @@ class HostControl {
         
         buzzers.forEach(device => {
             const buzzerElement = document.createElement('div');
-            buzzerElement.className = `buzzer-item ${isOnline ? 'online' : 'offline'}`;
+            // Add armed class to online buzzers when buzzers are armed
+            const armedClass = (isOnline && this.isBuzzersArmed) ? ' armed' : '';
+            buzzerElement.className = `buzzer-item ${isOnline ? 'online' : 'offline'}${armedClass}`;
             
             const teamName = this.getTeamNameByBuzzerId(device.device_id);
             const timeSinceLastSeen = Date.now() - device.last_seen;
             const lastSeenText = this.formatLastSeen(timeSinceLastSeen);
             
+            // Add armed class to status dot when buzzers are armed
+            const dotArmedClass = (isOnline && this.isBuzzersArmed) ? ' armed' : '';
+            
             buzzerElement.innerHTML = `
                 <div class="buzzer-info">
                     <div class="buzzer-header">
                         <span class="buzzer-id">#${device.device_id}</span>
-                        <span class="buzzer-status-dot ${isOnline ? 'online' : 'offline'}"></span>
+                        <span class="buzzer-status-dot ${isOnline ? 'online' : 'offline'}${dotArmedClass}"></span>
                     </div>
                     <div class="buzzer-details">
                         ${teamName ? `<div class="team-name">${teamName}</div>` : '<div class="no-team">No team assigned</div>'}

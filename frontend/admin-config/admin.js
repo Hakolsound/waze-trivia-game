@@ -2122,7 +2122,11 @@ class AdminConfig {
         const url = this.updateVirtualBuzzerUrl();
         
         try {
-            // Generate QR code using qrcode.js library (we'll need to include this)
+            // Check if QRCode library is available
+            if (typeof QRCode === 'undefined') {
+                throw new Error('QRCode library not loaded');
+            }
+            
             const qrCodeDataUrl = await QRCode.toDataURL(url, {
                 width: 200,
                 margin: 2,
@@ -2135,7 +2139,18 @@ class AdminConfig {
             this.elements.qrCodeDisplay.innerHTML = `<img src="${qrCodeDataUrl}" alt="Virtual Buzzer QR Code" style="width: 100%; height: 100%; object-fit: contain;">`;
         } catch (error) {
             console.error('Failed to generate QR code:', error);
-            this.elements.qrCodeDisplay.innerHTML = `<div class="qr-placeholder">Failed to generate QR code<br>URL: ${url}</div>`;
+            // Fallback: Use online QR code service
+            const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
+            this.elements.qrCodeDisplay.innerHTML = `
+                <img src="${qrApiUrl}" 
+                     alt="Virtual Buzzer QR Code" 
+                     style="width: 100%; height: 100%; object-fit: contain;"
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                <div class="qr-placeholder" style="display: none;">
+                    <strong>Scan this URL:</strong><br>
+                    <code style="font-size: 0.8rem; word-break: break-all;">${url}</code>
+                </div>
+            `;
         }
     }
 
@@ -2143,11 +2158,42 @@ class AdminConfig {
         const url = this.elements.virtualBuzzerUrl.textContent;
         
         try {
-            await navigator.clipboard.writeText(url);
-            this.showToast('Virtual buzzer URL copied to clipboard!', 'success');
+            // Modern clipboard API (requires HTTPS or localhost)
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(url);
+                this.showToast('Virtual buzzer URL copied to clipboard!', 'success');
+            } else {
+                // Fallback for HTTP or older browsers
+                this.fallbackCopyToClipboard(url);
+                this.showToast('URL selected - press Ctrl+C to copy', 'success');
+            }
         } catch (error) {
             console.error('Failed to copy URL:', error);
-            this.showToast('Failed to copy URL', 'error');
+            // Try fallback method
+            this.fallbackCopyToClipboard(url);
+            this.showToast('URL selected - press Ctrl+C to copy', 'warning');
+        }
+    }
+
+    fallbackCopyToClipboard(text) {
+        // Create a temporary textarea element
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            return true;
+        } catch (err) {
+            console.error('Fallback copy failed:', err);
+            document.body.removeChild(textArea);
+            return false;
         }
     }
 

@@ -889,6 +889,8 @@ textarea {
     flex: 1;
     overflow-y: auto;
     padding: 12px;
+    display: flex;
+    flex-direction: column;
 }
 
 .buzzer-settings {
@@ -998,17 +1000,19 @@ textarea {
 }
 
 .team-name {
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 500;
     color: var(--gray-700);
     line-height: 1.2;
+    text-align: center;
 }
 
 .no-team {
-    font-size: 9px;
+    font-size: 10px;
     color: var(--gray-400);
     font-style: italic;
     line-height: 1.2;
+    text-align: center;
 }
 
 .last-seen {

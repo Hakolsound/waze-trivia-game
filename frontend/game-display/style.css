@@ -578,8 +578,8 @@ h1.question-text,
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.75); /* Darker background by 50% more opacity */
-  backdrop-filter: blur(15px); /* Increased blur for less attention */
+  background: rgba(0, 0, 0, 0.375); /* 50% less dimmed (was 0.75, now 0.375) */
+  backdrop-filter: blur(25px); /* Much more blur (was 15px, now 25px) */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -595,15 +595,15 @@ h1.question-text,
 
 .answer-card {
   background: rgba(15, 23, 42, 0.95); /* Much darker theme color - dark slate */
-  border-radius: 24px;
-  padding: 48px 64px;
+  border-radius: 32px; /* Slightly bigger radius */
+  padding: 64px 80px; /* Bigger padding (was 48px 64px) */
   text-align: center;
   box-shadow: var(--md-sys-elevation-level4);
   backdrop-filter: blur(20px);
   border: 1px solid rgba(51, 65, 85, 0.6); /* Darker border to match theme */
-  width: 65%; /* Exactly 65% of display width */
-  max-width: 65%;
-  min-width: 500px; /* Minimum for readability */
+  width: 75%; /* Bigger - increased from 65% to 75% */
+  max-width: 75%;
+  min-width: 600px; /* Bigger minimum (was 500px) */
   max-height: 80vh;
   overflow-y: auto;
   transform: scale(0.95);
@@ -614,42 +614,42 @@ h1.question-text,
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 40px;
-  height: 60px;
+  margin-bottom: 50px; /* Slightly more space for bigger shape */
+  height: 80px; /* Bigger height for scaled up shape */
 }
 
 .amorphic-shape {
-  width: 120px;
-  height: 32px;
-  background: rgba(100, 116, 139, 0.3); /* Dimmed slate color */
-  border-radius: 50px 20px 40px 15px; /* Irregular, amorphic shape */
+  width: 240px; /* 2x bigger (was 120px) */
+  height: 64px; /* 2x bigger (was 32px) */
+  background: rgba(100, 116, 139, 0.15); /* 50% less opacity (was 0.3, now 0.15) */
+  border-radius: 100px 40px 80px 30px; /* 2x bigger irregular shape */
   position: relative;
-  opacity: 0.6;
+  opacity: 0.3; /* 50% less opacity (was 0.6, now 0.3) */
   animation: subtlePulse 3s ease-in-out infinite;
 }
 
 .amorphic-shape::before {
   content: '';
   position: absolute;
-  top: -8px;
-  left: 20px;
-  width: 40px;
-  height: 20px;
-  background: rgba(100, 116, 139, 0.2);
-  border-radius: 20px 30px 15px 25px;
-  opacity: 0.7;
+  top: -16px; /* 2x bigger (was -8px) */
+  left: 40px; /* 2x bigger (was 20px) */
+  width: 80px; /* 2x bigger (was 40px) */
+  height: 40px; /* 2x bigger (was 20px) */
+  background: rgba(100, 116, 139, 0.1); /* 50% less opacity (was 0.2, now 0.1) */
+  border-radius: 40px 60px 30px 50px; /* 2x bigger */
+  opacity: 0.35; /* 50% less opacity (was 0.7, now 0.35) */
 }
 
 .amorphic-shape::after {
   content: '';
   position: absolute;
-  bottom: -6px;
-  right: 15px;
-  width: 35px;
-  height: 18px;
-  background: rgba(100, 116, 139, 0.25);
-  border-radius: 25px 10px 30px 20px;
-  opacity: 0.5;
+  bottom: -12px; /* 2x bigger (was -6px) */
+  right: 30px; /* 2x bigger (was 15px) */
+  width: 70px; /* 2x bigger (was 35px) */
+  height: 36px; /* 2x bigger (was 18px) */
+  background: rgba(100, 116, 139, 0.125); /* 50% less opacity (was 0.25, now 0.125) */
+  border-radius: 50px 20px 60px 40px; /* 2x bigger */
+  opacity: 0.25; /* 50% less opacity (was 0.5, now 0.25) */
 }
 
 .correct-answer-text {
@@ -670,11 +670,11 @@ h1.question-text,
 
 @keyframes subtlePulse {
   0%, 100% {
-    opacity: 0.6;
+    opacity: 0.3; /* 50% less opacity (was 0.6, now 0.3) */
     transform: scale(1);
   }
   50% {
-    opacity: 0.4;
+    opacity: 0.2; /* 50% less opacity (was 0.4, now 0.2) */
     transform: scale(1.05);
   }
 }

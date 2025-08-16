@@ -313,8 +313,9 @@ class HostControl {
             this.handleVirtualBuzzerDisconnect(data.buzzerId);
         });
 
-        this.socket.on('question-start', (data) => {
+        this.socket.on('question-start', async (data) => {
             this.isQuestionActive = true;
+            this.activeQuestionIndex = data.questionIndex;
             this.questionStartTime = data.startTime;
             this.questionTimeLimit = data.question.time_limit || 30;
             this.startTimer();
@@ -322,9 +323,18 @@ class HostControl {
             this.resetAnswerEvaluation(); // Clear previous evaluation state
             this.hideCurrentAnswererHighlight();
             
-            // Refresh game state to get updated played_questions
+            // Refresh game state to get updated played_questions and update tabs
             if (this.currentGame) {
-                this.gameSelector.loadGame(this.currentGame.id);
+                try {
+                    const response = await fetch(`/api/games/${this.currentGame.id}`);
+                    if (response.ok) {
+                        const updatedGame = await response.json();
+                        this.currentGame = updatedGame;
+                        this.updateQuestionTabsState();
+                    }
+                } catch (error) {
+                    console.error('Failed to refresh game state:', error);
+                }
             }
         });
 

@@ -162,22 +162,16 @@ body::before {
 .logo-container {
   width: 200px;
   height: 200px;
-  background: var(--md-sys-color-surface);
-  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--md-sys-elevation-level3);
   margin-bottom: 32px;
-  backdrop-filter: blur(20px);
-  border: 2px solid rgba(255, 255, 255, 0.1);
 }
 
 .logo-container img {
   width: 160px;
   height: 160px;
   object-fit: contain;
-  border-radius: 50%;
 }
 
 .logo-placeholder {

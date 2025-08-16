@@ -159,11 +159,15 @@ class Database {
     
     // Add branding columns to existing games if they don't exist
     const brandingColumns = [
+      ['logo_url', 'TEXT'],
+      ['logo_position', 'TEXT DEFAULT \'top-right\''],
+      ['logo_size', 'TEXT DEFAULT \'medium\''],
       ['primary_color', 'TEXT DEFAULT \'#667eea\''],
       ['secondary_color', 'TEXT DEFAULT \'#764ba2\''],
       ['accent_color', 'TEXT DEFAULT \'#FFD700\''],
       ['background_style', 'TEXT DEFAULT \'gradient\''],
-      ['font_family', 'TEXT DEFAULT \'Segoe UI\'']
+      ['font_family', 'TEXT DEFAULT \'Segoe UI\''],
+      ['game_description', 'TEXT DEFAULT \'\'']
     ];
     
     for (const [columnName, columnDef] of brandingColumns) {

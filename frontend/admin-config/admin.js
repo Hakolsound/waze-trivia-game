@@ -177,6 +177,11 @@ class AdminConfig {
             timeLimit: document.getElementById('time-limit'),
             questionPoints: document.getElementById('question-points'),
             mediaUrl: document.getElementById('media-url'),
+            mediaPreviewContainer: document.getElementById('media-preview-container'),
+            mediaPreviewImage: document.getElementById('media-preview-image'),
+            mediaPreviewVideo: document.getElementById('media-preview-video'),
+            mediaPreviewIframe: document.getElementById('media-preview-iframe'),
+            clearMediaPreviewBtn: document.getElementById('clear-media-preview'),
             cancelQuestionBtn: document.getElementById('cancel-question-btn'),
             deleteQuestionBtn: document.getElementById('delete-question-btn'),
             closeQuestionEditorBtn: document.getElementById('close-question-editor-btn'),
@@ -478,6 +483,24 @@ class AdminConfig {
         if (this.elements.cancelNavigationBtn) {
             this.elements.cancelNavigationBtn.addEventListener('click', () => {
                 this.handleCancelNavigation();
+            });
+        }
+
+        // Media preview functionality
+        if (this.elements.mediaUrl) {
+            this.elements.mediaUrl.addEventListener('input', (e) => {
+                this.handleMediaUrlChange(e.target.value);
+            });
+            this.elements.mediaUrl.addEventListener('paste', (e) => {
+                setTimeout(() => {
+                    this.handleMediaUrlChange(e.target.value);
+                }, 100);
+            });
+        }
+
+        if (this.elements.clearMediaPreviewBtn) {
+            this.elements.clearMediaPreviewBtn.addEventListener('click', () => {
+                this.clearMediaPreview();
             });
         }
     }
@@ -2269,6 +2292,152 @@ class AdminConfig {
             console.error('Failed to save virtual buzzer settings:', error);
             this.showToast('Failed to save virtual buzzer settings', 'error');
         }
+    }
+
+    // Media Preview Methods
+    handleMediaUrlChange(url) {
+        if (!url || url.trim() === '') {
+            this.hideMediaPreview();
+            return;
+        }
+
+        const trimmedUrl = url.trim();
+        this.loadMediaPreview(trimmedUrl);
+    }
+
+    async loadMediaPreview(mediaUrl) {
+        if (!mediaUrl) {
+            this.hideMediaPreview();
+            return;
+        }
+
+        console.log('Loading media preview for:', mediaUrl);
+
+        // Show loading state
+        this.showMediaPreviewLoading();
+        this.elements.mediaPreviewContainer.classList.remove('hidden');
+
+        // Reset all preview elements
+        this.resetMediaPreviewElements();
+
+        try {
+            // Handle different URL types
+            let finalUrl = mediaUrl;
+            
+            // If it's a relative URL, make it absolute
+            if (!mediaUrl.startsWith('http') && !mediaUrl.startsWith('/')) {
+                finalUrl = window.location.origin + '/' + mediaUrl;
+            }
+            // If it starts with '/' but is not absolute, make it relative to server
+            else if (mediaUrl.startsWith('/') && !mediaUrl.startsWith('//')) {
+                finalUrl = window.location.origin + mediaUrl;
+            }
+
+            // Check if it's a YouTube URL and convert to embed format
+            const youtubeMatch = finalUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+            const isYouTube = youtubeMatch !== null;
+            
+            // Determine if it's a video file based on file extension
+            const isVideo = /\.(mp4|webm|ogg|mov|avi|mkv)(\?.*)?$/i.test(finalUrl);
+            
+            if (isYouTube) {
+                // Handle YouTube video via iframe
+                const videoId = youtubeMatch[1];
+                const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0&modestbranding=1`;
+                
+                this.elements.mediaPreviewIframe.src = embedUrl;
+                this.elements.mediaPreviewIframe.style.display = 'block';
+                this.elements.mediaPreviewIframe.onload = () => {
+                    console.log('YouTube preview loaded successfully:', embedUrl);
+                    this.hideMediaPreviewLoading();
+                };
+                this.elements.mediaPreviewIframe.onerror = () => {
+                    console.error('Failed to load YouTube preview:', embedUrl);
+                    this.showMediaPreviewError('Failed to load YouTube video');
+                };
+            } else if (isVideo) {
+                // Handle regular video files
+                this.elements.mediaPreviewVideo.src = finalUrl;
+                this.elements.mediaPreviewVideo.style.display = 'block';
+                this.elements.mediaPreviewVideo.onloadedmetadata = () => {
+                    console.log('Video preview loaded successfully:', finalUrl);
+                    this.hideMediaPreviewLoading();
+                };
+                this.elements.mediaPreviewVideo.onerror = () => {
+                    console.error('Failed to load video preview:', finalUrl);
+                    this.showMediaPreviewError('Failed to load video file');
+                };
+            } else {
+                // Handle image
+                this.elements.mediaPreviewImage.crossOrigin = 'anonymous';
+                this.elements.mediaPreviewImage.onload = () => {
+                    console.log('Image preview loaded successfully:', finalUrl);
+                    this.elements.mediaPreviewImage.style.display = 'block';
+                    this.hideMediaPreviewLoading();
+                };
+                this.elements.mediaPreviewImage.onerror = () => {
+                    console.error('Failed to load image preview:', finalUrl);
+                    this.showMediaPreviewError('Failed to load image');
+                };
+                this.elements.mediaPreviewImage.src = finalUrl;
+            }
+
+        } catch (error) {
+            console.error('Error loading media preview:', error);
+            this.showMediaPreviewError('Error loading media preview');
+        }
+    }
+
+    resetMediaPreviewElements() {
+        this.elements.mediaPreviewImage.style.display = 'none';
+        this.elements.mediaPreviewVideo.style.display = 'none';
+        this.elements.mediaPreviewIframe.style.display = 'none';
+        this.elements.mediaPreviewImage.src = '';
+        this.elements.mediaPreviewVideo.src = '';
+        this.elements.mediaPreviewIframe.src = '';
+    }
+
+    showMediaPreviewLoading() {
+        const content = this.elements.mediaPreviewContainer.querySelector('.media-preview-content');
+        content.innerHTML = `
+            <div class="media-preview-loading">
+                <div style="font-size: 2rem;">🔄</div>
+                <div>Loading preview...</div>
+            </div>
+        `;
+    }
+
+    hideMediaPreviewLoading() {
+        const content = this.elements.mediaPreviewContainer.querySelector('.media-preview-content');
+        // Remove loading indicator, keep the media elements
+        const loadingElement = content.querySelector('.media-preview-loading');
+        if (loadingElement) {
+            loadingElement.remove();
+        }
+    }
+
+    showMediaPreviewError(errorMessage) {
+        const content = this.elements.mediaPreviewContainer.querySelector('.media-preview-content');
+        content.innerHTML = `
+            <div class="media-preview-error">
+                <div class="media-preview-error-icon">⚠️</div>
+                <div class="media-preview-error-text">${errorMessage}</div>
+            </div>
+        `;
+    }
+
+    hideMediaPreview() {
+        if (this.elements.mediaPreviewContainer) {
+            this.elements.mediaPreviewContainer.classList.add('hidden');
+            this.resetMediaPreviewElements();
+        }
+    }
+
+    clearMediaPreview() {
+        this.elements.mediaUrl.value = '';
+        this.hideMediaPreview();
+        // Focus back to the URL input
+        this.elements.mediaUrl.focus();
     }
 }
 

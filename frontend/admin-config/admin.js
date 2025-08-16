@@ -2343,7 +2343,7 @@ class AdminConfig {
             if (isYouTube) {
                 // Handle YouTube video via iframe
                 const videoId = youtubeMatch[1] || youtubeMatch[2]; // Handle both youtube.com and youtu.be formats
-                const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0&modestbranding=1`;
+                const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=0&controls=1&rel=0&modestbranding=1&showinfo=0`;
                 
                 this.elements.mediaPreviewIframe.src = embedUrl;
                 this.elements.mediaPreviewIframe.style.display = 'block';

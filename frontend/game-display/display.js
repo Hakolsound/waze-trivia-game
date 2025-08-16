@@ -1299,7 +1299,7 @@ class GameDisplay {
         if (isYouTube) {
             // Handle YouTube video via iframe
             const videoId = youtubeMatch[1] || youtubeMatch[2]; // Handle both youtube.com and youtu.be formats
-            const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0&modestbranding=1`;
+            const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=0&rel=0&modestbranding=1&showinfo=0&fs=0&disablekb=1`;
             
             iframeElement.src = embedUrl;
             iframeElement.style.display = 'block';

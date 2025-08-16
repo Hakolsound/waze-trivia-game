@@ -198,6 +198,7 @@ class AdminConfig {
             // Scoring settings elements
             timeBasedScoring: document.getElementById('time-based-scoring'),
             timeBasedDetails: document.getElementById('time-based-details'),
+            allowNegativeScores: document.getElementById('allow-negative-scores'),
             saveScoringSettingsBtn: document.getElementById('save-scoring-settings-btn'),
             
             // Virtual buzzer settings elements
@@ -290,6 +291,12 @@ class AdminConfig {
         if (this.elements.timeBasedScoring) {
             this.elements.timeBasedScoring.addEventListener('change', () => {
                 this.toggleTimeBasedDetails();
+            });
+        }
+        
+        if (this.elements.allowNegativeScores) {
+            this.elements.allowNegativeScores.addEventListener('change', () => {
+                this.markDirty();
             });
         }
         
@@ -2042,6 +2049,9 @@ class AdminConfig {
                     this.elements.timeBasedScoring.checked = settings.timeBasedScoring;
                     this.toggleTimeBasedDetails();
                 }
+                if (this.elements.allowNegativeScores) {
+                    this.elements.allowNegativeScores.checked = settings.allowNegativeScores;
+                }
             }
         } catch (error) {
             console.error('Failed to load scoring settings:', error);
@@ -2052,7 +2062,8 @@ class AdminConfig {
         if (!this.currentGame) return;
 
         const settings = {
-            timeBasedScoring: this.elements.timeBasedScoring ? this.elements.timeBasedScoring.checked : false
+            timeBasedScoring: this.elements.timeBasedScoring ? this.elements.timeBasedScoring.checked : false,
+            allowNegativeScores: this.elements.allowNegativeScores ? this.elements.allowNegativeScores.checked : false
         };
 
         try {

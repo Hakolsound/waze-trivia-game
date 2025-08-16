@@ -67,6 +67,7 @@ class Database {
         time_based_scoring BOOLEAN DEFAULT 0,
         virtual_buzzers_enabled BOOLEAN DEFAULT 0,
         buzzer_offline_threshold INTEGER DEFAULT 120,
+        allow_negative_scores BOOLEAN DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`,
@@ -144,6 +145,15 @@ class Database {
     } catch (error) {
       if (!error.message.includes('duplicate column name')) {
         console.error('Error adding buzzer_offline_threshold column:', error.message);
+      }
+    }
+    
+    // Add allow_negative_scores column to existing games if it doesn't exist
+    try {
+      await this.run('ALTER TABLE games ADD COLUMN allow_negative_scores BOOLEAN DEFAULT 0');
+    } catch (error) {
+      if (!error.message.includes('duplicate column name')) {
+        console.error('Error adding allow_negative_scores column:', error.message);
       }
     }
   }

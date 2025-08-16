@@ -436,20 +436,34 @@ class GameService {
   }
 
   async awardPoints(gameId, groupId, points) {
+    const game = await this.getGame(gameId);
+    const allowNegativeScores = Boolean(game.allow_negative_scores);
+    
+    // Get current score before update
+    const currentGroup = await this.db.get('SELECT * FROM groups WHERE id = ?', [groupId]);
+    const currentScore = currentGroup ? currentGroup.score : 0;
+    const newScore = currentScore + points;
+    
+    // If negative scores are not allowed, clamp at 0
+    const finalScore = allowNegativeScores ? newScore : Math.max(0, newScore);
+    const actualPointsAwarded = finalScore - currentScore;
+    
     await this.db.run(
-      'UPDATE groups SET score = score + ? WHERE id = ? AND game_id = ?',
-      [points, groupId, gameId]
+      'UPDATE groups SET score = ? WHERE id = ? AND game_id = ?',
+      [finalScore, groupId, gameId]
     );
 
-    const group = await this.db.get('SELECT * FROM groups WHERE id = ?', [groupId]);
+    const updatedGroup = await this.db.get('SELECT * FROM groups WHERE id = ?', [groupId]);
     
     this.io.to(`game-${gameId}`).emit('score-update', {
       groupId,
-      newScore: group.score,
-      pointsAwarded: points
+      newScore: updatedGroup.score,
+      pointsAwarded: actualPointsAwarded,
+      originalPointsAttempted: points,
+      cappedAtZero: !allowNegativeScores && newScore < 0
     });
 
-    return group;
+    return updatedGroup;
   }
 
   async getGameState(gameId) {
@@ -629,10 +643,28 @@ class GameService {
     const game = await this.getGame(gameId);
     if (!game) throw new Error('Game not found');
 
-    await this.db.run(
-      'UPDATE games SET time_based_scoring = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [settings.timeBasedScoring ? 1 : 0, gameId]
-    );
+    const updates = [];
+    const values = [];
+    
+    if (settings.hasOwnProperty('timeBasedScoring')) {
+      updates.push('time_based_scoring = ?');
+      values.push(settings.timeBasedScoring ? 1 : 0);
+    }
+    
+    if (settings.hasOwnProperty('allowNegativeScores')) {
+      updates.push('allow_negative_scores = ?');
+      values.push(settings.allowNegativeScores ? 1 : 0);
+    }
+    
+    if (updates.length > 0) {
+      updates.push('updated_at = CURRENT_TIMESTAMP');
+      values.push(gameId);
+      
+      await this.db.run(
+        `UPDATE games SET ${updates.join(', ')} WHERE id = ?`,
+        values
+      );
+    }
 
     return this.getGame(gameId);
   }
@@ -642,7 +674,8 @@ class GameService {
     if (!game) throw new Error('Game not found');
 
     return {
-      timeBasedScoring: Boolean(game.time_based_scoring)
+      timeBasedScoring: Boolean(game.time_based_scoring),
+      allowNegativeScores: Boolean(game.allow_negative_scores)
     };
   }
 

@@ -11,6 +11,7 @@ class GameDisplay {
         this.currentState = 'idle'; // idle, question, buzzer, answer
         this.teamNames = new Map();
         this.sidebarExpanded = true;
+        this.answerWasShown = false; // Track if answer was shown for current question
         
         // Performance optimization caches
         this.lastTimerPercentage = -1;
@@ -207,12 +208,26 @@ class GameDisplay {
         // Question navigation events - hide answer when navigating
         this.socket.on('question-prepared', (data) => {
             this.hideCorrectAnswer();
-            console.log('Question prepared:', data.nextQuestionIndex + 1);
+            
+            // If answer was shown, go to idle screen; otherwise keep current display
+            if (this.answerWasShown) {
+                this.showIdleState();
+                console.log('Question prepared:', data.nextQuestionIndex + 1, '- showing idle (answer was shown)');
+            } else {
+                console.log('Question prepared:', data.nextQuestionIndex + 1, '- keeping current display (no answer shown)');
+            }
         });
 
         this.socket.on('question-navigation', (data) => {
             this.hideCorrectAnswer();
-            console.log('Navigation to question:', data.questionIndex + 1, '- keeping current display until new question starts');
+            
+            // If answer was shown, go to idle screen; otherwise keep current display  
+            if (this.answerWasShown) {
+                this.showIdleState();
+                console.log('Navigation to question:', data.questionIndex + 1, '- showing idle (answer was shown)');
+            } else {
+                console.log('Navigation to question:', data.questionIndex + 1, '- keeping current display (no answer shown)');
+            }
         });
 
         // Window resize listener for dynamic text sizing
@@ -322,6 +337,9 @@ class GameDisplay {
         
         // Auto-hide correct answer overlay when new question starts
         this.hideCorrectAnswer();
+        
+        // Reset answer shown flag for new question
+        this.answerWasShown = false;
         
         this.showQuestionState(data.question);
         this.totalTime = data.question.time_limit || 30;
@@ -981,8 +999,9 @@ class GameDisplay {
         // Update the correct answer text
         this.elements.correctAnswerText.textContent = data.correctAnswer;
         
-        // Show the overlay
+        // Show the overlay and mark that answer was shown
         this.elements.correctAnswerOverlay.classList.remove('hidden');
+        this.answerWasShown = true;
         
         // Auto-hide after 8 seconds
         setTimeout(() => {

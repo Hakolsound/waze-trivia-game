@@ -16,6 +16,10 @@ class HostControl {
         this.isLeaderboardVisible = false; // Track leaderboard state
         this.gameSelector = null;
         
+        // Show Correct Answer state
+        this.answerShown = false;
+        this.keyPressCount = { 'A': 0, lastTime: 0 };
+        
         this.initializeGameSelector();
         this.initializeElements();
         this.setupSocketListeners();
@@ -187,6 +191,7 @@ class HostControl {
             startQuestionBtn: document.getElementById('start-question-btn'),
             nextQuestionBtn: document.getElementById('next-question-btn'),
             endQuestionBtn: document.getElementById('end-question-btn'),
+            showAnswerBtn: document.getElementById('show-answer-btn'),
             prevQuestionBtn: document.getElementById('prev-question-btn'),
             questionSelect: document.getElementById('question-select'),
             showQuestionSelectBtn: document.getElementById('show-question-select-btn'),
@@ -441,6 +446,7 @@ class HostControl {
         // Main game controls (with null checks to prevent errors)
         if (this.elements.startQuestionBtn) this.elements.startQuestionBtn.addEventListener('click', () => this.startQuestion());
         if (this.elements.endQuestionBtn) this.elements.endQuestionBtn.addEventListener('click', () => this.endQuestion());
+        if (this.elements.showAnswerBtn) this.elements.showAnswerBtn.addEventListener('click', () => this.showCorrectAnswer());
         if (this.elements.nextQuestionBtn) this.elements.nextQuestionBtn.addEventListener('click', () => this.nextQuestion());
         if (this.elements.prevQuestionBtn) this.elements.prevQuestionBtn.addEventListener('click', () => this.prevQuestion());
         if (this.elements.questionSelect) this.elements.questionSelect.addEventListener('change', (e) => this.jumpToQuestion(e.target.value));
@@ -609,16 +615,31 @@ class HostControl {
                     }
                     break;
                     
+                case 'h':
+                case 'H': // H - Open Host Control (Ctrl+H/Cmd+H)
+                    if (e.ctrlKey || e.metaKey) {
+                        e.preventDefault();
+                        window.open('/control', '_blank');
+                    }
+                    break;
+                    
                 case 'd':
-                case 'D': // D - Open Display
-                    e.preventDefault();
-                    window.open('/display', '_blank');
+                case 'D': // D - Open Display (use Ctrl+D/Cmd+D)
+                    if (e.ctrlKey || e.metaKey) {
+                        e.preventDefault();
+                        window.open('/display', '_blank');
+                    }
                     break;
                     
                 case 'a':
-                case 'A': // A - Open Admin
-                    e.preventDefault();
-                    window.open('/admin', '_blank');
+                case 'A': // A - Show Answer (triple press) or Open Admin (Ctrl+A/Cmd+A)
+                    if (e.ctrlKey || e.metaKey) {
+                        e.preventDefault();
+                        window.open('/admin', '_blank');
+                    } else {
+                        e.preventDefault();
+                        this.handleAKeyPress(e);
+                    }
                     break;
                     
                 case 'l':
@@ -3007,6 +3028,103 @@ class HostControl {
         if (this.tabProgressInterval) {
             clearInterval(this.tabProgressInterval);
             this.tabProgressInterval = null;
+        }
+    }
+
+    // Show Correct Answer Methods
+    handleAKeyPress(e) {
+        const now = Date.now();
+        const timeSinceLastA = now - this.keyPressCount.lastTime;
+        
+        // Reset counter if more than 2 seconds since last A press
+        if (timeSinceLastA > 2000) {
+            this.keyPressCount.A = 0;
+        }
+        
+        this.keyPressCount.A++;
+        this.keyPressCount.lastTime = now;
+        
+        console.log('A pressed', this.keyPressCount.A, 'times');
+        
+        // Check if button is enabled and clicked once, or if triple-A pressed
+        if ((this.keyPressCount.A === 1 && this.canShowAnswer()) || this.keyPressCount.A >= 3) {
+            if (this.keyPressCount.A >= 3) {
+                console.log('Triple A pressed - force enabling show answer');
+                this.showToast('Show Answer enabled (Triple A)', 'info');
+            }
+            this.showCorrectAnswer();
+            this.keyPressCount.A = 0; // Reset counter
+        }
+    }
+
+    canShowAnswer() {
+        if (!this.currentGame || !this.currentQuestion) return false;
+        if (this.answerShown) return false; // Already shown
+        
+        // Enable if: question skipped, time expired, or triple-A pressed
+        const timeExpired = this.timeRemaining <= 0;
+        const questionSkipped = false; // Will be set in giveUpQuestion method
+        
+        return timeExpired || questionSkipped;
+    }
+
+    updateShowAnswerButton() {
+        if (!this.elements.showAnswerBtn) return;
+        
+        const canShow = this.canShowAnswer();
+        this.elements.showAnswerBtn.disabled = !canShow && this.keyPressCount.A < 3;
+        
+        // Update button appearance
+        if (canShow) {
+            this.elements.showAnswerBtn.classList.add('btn-warning');
+            this.elements.showAnswerBtn.classList.remove('btn-info');
+            this.elements.showAnswerBtn.title = 'Show Correct Answer [A] • Ready to show';
+        } else {
+            this.elements.showAnswerBtn.classList.remove('btn-warning');
+            this.elements.showAnswerBtn.classList.add('btn-info');
+            this.elements.showAnswerBtn.title = 'Show Correct Answer [A] • Press A 3x to force enable';
+        }
+    }
+
+    async showCorrectAnswer() {
+        if (!this.currentGame || !this.currentQuestion) {
+            this.showToast('No active question', 'error');
+            return;
+        }
+        
+        if (this.answerShown) {
+            this.showToast('Answer already shown', 'warning');
+            return;
+        }
+        
+        // Check if forced (triple-A) or conditions met
+        if (!this.canShowAnswer() && this.keyPressCount.A < 3) {
+            this.showToast('Cannot show answer yet', 'error');
+            return;
+        }
+
+        try {
+            // Send show answer request to backend
+            const response = await fetch(`/api/games/${this.currentGame.id}/show-answer`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    questionIndex: this.currentQuestionIndex,
+                    forced: this.keyPressCount.A >= 3
+                })
+            });
+
+            if (response.ok) {
+                this.answerShown = true;
+                this.elements.showAnswerBtn.disabled = true;
+                this.elements.showAnswerBtn.textContent = '✓ Answer Shown';
+                this.showToast('Correct answer revealed on display', 'success');
+            } else {
+                throw new Error('Failed to show answer');
+            }
+        } catch (error) {
+            console.error('Failed to show correct answer:', error);
+            this.showToast('Failed to show answer', 'error');
         }
     }
 }

@@ -554,6 +554,98 @@ h1.question-text,
   color: var(--md-sys-color-on-surface-variant);
 }
 
+/* Correct Answer Overlay */
+.correct-answer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(20px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  opacity: 1;
+  transition: all 0.4s ease;
+}
+
+.correct-answer-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.correct-answer-container {
+  background: var(--md-sys-color-surface);
+  border-radius: 32px;
+  padding: 64px;
+  text-align: center;
+  box-shadow: var(--md-sys-elevation-level4);
+  backdrop-filter: blur(20px);
+  border: 2px solid var(--accent);
+  max-width: 80%;
+  min-width: 500px;
+  transform: scale(0.9);
+  animation: correctAnswerAppear 0.5s ease forwards;
+}
+
+.correct-answer-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+.answer-icon {
+  font-size: 4rem;
+  animation: lightBulbGlow 2s ease-in-out infinite alternate;
+}
+
+.answer-title {
+  font: var(--md-sys-typescale-display-medium);
+  color: var(--accent);
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.correct-answer-content {
+  margin-top: 32px;
+}
+
+.correct-answer-text {
+  font: var(--md-sys-typescale-headline-large);
+  color: var(--md-sys-color-on-surface);
+  line-height: 1.4;
+  padding: 32px;
+  background: rgba(6, 182, 212, 0.1);
+  border-radius: 16px;
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  margin-top: 16px;
+}
+
+@keyframes correctAnswerAppear {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes lightBulbGlow {
+  0% {
+    text-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+  }
+  100% {
+    text-shadow: 0 0 20px rgba(245, 158, 11, 0.8), 0 0 30px rgba(245, 158, 11, 0.6);
+  }
+}
+
 /* Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(20px); }

@@ -356,5 +356,15 @@ module.exports = (gameService) => {
     }
   });
 
+  // Show correct answer
+  router.post('/:id/show-answer', async (req, res) => {
+    try {
+      const result = await gameService.showCorrectAnswer(req.params.id);
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   return router;
 };

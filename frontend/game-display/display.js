@@ -42,6 +42,9 @@ class GameDisplay {
     onGameChanged(game) {
         console.log('Game changed in display:', game);
         
+        // Auto-hide correct answer overlay when game changes
+        this.hideCorrectAnswer();
+        
         if (game) {
             // Update team names mapping
             this.teamNames.clear();
@@ -100,6 +103,10 @@ class GameDisplay {
             
             // Feedback elements
             answerFeedback: document.getElementById('answer-feedback'),
+            
+            // Correct answer elements
+            correctAnswerOverlay: document.getElementById('correct-answer-overlay'),
+            correctAnswerText: document.getElementById('correct-answer-text'),
             
             // Overlay elements
             messageOverlay: document.getElementById('message-overlay'),
@@ -184,6 +191,20 @@ class GameDisplay {
             this.hideLeaderboard();
         });
 
+        // Correct answer event
+        this.socket.on('show-correct-answer', (data) => {
+            this.showCorrectAnswer(data);
+        });
+
+        // Question navigation events - hide answer when navigating
+        this.socket.on('question-prepared', (data) => {
+            this.hideCorrectAnswer();
+        });
+
+        this.socket.on('question-navigation', (data) => {
+            this.hideCorrectAnswer();
+        });
+
         // Window resize listener for dynamic text sizing
         window.addEventListener('resize', () => {
             if (this.currentState === 'question' && this.elements.questionText.textContent) {
@@ -217,6 +238,10 @@ class GameDisplay {
     // State Management
     showIdleState() {
         this.currentState = 'idle';
+        
+        // Auto-hide correct answer overlay when transitioning to idle
+        this.hideCorrectAnswer();
+        
         this.elements.idleState.classList.add('active');
         this.elements.idleState.classList.remove('hidden');
         this.elements.questionSection.classList.add('hidden');
@@ -232,6 +257,10 @@ class GameDisplay {
 
     showQuestionState(question) {
         this.currentState = 'question';
+        
+        // Auto-hide correct answer overlay when showing new question
+        this.hideCorrectAnswer();
+        
         this.elements.idleState.classList.remove('active');
         this.elements.idleState.classList.add('hidden');
         this.elements.questionSection.classList.remove('hidden');
@@ -281,6 +310,10 @@ class GameDisplay {
 
     handleQuestionStarted(data) {
         this.currentQuestion = data.question;
+        
+        // Auto-hide correct answer overlay when new question starts
+        this.hideCorrectAnswer();
+        
         this.showQuestionState(data.question);
         this.totalTime = data.question.time_limit || 30;
         this.timeRemaining = this.totalTime;
@@ -381,6 +414,10 @@ class GameDisplay {
     handleGameReset() {
         this.clearTimer();
         this.clearBuzzerQueue();
+        
+        // Auto-hide correct answer overlay on game reset
+        this.hideCorrectAnswer();
+        
         this.showIdleState();
     }
 
@@ -926,6 +963,29 @@ class GameDisplay {
             
             console.log(`Dynamic spacing: ${optimalGap}px gap for ${teamCount} teams (available: ${availableHeight}px, items: ${totalItemsHeight}px)`);
         });
+    }
+
+    // Correct Answer Methods
+    showCorrectAnswer(data) {
+        console.log('Showing correct answer:', data);
+        
+        // Update the correct answer text
+        this.elements.correctAnswerText.textContent = data.correctAnswer;
+        
+        // Show the overlay
+        this.elements.correctAnswerOverlay.classList.remove('hidden');
+        
+        // Auto-hide after 8 seconds
+        setTimeout(() => {
+            this.hideCorrectAnswer();
+        }, 8000);
+    }
+
+    hideCorrectAnswer() {
+        if (this.elements && this.elements.correctAnswerOverlay) {
+            this.elements.correctAnswerOverlay.classList.add('hidden');
+            console.log('Correct answer overlay hidden');
+        }
     }
 }
 

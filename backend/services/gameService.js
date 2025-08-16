@@ -752,6 +752,36 @@ class GameService {
     const game = await this.getGame(this.currentGlobalGame);
     return { gameId: this.currentGlobalGame, game };
   }
+
+  // Show correct answer on display
+  async showCorrectAnswer(gameId) {
+    const game = await this.getGame(gameId);
+    if (!game) throw new Error('Game not found');
+
+    const currentQuestionIndex = game.current_question_index;
+    if (currentQuestionIndex === null || currentQuestionIndex === undefined) {
+      throw new Error('No current question available');
+    }
+
+    const currentQuestion = game.questions[currentQuestionIndex];
+    if (!currentQuestion) {
+      throw new Error('Current question not found');
+    }
+
+    // Emit socket event to display the correct answer
+    this.io.to(`game-${gameId}`).emit('show-correct-answer', {
+      gameId,
+      questionId: currentQuestion.id,
+      correctAnswer: currentQuestion.correct_answer,
+      questionText: currentQuestion.text
+    });
+
+    return {
+      success: true,
+      correctAnswer: currentQuestion.correct_answer,
+      questionText: currentQuestion.text
+    };
+  }
 }
 
 module.exports = GameService;

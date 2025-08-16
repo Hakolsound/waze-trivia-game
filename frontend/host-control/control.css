@@ -1084,100 +1084,194 @@ body {
   display: block;
 }
 
-/* Main Control Buttons */
-.main-controls {
+/* Operator Groups */
+.operator-group {
+  margin: 32px 0;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.operator-group-header {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.operator-group-header h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 0;
+}
+
+/* Main Operators - Single Row Layout */
+.main-operators .operator-row {
   display: flex;
   gap: 24px;
   justify-content: center;
   align-items: center;
   flex-wrap: wrap;
-  margin: 24px 0;
 }
 
-.control-btn {
+/* Secondary Operators - Grid Layout */
+.secondary-operators .operator-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  justify-items: center;
+}
+
+/* Operator Button Base */
+.operator-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 20px;
+  gap: 12px;
+  padding: 24px 20px;
   border: none;
-  border-radius: 50%;
+  border-radius: 20px;
   color: white;
   cursor: pointer;
   transition: all var(--md-sys-motion-duration-medium) var(--md-sys-motion-easing-standard);
   box-shadow: var(--md-sys-elevation-level2);
   background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  width: 100px;
-  height: 100px;
+  backdrop-filter: blur(15px);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  min-height: 120px;
+  position: relative;
+  overflow: hidden;
+  font-family: 'Google Sans', sans-serif;
 }
 
-.control-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
+.operator-btn:hover:not(:disabled) {
+  transform: translateY(-4px) scale(1.02);
   box-shadow: var(--md-sys-elevation-level4);
   background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
-.control-btn:disabled {
+.operator-btn:active:not(:disabled) {
+  transform: translateY(-2px) scale(1.01);
+  transition: all 0.1s ease;
+}
+
+.operator-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
   transform: none !important;
 }
 
-.control-btn-large {
-  width: 120px;
-  height: 120px;
-  padding: 24px;
+/* Operator Button Sizes */
+.operator-btn-hero {
+  width: 180px;
+  min-height: 140px;
+  padding: 32px 24px;
+  border-radius: 24px;
+  border-width: 3px;
 }
 
-.control-btn .control-icon {
-  width: 48px;
-  height: 48px;
+.operator-btn-large {
+  width: 140px;
+  min-height: 120px;
+}
+
+.operator-btn-medium {
+  width: 160px;
+  min-height: 100px;
+  padding: 20px 16px;
+}
+
+/* Operator Icons */
+.operator-icon {
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.2);
-  margin-bottom: 4px;
+  margin-bottom: 8px;
+  transition: all var(--md-sys-motion-duration-medium) ease;
 }
 
-.control-btn-large .control-icon {
-  width: 56px;
-  height: 56px;
+.operator-icon-hero {
+  width: 72px;
+  height: 72px;
+  background: rgba(255, 255, 255, 0.3);
 }
 
-.control-btn .material-icons {
-  font-size: 24px;
-  color: currentColor;
+.operator-btn:hover:not(:disabled) .operator-icon {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
 }
 
-.control-btn-large .material-icons {
+.operator-btn-hero:hover:not(:disabled) .operator-icon-hero {
+  background: rgba(255, 255, 255, 0.4);
+  transform: scale(1.05);
+}
+
+.operator-icon .material-icons {
   font-size: 28px;
   color: currentColor;
 }
 
-/* Ensure start button icons are white */
-.btn-primary .material-icons {
-  color: white !important;
+.operator-icon-hero .material-icons {
+  font-size: 36px;
 }
 
-.control-text {
+/* Operator Content */
+.operator-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
-.control-label {
-  font-size: 12px;
-  font-weight: 600;
+.operator-label {
+  font-size: 13px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
+  text-align: center;
+  line-height: 1.2;
 }
 
-.control-btn-large .control-label {
-  font-size: 14px;
+.operator-label-hero {
+  font-size: 18px;
+  letter-spacing: 1.2px;
+}
+
+.operator-shortcut {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-family: 'SF Mono', Monaco, monospace;
+  font-weight: 600;
+  color: #fff;
+  min-width: 24px;
+  text-align: center;
+}
+
+/* Hover Effects */
+.operator-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.5s ease;
+}
+
+.operator-btn:hover:not(:disabled)::before {
+  left: 100%;
 }
 
 kbd {
@@ -1282,22 +1376,6 @@ kbd {
 @keyframes dangerShine {
   0% { box-shadow: 0 2px 8px rgba(244, 67, 54, 0.4); }
   100% { box-shadow: 0 4px 20px rgba(244, 67, 54, 0.7); }
-}
-
-/* Quick Actions Bar */
-.quick-actions {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin: 12px 0;
-}
-
-.quick-actions .btn {
-  padding: 12px 20px;
-  font-size: 0.9rem;
-  min-width: auto;
 }
 
 .question-selector {
@@ -3083,5 +3161,158 @@ kbd {
     font-size: 9px;
     color: var(--md-sys-color-outline);
     line-height: 1;
+}
+
+/* Operator Responsive Design */
+@media (max-width: 1200px) {
+  .operator-btn-hero {
+    width: 160px;
+    min-height: 130px;
+    padding: 28px 20px;
+  }
+  
+  .operator-btn-large {
+    width: 130px;
+    min-height: 110px;
+  }
+  
+  .operator-btn-medium {
+    width: 150px;
+    min-height: 95px;
+  }
+  
+  .secondary-operators .operator-grid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .operator-group {
+    margin: 24px 0;
+    padding: 20px;
+  }
+  
+  .main-operators .operator-row {
+    gap: 16px;
+  }
+  
+  .operator-btn-hero {
+    width: 140px;
+    min-height: 120px;
+    padding: 24px 16px;
+  }
+  
+  .operator-btn-large {
+    width: 120px;
+    min-height: 100px;
+    padding: 20px 16px;
+  }
+  
+  .operator-btn-medium {
+    width: 100%;
+    min-height: 90px;
+    padding: 18px 16px;
+  }
+  
+  .secondary-operators .operator-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  
+  .operator-icon {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .operator-icon-hero {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .operator-icon .material-icons {
+    font-size: 24px;
+  }
+  
+  .operator-icon-hero .material-icons {
+    font-size: 30px;
+  }
+  
+  .operator-label {
+    font-size: 12px;
+  }
+  
+  .operator-label-hero {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .operator-group {
+    margin: 20px 0;
+    padding: 16px;
+  }
+  
+  .main-operators .operator-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .operator-btn-hero {
+    width: 100%;
+    max-width: 200px;
+    min-height: 100px;
+    padding: 20px 16px;
+  }
+  
+  .operator-btn-large {
+    width: 100%;
+    max-width: 160px;
+    min-height: 90px;
+    padding: 18px 16px;
+  }
+  
+  .secondary-operators .operator-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    max-width: 250px;
+    margin: 0 auto;
+  }
+  
+  .operator-btn-medium {
+    min-height: 85px;
+    padding: 16px;
+  }
+  
+  .operator-icon {
+    width: 44px;
+    height: 44px;
+  }
+  
+  .operator-icon-hero {
+    width: 56px;
+    height: 56px;
+  }
+  
+  .operator-icon .material-icons {
+    font-size: 22px;
+  }
+  
+  .operator-icon-hero .material-icons {
+    font-size: 28px;
+  }
+  
+  .operator-label {
+    font-size: 11px;
+  }
+  
+  .operator-label-hero {
+    font-size: 14px;
+  }
+  
+  .operator-shortcut {
+    font-size: 10px;
+    padding: 3px 6px;
+  }
 }
 

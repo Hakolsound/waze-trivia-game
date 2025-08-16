@@ -247,16 +247,22 @@ class ESP32Service extends EventEmitter {
       if (!/^\d+$/.test(deviceId.toString())) continue;
       
       const timeSinceLastSeen = now - (state.last_seen || 0);
-      const timeSinceLastOnline = state.last_online ? now - state.last_online : null;
       // Device is online ONLY if ESP32 reported online=1 AND it's recent
       const isOnline = state.online === true && timeSinceLastSeen < staleThreshold;
+      
+      // For last_online: if device is currently online but no last_online timestamp, use last_seen
+      let lastOnlineTimestamp = state.last_online;
+      if (isOnline && !lastOnlineTimestamp) {
+        lastOnlineTimestamp = state.last_seen || now;
+      }
+      const timeSinceLastOnline = lastOnlineTimestamp ? now - lastOnlineTimestamp : null;
       
       devices.push({
         device_id: deviceId,
         name: `Buzzer ${deviceId}`,
         status: isOnline ? 'online' : 'offline',
         last_seen: state.last_seen || now,
-        last_online: state.last_online || null,
+        last_online: lastOnlineTimestamp || null,
         online: isOnline,
         armed: state.armed === true,
         pressed: state.pressed === true,
@@ -301,9 +307,12 @@ class ESP32Service extends EventEmitter {
         }
       }
       
-      // Update last_online timestamp only when device comes online
+      // Update last_online timestamp when device is/comes online
       if (params.online === true) {
         params.last_online = Date.now();
+      } else if (!params.last_online && existingState.last_online) {
+        // Preserve existing last_online when going offline
+        params.last_online = existingState.last_online;
       }
       
       // Store device state

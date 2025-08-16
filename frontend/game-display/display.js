@@ -1290,7 +1290,7 @@ class GameDisplay {
         console.log('Loading media from URL:', finalUrl);
 
         // Check if it's a YouTube URL and convert to embed format
-        const youtubeMatch = finalUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+        const youtubeMatch = finalUrl.match(/(?:youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]+)|youtu\.be\/([a-zA-Z0-9_-]+))/);
         const isYouTube = youtubeMatch !== null;
         
         // Determine if it's a video file based on file extension
@@ -1298,7 +1298,7 @@ class GameDisplay {
         
         if (isYouTube) {
             // Handle YouTube video via iframe
-            const videoId = youtubeMatch[1];
+            const videoId = youtubeMatch[1] || youtubeMatch[2]; // Handle both youtube.com and youtu.be formats
             const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0&modestbranding=1`;
             
             iframeElement.src = embedUrl;

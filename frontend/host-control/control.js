@@ -164,6 +164,7 @@ class HostControl {
             disarmBuzzersBtn: document.getElementById('disarm-buzzers-btn'),
             buzzerResults: document.getElementById('buzzer-results'),
             resetScoresBtn: document.getElementById('reset-scores-btn'),
+            resetQuestionsBtn: document.getElementById('reset-questions-btn'),
             resetGameBtn: document.getElementById('reset-game-btn'),
             showLeaderboardBtn: document.getElementById('show-leaderboard-btn'),
             endGameBtn: document.getElementById('end-game-btn'),
@@ -359,6 +360,7 @@ class HostControl {
         if (this.elements.questionSelect) this.elements.questionSelect.addEventListener('change', (e) => this.jumpToQuestion(e.target.value));
         if (this.elements.showQuestionSelectBtn) this.elements.showQuestionSelectBtn.addEventListener('click', () => this.showQuestionSelectModal());
         if (this.elements.resetScoresBtn) this.elements.resetScoresBtn.addEventListener('click', () => this.resetAllScores());
+        if (this.elements.resetQuestionsBtn) this.elements.resetQuestionsBtn.addEventListener('click', () => this.resetQuestions());
         if (this.elements.resetGameBtn) this.elements.resetGameBtn.addEventListener('click', () => this.resetGame());
         if (this.elements.showLeaderboardBtn) this.elements.showLeaderboardBtn.addEventListener('click', () => this.toggleLeaderboard());
         if (this.elements.endGameBtn) this.elements.endGameBtn.addEventListener('click', () => this.endGame());
@@ -1005,7 +1007,7 @@ class HostControl {
     }
 
     async resetGame() {
-        if (!this.currentGame || !confirm('Are you sure you want to reset the game? This will clear all scores and buzzer history.')) {
+        if (!this.currentGame || !confirm('Are you sure you want to reset the game? This will clear all scores, question progress, answers, and buzzer history.')) {
             return;
         }
 
@@ -1015,10 +1017,51 @@ class HostControl {
                 await this.disarmBuzzers(true, 'game-action');
             }
             
-            await fetch(`/api/games/${this.currentGame.id}/reset`, {
+            // Stop any active timers
+            this.stopQuestionTimer();
+            this.stopTabProgressUpdates();
+            
+            // Reset all local state
+            this.currentQuestionIndex = 0;
+            this.isQuestionActive = false;
+            this.questionStartTime = null;
+            this.evaluationHistory = [];
+            this.buzzerOrder = [];
+            this.currentBuzzerPosition = 0;
+            
+            // Clear UI elements
+            this.clearBuzzerResults();
+            this.clearAnswerEvaluation();
+            this.hideAnswerEvaluationModal();
+            this.updateCurrentAnswererHighlight(null);
+            
+            // Hide correct answer display
+            if (this.elements.correctAnswerDisplay) {
+                this.elements.correctAnswerDisplay.classList.add('hidden');
+            }
+            
+            // Reset question tabs to initial state
+            this.initializeQuestionTabs();
+            
+            // Call backend reset
+            const response = await fetch(`/api/games/${this.currentGame.id}/reset`, {
                 method: 'POST'
             });
+            
+            if (response.ok) {
+                // Update displays after successful reset
+                this.updateQuestionDisplay();
+                this.updateQuestionControls();
+                this.updateQuestionTabsState();
+                this.updateTeamDisplay(false);
+                
+                this.showToast('Game has been completely reset', 'success');
+            } else {
+                throw new Error('Failed to reset game on server');
+            }
+            
         } catch (error) {
+            console.error('Failed to reset game:', error);
             this.showToast('Failed to reset game', 'error');
         }
     }
@@ -1049,6 +1092,51 @@ class HostControl {
         } catch (error) {
             console.error('Failed to reset scores:', error);
             this.showToast('Failed to reset scores', 'error');
+        }
+    }
+
+    resetQuestions() {
+        if (!confirm('Are you sure you want to reset all question progress? This will clear all answers, feedback, and question history but keep team scores intact.')) {
+            return;
+        }
+
+        try {
+            // Stop any active question timers
+            this.stopQuestionTimer();
+            this.stopTabProgressUpdates();
+            
+            // Reset question state
+            this.currentQuestionIndex = 0;
+            this.isQuestionActive = false;
+            this.questionStartTime = null;
+            
+            // Clear evaluation history
+            this.evaluationHistory = [];
+            
+            // Clear buzzer results
+            this.clearBuzzerResults();
+            this.clearAnswerEvaluation();
+            this.hideAnswerEvaluationModal();
+            this.updateCurrentAnswererHighlight(null);
+            
+            // Reset question tabs to initial state
+            this.initializeQuestionTabs();
+            
+            // Update all displays
+            this.updateQuestionDisplay();
+            this.updateQuestionControls();
+            this.updateQuestionTabsState();
+            
+            // Hide correct answer display
+            if (this.elements.correctAnswerDisplay) {
+                this.elements.correctAnswerDisplay.classList.add('hidden');
+            }
+            
+            this.showToast('Question progress has been reset', 'success');
+            
+        } catch (error) {
+            console.error('Failed to reset questions:', error);
+            this.showToast('Failed to reset question progress', 'error');
         }
     }
 

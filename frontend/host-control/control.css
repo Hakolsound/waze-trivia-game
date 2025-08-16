@@ -1566,13 +1566,45 @@ kbd {
 .game-actions {
   padding: 0 20px 20px;
   display: flex;
+  flex-direction: column;
   gap: 12px;
 }
 
 .game-actions .btn {
-  padding: 10px 16px;
+  padding: 12px 16px;
   font-size: 0.9rem;
-  flex: 1;
+  text-align: center;
+  position: relative;
+}
+
+/* Reset Questions Button - Distinctive styling */
+#reset-questions-btn {
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.15), rgba(255, 213, 79, 0.1));
+  border: 1px solid rgba(255, 193, 7, 0.4);
+  color: #FFC107;
+}
+
+#reset-questions-btn:hover {
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.25), rgba(255, 213, 79, 0.2));
+  border-color: rgba(255, 193, 7, 0.6);
+  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+}
+
+#reset-questions-btn::before {
+  content: '🔄';
+  margin-right: 8px;
+}
+
+/* Reset Game Button - Keep danger styling */
+#reset-game-btn::before {
+  content: '⚠️';
+  margin-right: 8px;
+}
+
+/* End Game Button */
+#end-game-btn::before {
+  content: '🏁';
+  margin-right: 8px;
 }
 
 /* Modals */

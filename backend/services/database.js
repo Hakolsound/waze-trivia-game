@@ -156,6 +156,25 @@ class Database {
         console.error('Error adding allow_negative_scores column:', error.message);
       }
     }
+    
+    // Add branding columns to existing games if they don't exist
+    const brandingColumns = [
+      ['primary_color', 'TEXT DEFAULT \'#667eea\''],
+      ['secondary_color', 'TEXT DEFAULT \'#764ba2\''],
+      ['accent_color', 'TEXT DEFAULT \'#FFD700\''],
+      ['background_style', 'TEXT DEFAULT \'gradient\''],
+      ['font_family', 'TEXT DEFAULT \'Segoe UI\'']
+    ];
+    
+    for (const [columnName, columnDef] of brandingColumns) {
+      try {
+        await this.run(`ALTER TABLE games ADD COLUMN ${columnName} ${columnDef}`);
+      } catch (error) {
+        if (!error.message.includes('duplicate column name')) {
+          console.error(`Error adding ${columnName} column:`, error.message);
+        }
+      }
+    }
   }
 
   async seedDefaultData() {

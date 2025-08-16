@@ -2052,6 +2052,7 @@ class HostControl {
             if (isCorrect) {
                 // Mark question as played when answered correctly
                 this.playedQuestions.add(this.activeQuestionIndex);
+                this.updateQuestionTabsState(); // Update tabs immediately to show played state
                 
                 // Hide modal and prepare for next question if answer is correct
                 setTimeout(() => {
@@ -2072,6 +2073,7 @@ class HostControl {
                     } else {
                         // No more teams to answer - mark as played and prepare next question
                         this.playedQuestions.add(this.activeQuestionIndex);
+                        this.updateQuestionTabsState(); // Update tabs immediately to show played state
                         this.hideAnswerEvaluationModal();
                         this.nextQuestion();
                     }
@@ -2103,6 +2105,7 @@ class HostControl {
 
             // Mark question as played when skipped/given up
             this.playedQuestions.add(this.activeQuestionIndex);
+            this.updateQuestionTabsState(); // Update tabs immediately to show played state
             
             // Show feedback and hide modal
             this.showToast('Question skipped - moving to next question', 'info');
@@ -2553,13 +2556,15 @@ class HostControl {
         let progressContent = '';
         if (tabState === 'active' && this.isQuestionActive) {
             const timeRemaining = Math.max(0, (this.questionStartTime + this.questionTimeLimit * 1000 - Date.now()) / 1000);
-            const progressPercentage = Math.max(0, (timeRemaining / this.questionTimeLimit) * 100);
+            // Use ceiling for progress calculation to match the text display
+            const displayTime = timeRemaining > 0 ? Math.ceil(timeRemaining) : 0;
+            const progressPercentage = Math.max(0, (displayTime / this.questionTimeLimit) * 100);
             progressContent = `
                 <div class="tab-progress">
                     <div class="progress-indicator">
                         <div class="progress-fill" style="width: ${progressPercentage}%"></div>
                     </div>
-                    <span class="progress-text">${timeRemaining > 0 ? Math.ceil(timeRemaining) : 0}s left</span>
+                    <span class="progress-text">${displayTime}s left</span>
                 </div>
             `;
         }
@@ -2628,7 +2633,9 @@ class HostControl {
         if (!this.isQuestionActive || !this.questionStartTime) return;
         
         const timeRemaining = Math.max(0, (this.questionStartTime + this.questionTimeLimit * 1000 - Date.now()) / 1000);
-        const progressPercentage = Math.max(0, (timeRemaining / this.questionTimeLimit) * 100);
+        // Use ceiling for progress calculation to match the text display
+        const displayTime = timeRemaining > 0 ? Math.ceil(timeRemaining) : 0;
+        const progressPercentage = Math.max(0, (displayTime / this.questionTimeLimit) * 100);
         
         let progressElement = tab.querySelector('.tab-progress');
         if (!progressElement) {
@@ -2647,7 +2654,7 @@ class HostControl {
         const progressText = progressElement.querySelector('.progress-text');
         
         if (progressFill) progressFill.style.width = `${progressPercentage}%`;
-        if (progressText) progressText.textContent = `${timeRemaining > 0 ? Math.ceil(timeRemaining) : 0}s left`;
+        if (progressText) progressText.textContent = `${displayTime}s left`;
     }
 
     updateQuestionTabFeedback(questionIndex, teamName, correct) {

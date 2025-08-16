@@ -109,16 +109,6 @@ class HostControl {
         // Reset local state first
         this.isQuestionActive = false;
         this.activeQuestionIndex = -1;
-        this.playedQuestions.clear();
-        
-        // Reconstruct played questions based on game progress
-        if (game.current_question_index > 0) {
-            // All questions before current index are considered played
-            for (let i = 0; i < game.current_question_index; i++) {
-                this.playedQuestions.add(i);
-                console.log(`Reconstructed: Question ${i} marked as played`);
-            }
-        }
         
         // Handle current question state based on game status
         if (game.status === 'question_active') {
@@ -132,8 +122,7 @@ class HostControl {
             console.log(`Synchronized: Question ${game.current_question_index} ended but not resolved`);
         }
         
-        console.log(`After sync - Played questions:`, Array.from(this.playedQuestions));
-        console.log(`After sync - Active question: ${this.activeQuestionIndex}, Is active: ${this.isQuestionActive}`);
+        console.log(`After sync - Current index: ${this.currentQuestionIndex}, Active question: ${this.activeQuestionIndex}, Is active: ${this.isQuestionActive}`);
     }
 
     onGamesLoaded(games) {
@@ -851,10 +840,10 @@ class HostControl {
     async startQuestion() {
         if (!this.currentGame) return;
         
-        // Prevent replaying already played questions
-        console.log(`Checking if question ${this.currentQuestionIndex} is played. Played set:`, Array.from(this.playedQuestions));
-        if (this.playedQuestions.has(this.currentQuestionIndex)) {
-            this.showToast('Question already played', 'warning');
+        // Prevent replaying already played questions or restarting on-air question
+        console.log(`Checking if question ${this.currentQuestionIndex} is playable. Active: ${this.activeQuestionIndex}, Current: ${this.currentQuestionIndex}`);
+        if (this.activeQuestionIndex >= 0) {
+            this.showToast('Another question is already on-air', 'warning');
             return;
         }
 
@@ -2087,12 +2076,7 @@ class HostControl {
 
             // Handle game flow based on answer correctness
             if (isCorrect) {
-                // Mark question as played when answered correctly
-                if (this.activeQuestionIndex >= 0) {
-                    this.playedQuestions.add(this.activeQuestionIndex);
-                    console.log(`Marked question ${this.activeQuestionIndex} as played. Played set:`, Array.from(this.playedQuestions));
-                }
-                this.updateQuestionTabsState(); // Update tabs immediately to show played state
+                // Question will be marked as completed by server when advancing
                 
                 // Hide modal and prepare for next question if answer is correct
                 setTimeout(() => {
@@ -2111,12 +2095,7 @@ class HostControl {
                     if (nextBuzzer) {
                         this.showCurrentAnswererHighlight(nextBuzzer);
                     } else {
-                        // No more teams to answer - mark as played and prepare next question
-                        if (this.activeQuestionIndex >= 0) {
-                            this.playedQuestions.add(this.activeQuestionIndex);
-                            console.log(`Marked question ${this.activeQuestionIndex} as played (no more teams). Played set:`, Array.from(this.playedQuestions));
-                        }
-                        this.updateQuestionTabsState(); // Update tabs immediately to show played state
+                        // No more teams to answer - advance to next question
                         this.hideAnswerEvaluationModal();
                         this.nextQuestion();
                     }
@@ -2146,12 +2125,7 @@ class HostControl {
                 throw new Error('Failed to end question');
             }
 
-            // Mark question as played when skipped/given up
-            if (this.activeQuestionIndex >= 0) {
-                this.playedQuestions.add(this.activeQuestionIndex);
-                console.log(`Marked question ${this.activeQuestionIndex} as played (skipped). Played set:`, Array.from(this.playedQuestions));
-            }
-            this.updateQuestionTabsState(); // Update tabs immediately to show played state
+            // Question will be marked as completed by server when advancing
             
             // Show feedback and hide modal
             this.showToast('Question skipped - moving to next question', 'info');
@@ -2640,22 +2614,25 @@ class HostControl {
             // Reset classes
             tab.className = 'question-tab';
             
-            // Determine state based on played status, active question, and current position
-            if (this.playedQuestions.has(tabIndex)) {
-                // Question has been played
-                console.log(`Tab ${tabIndex} is played`);
+            // Determine state based on question position and active status
+            if (tabIndex < this.currentQuestionIndex) {
+                // Questions before current index are played/completed
+                console.log(`Tab ${tabIndex} is played (before current index ${this.currentQuestionIndex})`);
                 tab.classList.add('played');
                 tab.querySelector('.tab-status').textContent = '✗';
-            } else if (tabIndex === this.activeQuestionIndex) {
+            } else if (tabIndex === this.activeQuestionIndex && this.activeQuestionIndex >= 0) {
                 // Currently on-air question (timer running OR finished but not answered/skipped)
+                console.log(`Tab ${tabIndex} is on-air (activeQuestionIndex: ${this.activeQuestionIndex})`);
                 tab.classList.add('active');
                 tab.querySelector('.tab-status').textContent = '▶';
             } else if (tabIndex === this.currentQuestionIndex) {
                 // Selected question (host is viewing but not on-air)
+                console.log(`Tab ${tabIndex} is selected (currentQuestionIndex: ${this.currentQuestionIndex})`);
                 tab.classList.add('selected');
                 tab.querySelector('.tab-status').textContent = '►';
             } else {
                 // Pending questions
+                console.log(`Tab ${tabIndex} is pending`);
                 tab.classList.add('pending');
                 tab.querySelector('.tab-status').textContent = '⏳';
             }

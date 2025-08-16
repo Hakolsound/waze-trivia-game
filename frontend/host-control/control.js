@@ -14,6 +14,7 @@ class HostControl {
         this.virtualBuzzers = new Map(); // Track active virtual buzzers
         this.virtualBuzzersEnabled = false; // Track if virtual buzzers are enabled
         this.isLeaderboardVisible = false; // Track leaderboard state
+        this.isAnswerVisible = false; // Track answer display state
         this.gameSelector = null;
         
         // Show Correct Answer state
@@ -449,7 +450,7 @@ class HostControl {
         // Main game controls (with null checks to prevent errors)
         if (this.elements.startQuestionBtn) this.elements.startQuestionBtn.addEventListener('click', () => this.startQuestion());
         if (this.elements.endQuestionBtn) this.elements.endQuestionBtn.addEventListener('click', () => this.endQuestion());
-        if (this.elements.showAnswerBtn) this.elements.showAnswerBtn.addEventListener('click', () => this.showCorrectAnswer());
+        if (this.elements.showAnswerBtn) this.elements.showAnswerBtn.addEventListener('click', () => this.toggleCorrectAnswer());
         if (this.elements.decreaseFontBtn) this.elements.decreaseFontBtn.addEventListener('click', () => this.decreaseDisplayFontSize());
         if (this.elements.increaseFontBtn) this.elements.increaseFontBtn.addEventListener('click', () => this.increaseDisplayFontSize());
         if (this.elements.nextQuestionBtn) this.elements.nextQuestionBtn.addEventListener('click', () => this.nextQuestion());
@@ -1935,6 +1936,7 @@ class HostControl {
         this.currentBuzzerPosition = -1;
         this.evaluationHistory = [];
         this.answerShown = false; // Reset answer shown state
+        this.isAnswerVisible = false; // Reset answer visibility state
         if (this.elements.evaluationList) {
             this.elements.evaluationList.innerHTML = '';
         }
@@ -3117,7 +3119,7 @@ class HostControl {
                 console.log('Triple A pressed - force enabling show answer');
                 this.showToast('Show Answer enabled (Triple A)', 'info');
             }
-            this.showCorrectAnswer();
+            this.toggleCorrectAnswer();
             this.keyPressCount.A = 0; // Reset counter
         }
     }
@@ -3138,17 +3140,49 @@ class HostControl {
         if (!this.elements.showAnswerBtn) return;
         
         const canShow = this.canShowAnswer();
-        this.elements.showAnswerBtn.disabled = !canShow && this.keyPressCount.A < 3;
         
-        // Update button appearance
-        if (canShow) {
-            this.elements.showAnswerBtn.classList.add('btn-warning');
-            this.elements.showAnswerBtn.classList.remove('btn-info');
-            this.elements.showAnswerBtn.title = 'Show Correct Answer [A] • Ready to show';
+        // Enable button if conditions are met OR if triple-A is possible OR if answer is currently visible (for hide)
+        this.elements.showAnswerBtn.disabled = !canShow && this.keyPressCount.A < 3 && !this.isAnswerVisible;
+        
+        // Update button appearance based on state
+        if (this.isAnswerVisible) {
+            // Answer is currently shown - button should show "hide" state
+            this.elements.showAnswerBtn.classList.remove('btn-info', 'btn-warning');
+            this.elements.showAnswerBtn.classList.add('btn-success');
+            this.elements.showAnswerBtn.title = 'Hide Correct Answer [A] • Currently visible';
+            
+            // Update icon to show "up" state (answer is shown)
+            const icon = this.elements.showAnswerBtn.querySelector('.material-icons');
+            if (icon) icon.textContent = 'lightbulb';
+            
+            const shortcut = this.elements.showAnswerBtn.querySelector('.control-shortcut');
+            if (shortcut) shortcut.textContent = 'A';
         } else {
-            this.elements.showAnswerBtn.classList.remove('btn-warning');
-            this.elements.showAnswerBtn.classList.add('btn-info');
-            this.elements.showAnswerBtn.title = 'Show Correct Answer [A] • Press A 3x to force enable';
+            // Answer is hidden - button should show "show" state
+            if (canShow) {
+                this.elements.showAnswerBtn.classList.remove('btn-info', 'btn-success');
+                this.elements.showAnswerBtn.classList.add('btn-warning');
+                this.elements.showAnswerBtn.title = 'Show Correct Answer [A] • Ready to show';
+            } else {
+                this.elements.showAnswerBtn.classList.remove('btn-warning', 'btn-success');
+                this.elements.showAnswerBtn.classList.add('btn-info');
+                this.elements.showAnswerBtn.title = 'Show Correct Answer [A] • Press A 3x to force enable';
+            }
+            
+            // Update icon to show "down" state (answer is hidden)
+            const icon = this.elements.showAnswerBtn.querySelector('.material-icons');
+            if (icon) icon.textContent = 'lightbulb_outline';
+            
+            const shortcut = this.elements.showAnswerBtn.querySelector('.control-shortcut');
+            if (shortcut) shortcut.textContent = 'A×3';
+        }
+    }
+
+    toggleCorrectAnswer() {
+        if (this.isAnswerVisible) {
+            this.hideCorrectAnswer();
+        } else {
+            this.showCorrectAnswer();
         }
     }
 
@@ -3160,11 +3194,6 @@ class HostControl {
         
         if (this.currentQuestionIndex < 0 || this.currentQuestionIndex >= this.questions.length) {
             this.showToast('No valid question selected', 'error');
-            return;
-        }
-        
-        if (this.answerShown) {
-            this.showToast('Answer already shown', 'warning');
             return;
         }
         
@@ -3187,15 +3216,35 @@ class HostControl {
 
             if (response.ok) {
                 this.answerShown = true;
-                this.elements.showAnswerBtn.disabled = true;
-                this.elements.showAnswerBtn.textContent = '✓ Answer Shown';
-                this.showToast('Correct answer revealed on display', 'success');
+                this.isAnswerVisible = true;
+                this.updateShowAnswerButton();
+                this.showToast('💡 Correct answer revealed on display', 'success');
             } else {
                 throw new Error('Failed to show answer');
             }
         } catch (error) {
             console.error('Failed to show correct answer:', error);
             this.showToast('Failed to show answer', 'error');
+        }
+    }
+
+    async hideCorrectAnswer() {
+        try {
+            // Send hide answer request to backend 
+            const response = await fetch(`/api/games/${this.currentGame.id}/hide-answer`, {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                this.isAnswerVisible = false;
+                this.updateShowAnswerButton();
+                this.showToast('Answer hidden', 'info');
+            } else {
+                throw new Error('Failed to hide answer');
+            }
+        } catch (error) {
+            console.error('Failed to hide correct answer:', error);
+            this.showToast('Failed to hide answer', 'error');
         }
     }
 

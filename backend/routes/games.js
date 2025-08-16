@@ -366,6 +366,15 @@ module.exports = (gameService) => {
     }
   });
 
+  router.post('/:id/hide-answer', async (req, res) => {
+    try {
+      const result = await gameService.hideCorrectAnswer(req.params.id);
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   // Font size controls
   router.post('/:id/font-size/increase', async (req, res) => {
     try {

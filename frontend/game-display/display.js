@@ -195,9 +195,13 @@ class GameDisplay {
             this.hideLeaderboard();
         });
 
-        // Correct answer event
+        // Correct answer events
         this.socket.on('show-correct-answer', (data) => {
             this.showCorrectAnswer(data);
+        });
+
+        this.socket.on('hide-correct-answer', (data) => {
+            this.hideCorrectAnswer();
         });
 
         // Font size change event

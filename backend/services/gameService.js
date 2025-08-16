@@ -783,6 +783,22 @@ class GameService {
     };
   }
 
+  // Hide correct answer on display
+  async hideCorrectAnswer(gameId) {
+    const game = await this.getGame(gameId);
+    if (!game) throw new Error('Game not found');
+
+    // Emit socket event to hide the correct answer
+    this.io.to(`game-${gameId}`).emit('hide-correct-answer', {
+      gameId
+    });
+
+    return {
+      success: true,
+      message: 'Correct answer hidden'
+    };
+  }
+
   // Display font size controls
   async increaseDisplayFontSize(gameId) {
     const game = await this.getGame(gameId);

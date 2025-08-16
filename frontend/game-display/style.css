@@ -260,6 +260,7 @@ h1.question-text,
   font-family: inherit !important;
 }
 
+/* Default layout: Media Left, Text Right */
 .question-content.has-media h1.question-text,
 .question-content.has-media #question-text {
   font-size: 4.5rem !important;
@@ -271,6 +272,16 @@ h1.question-text,
   max-width: 100%;
   padding-left: 15px;
   line-height: 1.2 !important;
+}
+
+/* Alternate layout: Media Right, Text Left */
+.question-content.has-media.media-right h1.question-text,
+.question-content.has-media.media-right #question-text {
+  grid-column: 1;
+  justify-self: end;
+  text-align: right !important;
+  padding-left: 0;
+  padding-right: 15px;
 }
 
 .question-content {
@@ -313,6 +324,11 @@ h1.question-text,
   max-height: 70vh;
   width: 100%;
   align-self: center;
+}
+
+/* Alternate layout: Media on right side */
+.question-content.has-media.media-right .question-media {
+  grid-column: 2;
 }
 
 .media-element {

@@ -313,12 +313,29 @@ class GameDisplay {
         // Handle media and layout
         if (question.media_url) {
             this.loadQuestionMedia(question.media_url);
+            
+            const questionContent = document.querySelector('.question-content');
             // Add has-media class to change layout
-            document.querySelector('.question-content').classList.add('has-media');
+            questionContent.classList.add('has-media');
+            
+            // Randomly shuffle media side (left or right)
+            const isMediaRight = Math.random() > 0.5;
+            if (isMediaRight) {
+                questionContent.classList.add('media-right');
+                console.log('Media positioned on RIGHT side');
+            } else {
+                questionContent.classList.remove('media-right');
+                console.log('Media positioned on LEFT side');
+            }
         } else {
-            this.elements.questionMedia.classList.add('hidden');
-            // Remove has-media class for normal layout
-            document.querySelector('.question-content').classList.remove('has-media');
+            const questionContent = document.querySelector('.question-content');
+            // Hide the media container
+            const mediaContainer = document.getElementById('question-media-container');
+            if (mediaContainer) {
+                mediaContainer.classList.add('hidden');
+            }
+            // Remove has-media classes for normal layout
+            questionContent.classList.remove('has-media', 'media-right');
         }
         
         // Apply dynamic text sizing after content is set

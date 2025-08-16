@@ -192,6 +192,8 @@ class HostControl {
             nextQuestionBtn: document.getElementById('next-question-btn'),
             endQuestionBtn: document.getElementById('end-question-btn'),
             showAnswerBtn: document.getElementById('show-answer-btn'),
+            decreaseFontBtn: document.getElementById('decrease-font-btn'),
+            increaseFontBtn: document.getElementById('increase-font-btn'),
             prevQuestionBtn: document.getElementById('prev-question-btn'),
             questionSelect: document.getElementById('question-select'),
             showQuestionSelectBtn: document.getElementById('show-question-select-btn'),
@@ -447,6 +449,8 @@ class HostControl {
         if (this.elements.startQuestionBtn) this.elements.startQuestionBtn.addEventListener('click', () => this.startQuestion());
         if (this.elements.endQuestionBtn) this.elements.endQuestionBtn.addEventListener('click', () => this.endQuestion());
         if (this.elements.showAnswerBtn) this.elements.showAnswerBtn.addEventListener('click', () => this.showCorrectAnswer());
+        if (this.elements.decreaseFontBtn) this.elements.decreaseFontBtn.addEventListener('click', () => this.decreaseDisplayFontSize());
+        if (this.elements.increaseFontBtn) this.elements.increaseFontBtn.addEventListener('click', () => this.increaseDisplayFontSize());
         if (this.elements.nextQuestionBtn) this.elements.nextQuestionBtn.addEventListener('click', () => this.nextQuestion());
         if (this.elements.prevQuestionBtn) this.elements.prevQuestionBtn.addEventListener('click', () => this.prevQuestion());
         if (this.elements.questionSelect) this.elements.questionSelect.addEventListener('change', (e) => this.jumpToQuestion(e.target.value));
@@ -646,6 +650,18 @@ class HostControl {
                 case 'L': // L - Toggle Leaderboard
                     e.preventDefault();
                     this.toggleLeaderboard();
+                    break;
+                    
+                case '-':
+                case '_': // - - Decrease Font Size
+                    e.preventDefault();
+                    this.decreaseDisplayFontSize();
+                    break;
+                    
+                case '+':
+                case '=': // + - Increase Font Size (= key for easier access)
+                    e.preventDefault();
+                    this.increaseDisplayFontSize();
                     break;
             }
         });
@@ -3125,6 +3141,55 @@ class HostControl {
         } catch (error) {
             console.error('Failed to show correct answer:', error);
             this.showToast('Failed to show answer', 'error');
+        }
+    }
+
+    // Display Font Size Controls
+    async decreaseDisplayFontSize() {
+        if (!this.currentGame) {
+            this.showToast('No active game', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/games/${this.currentGame.id}/font-size/decrease`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                this.showToast(`Font size decreased to ${result.fontSize}%`, 'info');
+            } else {
+                throw new Error('Failed to decrease font size');
+            }
+        } catch (error) {
+            console.error('Failed to decrease font size:', error);
+            this.showToast('Failed to decrease font size', 'error');
+        }
+    }
+
+    async increaseDisplayFontSize() {
+        if (!this.currentGame) {
+            this.showToast('No active game', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/games/${this.currentGame.id}/font-size/increase`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                this.showToast(`Font size increased to ${result.fontSize}%`, 'info');
+            } else {
+                throw new Error('Failed to increase font size');
+            }
+        } catch (error) {
+            console.error('Failed to increase font size:', error);
+            this.showToast('Failed to increase font size', 'error');
         }
     }
 }

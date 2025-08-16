@@ -222,30 +222,31 @@ body {
 /* Main Content Area */
 .host-main {
   flex: 1;
-  padding: 30px;
+  padding: 16px;
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
   display: grid;
   grid-template-rows: auto 1fr;
-  gap: 30px;
+  gap: 16px;
 }
 
 /* Primary Control Section */
 .primary-control {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
 }
 
 .question-card {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 16px;
-  padding: 24px;
+  padding: 16px;
   backdrop-filter: blur(10px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.2);
   transition: all var(--md-sys-motion-duration-medium) var(--md-sys-motion-easing-standard);
+  margin-bottom: 16px;
 }
 
 .question-card:hover {
@@ -632,9 +633,9 @@ body {
 .question-tabs-container {
   background: rgba(255, 255, 255, 0.02);
   border-radius: 12px;
-  padding: 12px 16px 8px;
-  margin-top: 16px;
-  margin-bottom: 24px;
+  padding: 8px 12px 6px;
+  margin-top: 12px;
+  margin-bottom: 16px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(10px);
 }
@@ -1084,194 +1085,150 @@ body {
   display: block;
 }
 
-/* Operator Groups */
-.operator-group {
-  margin: 32px 0;
-  padding: 24px;
+/* Compact Game Controls */
+.game-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  margin: 16px 0;
+  padding: 16px 20px;
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 16px;
+  border-radius: 12px;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.operator-group-header {
-  margin-bottom: 20px;
-  text-align: center;
-}
-
-.operator-group-header h3 {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--md-sys-color-on-surface);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin: 0;
-}
-
-/* Main Operators - Single Row Layout */
-.main-operators .operator-row {
+.main-controls {
   display: flex;
-  gap: 24px;
-  justify-content: center;
+  gap: 12px;
+  align-items: center;
+}
+
+.controls-separator {
+  width: 2px;
+  height: 60px;
+  background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.3), transparent);
+  margin: 0 8px;
+}
+
+.secondary-controls {
+  display: flex;
+  gap: 8px;
   align-items: center;
   flex-wrap: wrap;
 }
 
-/* Secondary Operators - Grid Layout */
-.secondary-operators .operator-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 16px;
-  justify-items: center;
-}
-
-/* Operator Button Base */
-.operator-btn {
+/* Compact Control Buttons */
+.control-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 24px 20px;
+  gap: 4px;
+  padding: 8px 6px;
   border: none;
-  border-radius: 20px;
+  border-radius: 8px;
   color: white;
   cursor: pointer;
-  transition: all var(--md-sys-motion-duration-medium) var(--md-sys-motion-easing-standard);
-  box-shadow: var(--md-sys-elevation-level2);
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(15px);
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  min-height: 120px;
-  position: relative;
-  overflow: hidden;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  min-width: 60px;
+  min-height: 60px;
   font-family: 'Google Sans', sans-serif;
 }
 
-.operator-btn:hover:not(:disabled) {
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: var(--md-sys-elevation-level4);
+.control-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
   background: rgba(255, 255, 255, 0.15);
   border-color: rgba(255, 255, 255, 0.3);
 }
 
-.operator-btn:active:not(:disabled) {
-  transform: translateY(-2px) scale(1.01);
+.control-btn:active:not(:disabled) {
+  transform: translateY(0);
   transition: all 0.1s ease;
 }
 
-.operator-btn:disabled {
+.control-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
   transform: none !important;
 }
 
-/* Operator Button Sizes */
-.operator-btn-hero {
-  width: 180px;
-  min-height: 140px;
-  padding: 32px 24px;
-  border-radius: 24px;
-  border-width: 3px;
+/* Primary GO Button */
+.control-btn-primary {
+  min-width: 80px;
+  min-height: 70px;
+  padding: 12px 8px;
+  border-radius: 12px;
+  border-width: 2px;
+  margin: 0 4px;
 }
 
-.operator-btn-large {
-  width: 140px;
-  min-height: 120px;
-}
-
-.operator-btn-medium {
-  width: 160px;
-  min-height: 100px;
-  padding: 20px 16px;
-}
-
-/* Operator Icons */
-.operator-icon {
-  width: 56px;
-  height: 56px;
+/* Control Icons */
+.control-icon {
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.2);
-  margin-bottom: 8px;
-  transition: all var(--md-sys-motion-duration-medium) ease;
+  margin-bottom: 2px;
 }
 
-.operator-icon-hero {
-  width: 72px;
-  height: 72px;
+.control-icon-primary {
+  width: 32px;
+  height: 32px;
   background: rgba(255, 255, 255, 0.3);
 }
 
-.operator-btn:hover:not(:disabled) .operator-icon {
-  background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.1);
-}
-
-.operator-btn-hero:hover:not(:disabled) .operator-icon-hero {
-  background: rgba(255, 255, 255, 0.4);
-  transform: scale(1.05);
-}
-
-.operator-icon .material-icons {
-  font-size: 28px;
+.control-icon .material-icons {
+  font-size: 16px;
   color: currentColor;
 }
 
-.operator-icon-hero .material-icons {
-  font-size: 36px;
+.control-icon-primary .material-icons {
+  font-size: 20px;
 }
 
-/* Operator Content */
-.operator-content {
+/* Control Content */
+.control-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 2px;
 }
 
-.operator-label {
-  font-size: 13px;
-  font-weight: 700;
+.control-label {
+  font-size: 9px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.5px;
   text-align: center;
-  line-height: 1.2;
+  line-height: 1;
 }
 
-.operator-label-hero {
-  font-size: 18px;
-  letter-spacing: 1.2px;
+.control-label-primary {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
 }
 
-.operator-shortcut {
+.control-shortcut {
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 6px;
-  padding: 4px 8px;
-  font-size: 11px;
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-size: 8px;
   font-family: 'SF Mono', Monaco, monospace;
   font-weight: 600;
   color: #fff;
-  min-width: 24px;
+  min-width: 14px;
   text-align: center;
-}
-
-/* Hover Effects */
-.operator-btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-  transition: left 0.5s ease;
-}
-
-.operator-btn:hover:not(:disabled)::before {
-  left: 100%;
 }
 
 kbd {
@@ -3163,156 +3120,123 @@ kbd {
     line-height: 1;
 }
 
-/* Operator Responsive Design */
+/* Compact Controls Responsive Design */
 @media (max-width: 1200px) {
-  .operator-btn-hero {
-    width: 160px;
-    min-height: 130px;
-    padding: 28px 20px;
+  .game-controls {
+    gap: 16px;
+    padding: 14px 16px;
   }
   
-  .operator-btn-large {
-    width: 130px;
-    min-height: 110px;
+  .main-controls {
+    gap: 10px;
   }
   
-  .operator-btn-medium {
-    width: 150px;
-    min-height: 95px;
-  }
-  
-  .secondary-operators .operator-grid {
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 12px;
+  .secondary-controls {
+    gap: 6px;
   }
 }
 
 @media (max-width: 768px) {
-  .operator-group {
-    margin: 24px 0;
-    padding: 20px;
-  }
-  
-  .main-operators .operator-row {
-    gap: 16px;
-  }
-  
-  .operator-btn-hero {
-    width: 140px;
-    min-height: 120px;
-    padding: 24px 16px;
-  }
-  
-  .operator-btn-large {
-    width: 120px;
-    min-height: 100px;
-    padding: 20px 16px;
-  }
-  
-  .operator-btn-medium {
-    width: 100%;
-    min-height: 90px;
-    padding: 18px 16px;
-  }
-  
-  .secondary-operators .operator-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .game-controls {
+    flex-direction: column;
     gap: 12px;
+    padding: 12px;
   }
   
-  .operator-icon {
-    width: 48px;
-    height: 48px;
+  .controls-separator {
+    width: 80%;
+    height: 2px;
+    background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.3), transparent);
+    margin: 4px 0;
   }
   
-  .operator-icon-hero {
-    width: 60px;
-    height: 60px;
+  .main-controls {
+    justify-content: center;
   }
   
-  .operator-icon .material-icons {
-    font-size: 24px;
+  .secondary-controls {
+    justify-content: center;
+    max-width: 100%;
   }
   
-  .operator-icon-hero .material-icons {
-    font-size: 30px;
+  .control-btn {
+    min-width: 55px;
+    min-height: 55px;
+    padding: 6px 4px;
   }
   
-  .operator-label {
-    font-size: 12px;
+  .control-btn-primary {
+    min-width: 70px;
+    min-height: 65px;
+    padding: 10px 6px;
   }
   
-  .operator-label-hero {
-    font-size: 16px;
+  .control-label {
+    font-size: 8px;
+  }
+  
+  .control-label-primary {
+    font-size: 10px;
+  }
+  
+  .control-shortcut {
+    font-size: 7px;
+    padding: 1px 3px;
   }
 }
 
 @media (max-width: 480px) {
-  .operator-group {
-    margin: 20px 0;
-    padding: 16px;
+  .game-controls {
+    margin: 12px 0;
+    padding: 10px;
   }
   
-  .main-operators .operator-row {
-    flex-direction: column;
-    gap: 12px;
+  .secondary-controls {
+    gap: 4px;
   }
   
-  .operator-btn-hero {
-    width: 100%;
-    max-width: 200px;
-    min-height: 100px;
-    padding: 20px 16px;
+  .control-btn {
+    min-width: 50px;
+    min-height: 50px;
+    padding: 5px 3px;
   }
   
-  .operator-btn-large {
-    width: 100%;
-    max-width: 160px;
-    min-height: 90px;
-    padding: 18px 16px;
+  .control-btn-primary {
+    min-width: 65px;
+    min-height: 60px;
+    padding: 8px 5px;
   }
   
-  .secondary-operators .operator-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-    max-width: 250px;
-    margin: 0 auto;
+  .control-icon {
+    width: 20px;
+    height: 20px;
   }
   
-  .operator-btn-medium {
-    min-height: 85px;
-    padding: 16px;
+  .control-icon-primary {
+    width: 28px;
+    height: 28px;
   }
   
-  .operator-icon {
-    width: 44px;
-    height: 44px;
-  }
-  
-  .operator-icon-hero {
-    width: 56px;
-    height: 56px;
-  }
-  
-  .operator-icon .material-icons {
-    font-size: 22px;
-  }
-  
-  .operator-icon-hero .material-icons {
-    font-size: 28px;
-  }
-  
-  .operator-label {
-    font-size: 11px;
-  }
-  
-  .operator-label-hero {
+  .control-icon .material-icons {
     font-size: 14px;
   }
   
-  .operator-shortcut {
-    font-size: 10px;
-    padding: 3px 6px;
+  .control-icon-primary .material-icons {
+    font-size: 18px;
+  }
+  
+  .control-label {
+    font-size: 7px;
+  }
+  
+  .control-label-primary {
+    font-size: 9px;
+  }
+  
+  .control-shortcut {
+    font-size: 6px;
+    padding: 1px 2px;
+    min-width: 12px;
   }
 }
 

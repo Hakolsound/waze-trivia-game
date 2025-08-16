@@ -59,6 +59,9 @@ class GameDisplay {
             // Update game title and logo
             this.updateGameBranding(game);
             
+            // Set initial font size
+            this.updateDisplayFontSize(game.display_font_size || 100);
+            
             // Join game room
             this.socket.emit('join-game', game.id);
             this.socket.emit('join-display');
@@ -196,6 +199,11 @@ class GameDisplay {
             this.showCorrectAnswer(data);
         });
 
+        // Font size change event
+        this.socket.on('font-size-changed', (data) => {
+            this.updateDisplayFontSize(data.fontSize);
+        });
+
         // Question navigation events - hide answer when navigating
         this.socket.on('question-prepared', (data) => {
             this.hideCorrectAnswer();
@@ -279,8 +287,7 @@ class GameDisplay {
         
         // Handle media
         if (question.media_url) {
-            this.elements.questionMedia.src = question.media_url;
-            this.elements.questionMedia.classList.remove('hidden');
+            this.loadQuestionMedia(question.media_url);
         } else {
             this.elements.questionMedia.classList.add('hidden');
         }
@@ -986,6 +993,119 @@ class GameDisplay {
             this.elements.correctAnswerOverlay.classList.add('hidden');
             console.log('Correct answer overlay hidden');
         }
+    }
+
+    // Font Size Control Methods
+    updateDisplayFontSize(fontSize) {
+        console.log('Updating display font size to:', fontSize);
+        
+        // Store the font size as a CSS custom property for easy access
+        document.documentElement.style.setProperty('--display-font-scale', fontSize / 100);
+        
+        // Apply font size to question text specifically
+        if (this.elements.questionText) {
+            this.elements.questionText.style.transform = `scale(${fontSize / 100})`;
+            this.elements.questionText.style.transformOrigin = 'center';
+        }
+        
+        // Also apply to correct answer text
+        if (this.elements.correctAnswerText) {
+            this.elements.correctAnswerText.style.transform = `scale(${fontSize / 100})`;
+            this.elements.correctAnswerText.style.transformOrigin = 'center';
+        }
+        
+        // Update idle state game description text
+        if (this.elements.gameDescriptionDisplay) {
+            this.elements.gameDescriptionDisplay.style.transform = `scale(${fontSize / 100})`;
+            this.elements.gameDescriptionDisplay.style.transformOrigin = 'center';
+        }
+        
+        console.log('Font size updated successfully');
+    }
+
+    // Media Loading Methods
+    loadQuestionMedia(mediaUrl) {
+        if (!mediaUrl || !this.elements.questionMedia) return;
+
+        console.log('Loading question media:', mediaUrl);
+
+        // Reset the image element
+        this.elements.questionMedia.classList.add('hidden');
+        this.elements.questionMedia.onerror = null;
+        this.elements.questionMedia.onload = null;
+        this.elements.questionMedia.dataset.retryAttempted = 'false';
+        
+        // Set crossOrigin for external images
+        this.elements.questionMedia.crossOrigin = 'anonymous';
+
+        // Set up error handling with retry logic
+        this.elements.questionMedia.onerror = (event) => {
+            console.error('Failed to load image:', mediaUrl, event);
+            
+            // If this is a retry attempt, don't retry again
+            if (this.elements.questionMedia.dataset.retryAttempted === 'true') {
+                console.error('Image loading failed after retry, hiding media');
+                this.showMediaError(mediaUrl);
+                return;
+            }
+            
+            // Mark as retry attempted
+            this.elements.questionMedia.dataset.retryAttempted = 'true';
+            
+            // Try different URL formats
+            let retryUrl = null;
+            
+            // If it's a relative URL, make it absolute
+            if (!mediaUrl.startsWith('http') && !mediaUrl.startsWith('/')) {
+                retryUrl = window.location.origin + '/' + mediaUrl;
+            }
+            // If it's an absolute path, try without the origin
+            else if (mediaUrl.startsWith(window.location.origin)) {
+                retryUrl = mediaUrl.replace(window.location.origin, '');
+            }
+            // If it's external, try with HTTPS if it's HTTP
+            else if (mediaUrl.startsWith('http://')) {
+                retryUrl = mediaUrl.replace('http://', 'https://');
+            }
+            
+            if (retryUrl && retryUrl !== mediaUrl) {
+                console.log('Retrying image load with URL:', retryUrl);
+                setTimeout(() => {
+                    this.elements.questionMedia.src = retryUrl;
+                }, 100);
+            } else {
+                this.showMediaError(mediaUrl);
+            }
+        };
+
+        // Set up success handling
+        this.elements.questionMedia.onload = () => {
+            console.log('Image loaded successfully:', mediaUrl);
+            this.elements.questionMedia.classList.remove('hidden');
+        };
+
+        // Handle different URL types
+        let finalUrl = mediaUrl;
+        
+        // If it's a relative URL, make it absolute
+        if (!mediaUrl.startsWith('http') && !mediaUrl.startsWith('/')) {
+            finalUrl = window.location.origin + '/' + mediaUrl;
+        }
+        
+        // If it starts with '/' but is not absolute, make it relative to server
+        else if (mediaUrl.startsWith('/') && !mediaUrl.startsWith('//')) {
+            finalUrl = window.location.origin + mediaUrl;
+        }
+
+        console.log('Setting image source to:', finalUrl);
+        this.elements.questionMedia.src = finalUrl;
+    }
+
+    showMediaError(failedUrl) {
+        console.log('Showing media error for:', failedUrl);
+        // You could add a placeholder or error message here if needed
+        // For now, we'll just hide the media element
+        this.elements.questionMedia.classList.add('hidden');
     }
 }
 

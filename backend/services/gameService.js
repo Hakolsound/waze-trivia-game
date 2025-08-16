@@ -782,6 +782,63 @@ class GameService {
       questionText: currentQuestion.text
     };
   }
+
+  // Display font size controls
+  async increaseDisplayFontSize(gameId) {
+    const game = await this.getGame(gameId);
+    if (!game) throw new Error('Game not found');
+
+    // Get current font size or default to 100%
+    let currentFontSize = game.display_font_size || 100;
+    
+    // Increase by 10%, max 200%
+    const newFontSize = Math.min(200, currentFontSize + 10);
+    
+    // Update in database
+    await this.db.run(
+      'UPDATE games SET display_font_size = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [newFontSize, gameId]
+    );
+
+    // Emit socket event to all displays
+    this.io.to(`game-${gameId}`).emit('font-size-changed', {
+      gameId,
+      fontSize: newFontSize
+    });
+
+    return {
+      success: true,
+      fontSize: newFontSize
+    };
+  }
+
+  async decreaseDisplayFontSize(gameId) {
+    const game = await this.getGame(gameId);
+    if (!game) throw new Error('Game not found');
+
+    // Get current font size or default to 100%
+    let currentFontSize = game.display_font_size || 100;
+    
+    // Decrease by 10%, min 50%
+    const newFontSize = Math.max(50, currentFontSize - 10);
+    
+    // Update in database
+    await this.db.run(
+      'UPDATE games SET display_font_size = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [newFontSize, gameId]
+    );
+
+    // Emit socket event to all displays
+    this.io.to(`game-${gameId}`).emit('font-size-changed', {
+      gameId,
+      fontSize: newFontSize
+    });
+
+    return {
+      success: true,
+      fontSize: newFontSize
+    };
+  }
 }
 
 module.exports = GameService;

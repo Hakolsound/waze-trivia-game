@@ -289,6 +289,23 @@ h1.question-text,
   margin-top: 60px;
   box-shadow: var(--md-sys-elevation-level3);
   border: 2px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
+  display: block;
+}
+
+.question-media:hover {
+  transform: scale(1.02);
+  box-shadow: var(--md-sys-elevation-level4);
+}
+
+.question-media.hidden {
+  display: none;
+}
+
+.question-media.loading {
+  opacity: 0.5;
+  animation: pulse 1.5s ease-in-out infinite alternate;
 }
 
 .question-meta {

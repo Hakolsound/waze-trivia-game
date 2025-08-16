@@ -366,5 +366,24 @@ module.exports = (gameService) => {
     }
   });
 
+  // Font size controls
+  router.post('/:id/font-size/increase', async (req, res) => {
+    try {
+      const result = await gameService.increaseDisplayFontSize(req.params.id);
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  router.post('/:id/font-size/decrease', async (req, res) => {
+    try {
+      const result = await gameService.decreaseDisplayFontSize(req.params.id);
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   return router;
 };

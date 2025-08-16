@@ -196,87 +196,103 @@
                     </div>
                 </div>
 
-                <!-- Main Operators - Primary Controls -->
-                <div class="operator-group main-operators">
-                    <div class="operator-group-header">
-                        <h3>🎮 Main Controls</h3>
-                    </div>
-                    <div class="operator-row">
-                        <button id="prev-question-btn" class="operator-btn operator-btn-large btn-secondary" title="Previous Question [←]" disabled>
-                            <div class="operator-icon">
+                <!-- Game Controls -->
+                <div class="game-controls">
+                    <!-- Main Controls -->
+                    <div class="main-controls">
+                        <button id="prev-question-btn" class="control-btn btn-secondary" title="Previous Question [←]" disabled>
+                            <div class="control-icon">
                                 <span class="material-icons">skip_previous</span>
                             </div>
-                            <div class="operator-content">
-                                <span class="operator-label">Previous</span>
-                                <span class="operator-shortcut">←</span>
+                            <div class="control-content">
+                                <span class="control-label">Previous</span>
+                                <span class="control-shortcut">←</span>
                             </div>
                         </button>
                         
-                        <button id="start-question-btn" class="operator-btn operator-btn-hero btn-primary" title="Start Question [Space]" disabled>
-                            <div class="operator-icon operator-icon-hero">
+                        <button id="start-question-btn" class="control-btn control-btn-primary btn-primary" title="Start Question [Space]" disabled>
+                            <div class="control-icon control-icon-primary">
                                 <span class="material-icons">play_arrow</span>
                             </div>
-                            <div class="operator-content">
-                                <span class="operator-label operator-label-hero">GO</span>
-                                <span class="operator-shortcut">Space</span>
+                            <div class="control-content">
+                                <span class="control-label control-label-primary">GO</span>
+                                <span class="control-shortcut">Space</span>
                             </div>
                         </button>
                         
-                        <button id="next-question-btn" class="operator-btn operator-btn-large btn-secondary" title="Next Question [→]" disabled>
-                            <div class="operator-icon">
+                        <button id="next-question-btn" class="control-btn btn-secondary" title="Next Question [→]" disabled>
+                            <div class="control-icon">
                                 <span class="material-icons">skip_next</span>
                             </div>
-                            <div class="operator-content">
-                                <span class="operator-label">Next</span>
-                                <span class="operator-shortcut">→</span>
+                            <div class="control-content">
+                                <span class="control-label">Next</span>
+                                <span class="control-shortcut">→</span>
                             </div>
                         </button>
                     </div>
-                </div>
 
-                <!-- Secondary Operators -->
-                <div class="operator-group secondary-operators">
-                    <div class="operator-group-header">
-                        <h3>⚡ Secondary Controls</h3>
-                    </div>
-                    <div class="operator-grid">
-                        <button id="show-question-select-btn" class="operator-btn operator-btn-medium btn-secondary" title="Jump to Question [J]" disabled>
-                            <div class="operator-icon">
+                    <!-- Separator Line -->
+                    <div class="controls-separator"></div>
+                    
+                    <!-- Secondary Controls -->
+                    <div class="secondary-controls">
+                        <button id="show-question-select-btn" class="control-btn btn-secondary" title="Jump to Question [J]" disabled>
+                            <div class="control-icon">
                                 <span class="material-icons">list</span>
                             </div>
-                            <div class="operator-content">
-                                <span class="operator-label">Jump to Q</span>
-                                <span class="operator-shortcut">J</span>
+                            <div class="control-content">
+                                <span class="control-label">Jump</span>
+                                <span class="control-shortcut">J</span>
                             </div>
                         </button>
                         
-                        <button id="end-question-btn" class="operator-btn operator-btn-medium btn-warning" title="Stop Question [S]" disabled>
-                            <div class="operator-icon">
+                        <button id="end-question-btn" class="control-btn btn-warning" title="Stop Question [S]" disabled>
+                            <div class="control-icon">
                                 <span class="material-icons">stop</span>
                             </div>
-                            <div class="operator-content">
-                                <span class="operator-label">Stop</span>
-                                <span class="operator-shortcut">S</span>
+                            <div class="control-content">
+                                <span class="control-label">Stop</span>
+                                <span class="control-shortcut">S</span>
                             </div>
                         </button>
                         
-                        <button id="show-leaderboard-btn" class="operator-btn operator-btn-medium btn-special" title="Toggle Leaderboard [L] • Hide with [Esc]">
-                            <div class="operator-icon">
+                        <button id="show-leaderboard-btn" class="control-btn btn-special" title="Toggle Leaderboard [L]">
+                            <div class="control-icon">
                                 <span class="material-icons">emoji_events</span>
                             </div>
-                            <div class="operator-content">
-                                <span class="operator-label">Leaderboard</span>
-                                <span class="operator-shortcut">L</span>
+                            <div class="control-content">
+                                <span class="control-label">Leaderboard</span>
+                                <span class="control-shortcut">L</span>
                             </div>
                         </button>
                         
-                        <button id="show-answer-btn" class="operator-btn operator-btn-medium btn-info" title="Show Correct Answer [A] • Press A 3x to enable" disabled>
-                            <div class="operator-icon">
+                        <button id="show-answer-btn" class="control-btn btn-info" title="Show Correct Answer [A×3]" disabled>
+                            <div class="control-icon">
                                 <span class="material-icons">lightbulb</span>
                             </div>
-                            <div class="operator-content">
-                                <span class="operator-label">Show Answer</span>
-                                <span class="operator-shortcut">A×3</span>
+                            <div class="control-content">
+                                <span class="control-label">Answer</span>
+                                <span class="control-shortcut">A×3</span>
+                            </div>
+                        </button>
+                        
+                        <button id="decrease-font-btn" class="control-btn btn-secondary" title="Decrease Font Size [-]">
+                            <div class="control-icon">
+                                <span class="material-icons">text_decrease</span>
+                            </div>
+                            <div class="control-content">
+                                <span class="control-label">Font -</span>
+                                <span class="control-shortcut">-</span>
+                            </div>
+                        </button>
+                        
+                        <button id="increase-font-btn" class="control-btn btn-secondary" title="Increase Font Size [+]">
+                            <div class="control-icon">
+                                <span class="material-icons">text_increase</span>
+                            </div>
+                            <div class="control-content">
+                                <span class="control-label">Font +</span>
+                                <span class="control-shortcut">+</span>
                             </div>
                         </button>
                     </div>

@@ -806,17 +806,18 @@ h1.question-text,
 }
 
 .leaderboard-container {
-  width: 95vw;
-  max-width: 1200px;
-  height: 85vh;
+  width: 90vw;
+  max-width: 1100px;
+  height: 80vh;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 16px;
   border: 2px solid rgba(255, 255, 255, 0.15);
   display: flex;
   flex-direction: column;
-  padding: 20px 18px 12px;
+  padding: 15px 15px 10px;
   position: relative;
   overflow: hidden;
+  margin: 5vh auto;
   box-shadow: 
     0 0 50px rgba(99, 102, 241, 0.15),
     0 0 100px rgba(168, 85, 247, 0.1),
@@ -827,8 +828,9 @@ h1.question-text,
 /* Leaderboard Header */
 .leaderboard-header {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
   flex-shrink: 0;
+  padding-top: 5px;
 }
 
 .leaderboard-title {
@@ -864,7 +866,7 @@ h1.question-text,
   display: flex;
   flex-direction: column;
   overflow: visible;
-  max-height: calc(85vh - 120px); /* Further reduced for smaller container */
+  max-height: calc(80vh - 100px);
 }
 
 /* Ranked Teams List */
@@ -989,18 +991,21 @@ h1.question-text,
   }
 }
 
+/* Removed breathing glow animation from winner */
 .ranked-team-item.winner {
-  animation: breathingGlow 4s ease-in-out infinite;
+  animation: none;
 }
 
-/* Ensure first place is always visible and properly animated */
-.ranked-team-item:first-child {
-  scroll-margin-top: 20px;
+/* Ensure all team items are visible and properly animated */
+.ranked-team-item:first-child,
+.ranked-team-item:nth-child(2),
+.ranked-team-item:nth-child(3) {
+  scroll-margin-top: 10px;
   margin-top: 0;
-  opacity: 1 !important; /* Force visibility to override animation issues */
-  transform: translateY(0) !important; /* Ensure it's in correct position */
-  animation-delay: 0s !important; /* Ensure immediate animation */
-  animation-duration: 0.1s !important; /* Quick animation to avoid delays */
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+  animation-delay: 0s !important;
+  animation-duration: 0.1s !important;
 }
 
 /* Subtle glow effects for top 3 positions - replacing golden shimmer */
@@ -1013,9 +1018,9 @@ h1.question-text,
   }
 }
 
-/* Soft glow animation for first place */
+/* Soft glow animation for first place - removed golden shimmer */
 .ranked-team-item.rank-first {
-  animation: subtleGlow 4s ease-in-out infinite, breathingGlow 4s ease-in-out infinite;
+  animation: none;
 }
 
 /* Very subtle pulse for second place */

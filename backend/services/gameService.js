@@ -404,6 +404,57 @@ class GameService {
     return this.getGame(gameId);
   }
 
+  async resetQuestions(gameId) {
+    await this.db.run(
+      'UPDATE games SET status = ?, current_question_index = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      ['setup', gameId]
+    );
+
+    await this.db.run(
+      'DELETE FROM buzzer_events WHERE game_id = ?',
+      [gameId]
+    );
+
+    // Clear any running timers before deleting the game state
+    const gameState = this.activeGames.get(gameId);
+    if (gameState && gameState.timeoutId) {
+      clearTimeout(gameState.timeoutId);
+    }
+    this.activeGames.delete(gameId);
+
+    this.io.to(`game-${gameId}`).emit('questions-reset', { gameId });
+    
+    return this.getGame(gameId);
+  }
+
+  async setCurrentQuestionIndex(gameId, questionIndex) {
+    const game = await this.getGame(gameId);
+    if (questionIndex < 0 || questionIndex >= game.questions.length) {
+      throw new Error('Question index out of bounds');
+    }
+
+    await this.db.run(
+      'UPDATE games SET current_question_index = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [questionIndex, 'setup', gameId]
+    );
+
+    // Clear any running game state when navigating
+    const gameState = this.activeGames.get(gameId);
+    if (gameState && gameState.timeoutId) {
+      clearTimeout(gameState.timeoutId);
+    }
+    this.activeGames.delete(gameId);
+
+    this.io.to(`game-${gameId}`).emit('question-navigation', { 
+      gameId,
+      questionIndex,
+      question: game.questions[questionIndex],
+      totalQuestions: game.questions.length
+    });
+    
+    return this.getGame(gameId);
+  }
+
   async resetScores(gameId) {
     await this.db.run(
       'UPDATE groups SET score = 0 WHERE game_id = ?',

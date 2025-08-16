@@ -329,6 +329,8 @@ class HostControl {
             this.updateQuestionControls();
             this.updateBuzzerResults();
             this.hideCurrentAnswererHighlight();
+            
+            // Time up - host controls when to advance manually for entertainment purposes
         });
 
         this.socket.on('score-update', (data) => {
@@ -893,7 +895,11 @@ class HostControl {
     }
 
     async nextQuestion() {
-        if (this.currentQuestionIndex < this.questions.length - 1) {
+        if (!this.currentGame || this.currentQuestionIndex >= this.questions.length - 1) {
+            return;
+        }
+
+        try {
             // Disarm buzzers when navigating to next question
             if (this.isBuzzersArmed) {
                 await this.disarmBuzzers(true, 'navigation');
@@ -903,15 +909,35 @@ class HostControl {
             this.activeQuestionIndex = -1;
             this.isQuestionActive = false;
             
-            this.currentQuestionIndex++;
-            this.updateQuestionDisplay();
-            this.updateQuestionControls();
-            this.updateQuestionTabsState();
+            const newQuestionIndex = this.currentQuestionIndex + 1;
+            
+            // Call backend to update server state
+            const response = await fetch(`/api/games/${this.currentGame.id}/navigate-to-question/${newQuestionIndex}`, {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                this.currentQuestionIndex = newQuestionIndex;
+                this.updateQuestionDisplay();
+                this.updateQuestionControls();
+                this.updateQuestionTabsState();
+            } else {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to navigate to next question');
+            }
+            
+        } catch (error) {
+            console.error('Failed to navigate to next question:', error);
+            this.showToast('Failed to navigate to next question', 'error');
         }
     }
 
     async prevQuestion() {
-        if (this.currentQuestionIndex > 0) {
+        if (!this.currentGame || this.currentQuestionIndex <= 0) {
+            return;
+        }
+
+        try {
             // Disarm buzzers when navigating to previous question
             if (this.isBuzzersArmed) {
                 await this.disarmBuzzers(true, 'navigation');
@@ -921,15 +947,35 @@ class HostControl {
             this.activeQuestionIndex = -1;
             this.isQuestionActive = false;
             
-            this.currentQuestionIndex--;
-            this.updateQuestionDisplay();
-            this.updateQuestionControls();
-            this.updateQuestionTabsState();
+            const newQuestionIndex = this.currentQuestionIndex - 1;
+            
+            // Call backend to update server state
+            const response = await fetch(`/api/games/${this.currentGame.id}/navigate-to-question/${newQuestionIndex}`, {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                this.currentQuestionIndex = newQuestionIndex;
+                this.updateQuestionDisplay();
+                this.updateQuestionControls();
+                this.updateQuestionTabsState();
+            } else {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to navigate to previous question');
+            }
+            
+        } catch (error) {
+            console.error('Failed to navigate to previous question:', error);
+            this.showToast('Failed to navigate to previous question', 'error');
         }
     }
 
     async jumpToQuestion(index) {
-        if (index !== '' && index >= 0 && index < this.questions.length) {
+        if (!this.currentGame || index === '' || index < 0 || index >= this.questions.length) {
+            return;
+        }
+
+        try {
             // Disarm buzzers when jumping to a different question
             if (this.isBuzzersArmed) {
                 await this.disarmBuzzers(true, 'navigation');
@@ -939,10 +985,26 @@ class HostControl {
             this.activeQuestionIndex = -1;
             this.isQuestionActive = false;
             
-            this.currentQuestionIndex = parseInt(index);
-            this.updateQuestionDisplay();
-            this.updateQuestionControls();
-            this.updateQuestionTabsState();
+            const newQuestionIndex = parseInt(index);
+            
+            // Call backend to update server state
+            const response = await fetch(`/api/games/${this.currentGame.id}/navigate-to-question/${newQuestionIndex}`, {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                this.currentQuestionIndex = newQuestionIndex;
+                this.updateQuestionDisplay();
+                this.updateQuestionControls();
+                this.updateQuestionTabsState();
+            } else {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to jump to question');
+            }
+            
+        } catch (error) {
+            console.error('Failed to jump to question:', error);
+            this.showToast('Failed to jump to question', 'error');
         }
     }
 
@@ -1160,8 +1222,8 @@ class HostControl {
         }
     }
 
-    resetQuestions() {
-        if (!confirm('Are you sure you want to reset all question progress? This will clear all answers, feedback, and question history but keep team scores intact.')) {
+    async resetQuestions() {
+        if (!this.currentGame || !confirm('Are you sure you want to reset all question progress? This will clear all answers, feedback, and question history but keep team scores intact.')) {
             return;
         }
 
@@ -1188,17 +1250,27 @@ class HostControl {
             // Reset question tabs to initial state
             this.initializeQuestionTabs();
             
-            // Update all displays
-            this.updateQuestionDisplay();
-            this.updateQuestionControls();
-            this.updateQuestionTabsState();
+            // Call backend reset questions
+            const response = await fetch(`/api/games/${this.currentGame.id}/reset-questions`, {
+                method: 'POST'
+            });
             
-            // Hide correct answer display
-            if (this.elements.correctAnswerDisplay) {
-                this.elements.correctAnswerDisplay.classList.add('hidden');
+            if (response.ok) {
+                // Update all displays after successful reset
+                this.updateQuestionDisplay();
+                this.updateQuestionControls();
+                this.updateQuestionTabsState();
+                
+                // Hide correct answer display
+                if (this.elements.correctAnswerDisplay) {
+                    this.elements.correctAnswerDisplay.classList.add('hidden');
+                }
+                
+                this.showToast('Question progress has been reset', 'success');
+            } else {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to reset questions on server');
             }
-            
-            this.showToast('Question progress has been reset', 'success');
             
         } catch (error) {
             console.error('Failed to reset questions:', error);
@@ -2076,15 +2148,9 @@ class HostControl {
 
             // Handle game flow based on answer correctness
             if (isCorrect) {
-                // Question will be marked as completed by server when advancing
-                
-                // Hide modal and prepare for next question if answer is correct
+                // Hide modal - server will handle advancing to next question via prepareNextQuestion
                 setTimeout(() => {
                     this.hideAnswerEvaluationModal();
-                    // Auto-advance to next question if available
-                    if (result.questionComplete) {
-                        this.nextQuestion();
-                    }
                 }, 1000);
             } else {
                 // Update the evaluation interface for next buzzer if answer is wrong
@@ -2095,7 +2161,7 @@ class HostControl {
                     if (nextBuzzer) {
                         this.showCurrentAnswererHighlight(nextBuzzer);
                     } else {
-                        // No more teams to answer - advance to next question
+                        // No more teams to answer - advance to next question manually
                         this.hideAnswerEvaluationModal();
                         this.nextQuestion();
                     }

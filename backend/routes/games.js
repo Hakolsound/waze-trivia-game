@@ -153,6 +153,16 @@ module.exports = (gameService) => {
     }
   });
 
+  router.post('/:id/navigate-to-question/:questionIndex', async (req, res) => {
+    try {
+      const questionIndex = parseInt(req.params.questionIndex);
+      const game = await gameService.setCurrentQuestionIndex(req.params.id, questionIndex);
+      res.json(game);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   router.post('/:id/end-question', async (req, res) => {
     try {
       await gameService.endQuestion(req.params.id);
@@ -184,6 +194,15 @@ module.exports = (gameService) => {
   router.post('/:id/reset', async (req, res) => {
     try {
       const game = await gameService.resetGame(req.params.id);
+      res.json(game);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  router.post('/:id/reset-questions', async (req, res) => {
+    try {
+      const game = await gameService.resetQuestions(req.params.id);
       res.json(game);
     } catch (error) {
       res.status(400).json({ error: error.message });

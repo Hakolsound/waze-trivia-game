@@ -1626,7 +1626,8 @@ class HostControl {
                 devices.forEach(device => {
                     this.buzzerDevices.set(device.device_id, {
                         ...device,
-                        last_seen: device.last_seen || now
+                        last_seen: device.last_seen || now,
+                        last_online: device.last_online // Preserve last_online from backend
                     });
                 });
                 
@@ -2422,7 +2423,8 @@ class HostControl {
                 devices.forEach(device => {
                     this.buzzerDevices.set(device.device_id, {
                         ...device,
-                        last_seen: device.last_seen || now
+                        last_seen: device.last_seen || now,
+                        last_online: device.last_online // Preserve last_online from backend
                     });
                 });
                 

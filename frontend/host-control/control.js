@@ -2521,7 +2521,6 @@ class HostControl {
             <div class="tab-status">${statusIcon}</div>
             <div class="tab-info">
                 <span class="tab-number">Q${index + 1}</span>
-                <span class="tab-points">${question.points || 100}pts</span>
             </div>
             ${feedbackContent}
             ${progressContent}
@@ -2624,6 +2623,15 @@ class HostControl {
         if (questionIndex < 0 || questionIndex >= this.questions.length) return;
         if (questionIndex === this.currentQuestionIndex) return;
 
+        // Show confirmation dialog
+        const currentQ = this.currentQuestionIndex + 1;
+        const targetQ = questionIndex + 1;
+        const confirmMessage = `Are you sure you want to navigate from Question ${currentQ} to Question ${targetQ}?`;
+        
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+
         // Update current question
         this.currentQuestionIndex = questionIndex;
         this.updateQuestionDisplay();
@@ -2636,7 +2644,7 @@ class HostControl {
 
     scrollQuestionTabs(direction) {
         const tabsContainer = this.elements.questionTabs;
-        const scrollAmount = 140; // Width of one tab plus gap
+        const scrollAmount = 82; // Width of compact tab plus gap (80px + 2px)
         const currentScroll = tabsContainer.scrollLeft;
         const newScroll = currentScroll + (direction * scrollAmount);
         

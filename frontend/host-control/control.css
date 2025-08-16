@@ -631,9 +631,10 @@ body {
 /* Question Tabs Container */
 .question-tabs-container {
   background: rgba(255, 255, 255, 0.02);
-  border-radius: 16px;
-  padding: 20px;
-  margin-top: 20px;
+  border-radius: 12px;
+  padding: 12px 16px 8px;
+  margin-top: 16px;
+  margin-bottom: 24px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(10px);
 }
@@ -642,26 +643,26 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .question-tabs-header h3 {
-  font: 600 1.2rem/1.2 'Google Sans';
-  color: white;
+  font: 600 0.9rem/1.1 'Google Sans';
+  color: rgba(255, 255, 255, 0.8);
   margin: 0;
 }
 
 .tabs-controls {
   display: flex;
-  gap: 8px;
+  gap: 4px;
 }
 
 .tab-scroll-btn {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  width: 32px;
-  height: 32px;
+  border-radius: 6px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -677,20 +678,20 @@ body {
 }
 
 .tab-scroll-btn .material-icons {
-  font-size: 18px;
+  font-size: 14px;
 }
 
 /* Question Tabs Wrapper */
 .question-tabs-wrapper {
   position: relative;
   overflow: hidden;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .question-tabs {
   display: flex;
-  gap: 12px;
-  padding: 8px 0;
+  gap: 2px;
+  padding: 4px 0;
   overflow-x: auto;
   scroll-behavior: smooth;
   scrollbar-width: none;
@@ -703,62 +704,56 @@ body {
 
 /* Individual Question Tab */
 .question-tab {
-  min-width: 120px;
-  max-width: 140px;
+  min-width: 60px;
+  max-width: 80px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  padding: 12px;
+  border-radius: 8px 8px 0 0;
+  padding: 6px 8px 4px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 2px;
   flex-shrink: 0;
+  border-bottom: none;
 }
 
 .question-tab:hover {
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.2);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 /* Tab Status Indicator */
 .tab-status {
   position: absolute;
-  top: -8px;
-  right: -8px;
-  width: 24px;
-  height: 24px;
+  top: -4px;
+  right: -4px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 600;
-  border: 2px solid var(--md-sys-color-surface);
+  border: 1px solid var(--md-sys-color-surface);
 }
 
 /* Tab Info Section */
 .tab-info {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
 }
 
 .tab-number {
-  font: 700 1.1rem/1 'Google Sans';
+  font: 700 0.75rem/1 'Google Sans';
   color: white;
-}
-
-.tab-points {
-  font: 500 0.8rem/1 'Google Sans';
-  color: rgba(255, 255, 255, 0.7);
-  background: rgba(255, 255, 255, 0.1);
-  padding: 2px 6px;
-  border-radius: 6px;
+  text-align: center;
 }
 
 /* Tab States */
@@ -812,20 +807,20 @@ body {
 .tab-feedback {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.8rem;
-  padding-top: 4px;
+  gap: 3px;
+  font-size: 0.6rem;
+  padding-top: 2px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .feedback-icon {
-  width: 16px;
-  height: 16px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 8px;
   font-weight: 700;
 }
 
@@ -845,20 +840,20 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 80px;
+  max-width: 40px;
 }
 
 /* Tab Progress Section */
 .tab-progress {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .progress-indicator {
-  height: 4px;
+  height: 2px;
   background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
+  border-radius: 1px;
   overflow: hidden;
   position: relative;
 }
@@ -866,7 +861,7 @@ body {
 .progress-fill {
   height: 100%;
   background: linear-gradient(90deg, #2196F3, #64B5F6);
-  border-radius: 2px;
+  border-radius: 1px;
   transition: width 0.3s ease;
   position: relative;
 }
@@ -883,7 +878,7 @@ body {
 }
 
 .progress-text {
-  font-size: 0.7rem;
+  font-size: 0.55rem;
   color: rgba(255, 255, 255, 0.7);
   text-align: center;
   font-weight: 500;
@@ -892,27 +887,27 @@ body {
 /* Tabs Legend */
 .tabs-legend {
   display: flex;
-  gap: 20px;
+  gap: 12px;
   justify-content: center;
-  opacity: 0.8;
+  opacity: 0.7;
 }
 
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.7);
+  gap: 4px;
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .legend-status {
-  width: 16px;
-  height: 16px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 8px;
   font-weight: 600;
   border: 1px solid rgba(255, 255, 255, 0.2);
 }

@@ -774,7 +774,7 @@ class GameDisplay {
         }
 
         container.innerHTML = teams.map((team, index) => `
-            <div class="remaining-team-item" style="animation-delay: ${1 + (index * 0.1)}s">
+            <div class="remaining-team-item">
                 <div class="remaining-team-rank">${index + 4}</div>
                 <div class="remaining-team-name">${team.name || `Team ${team.id}`}</div>
                 <div class="remaining-team-score">${team.score || 0}</div>

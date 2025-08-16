@@ -154,10 +154,16 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('toggle-leaderboard', () => {
-    // Broadcast leaderboard toggle to all display clients
+  socket.on('show-leaderboard', () => {
+    // Broadcast leaderboard show to all display clients
     io.to('game-display').emit('show-leaderboard');
-    console.log('Leaderboard toggle broadcasted to display clients');
+    console.log('Leaderboard show broadcasted to display clients');
+  });
+
+  socket.on('hide-leaderboard', () => {
+    // Broadcast leaderboard hide to all display clients
+    io.to('game-display').emit('hide-leaderboard');
+    console.log('Leaderboard hide broadcasted to display clients');
   });
   
   socket.on('disconnect', () => {

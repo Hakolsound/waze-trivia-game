@@ -11,6 +11,7 @@ class HostControl {
         this.buzzerDevices = new Map();
         this.virtualBuzzers = new Map(); // Track active virtual buzzers
         this.virtualBuzzersEnabled = false; // Track if virtual buzzers are enabled
+        this.isLeaderboardVisible = false; // Track leaderboard state
         this.gameSelector = null;
         
         this.initializeGameSelector();
@@ -475,14 +476,22 @@ class HostControl {
                     this.nextQuestion();
                     break;
                     
-                case 'Escape': // Escape - End Question or Close Modals
+                case 'Escape': // Escape - Hide Leaderboard or Close Modals
                     e.preventDefault();
                     if (modalOpen) {
                         this.hideAnswerEvaluationModal();
                         this.hideBuzzerStatusModal();
                         this.hideManualPointsModal();
                         this.hideGameActionsModal();
-                    } else if (this.isQuestionActive) {
+                    } else if (this.isLeaderboardVisible) {
+                        this.hideLeaderboard();
+                    }
+                    break;
+                    
+                case 's':
+                case 'S': // S - End Question
+                    e.preventDefault();
+                    if (this.isQuestionActive) {
                         this.endQuestion();
                     }
                     break;
@@ -1055,9 +1064,23 @@ class HostControl {
     }
 
     toggleLeaderboard() {
-        // Emit event to display to toggle leaderboard
-        this.socket.emit('toggle-leaderboard');
-        this.showToast('🏆 Leaderboard toggled on display', 'info');
+        if (this.isLeaderboardVisible) {
+            this.hideLeaderboard();
+        } else {
+            this.showLeaderboard();
+        }
+    }
+
+    showLeaderboard() {
+        this.socket.emit('show-leaderboard');
+        this.isLeaderboardVisible = true;
+        this.showToast('🏆 Leaderboard shown on display', 'success');
+    }
+
+    hideLeaderboard() {
+        this.socket.emit('hide-leaderboard');
+        this.isLeaderboardVisible = false;
+        this.showToast('Leaderboard hidden', 'info');
     }
 
     async refreshSystemStatus() {

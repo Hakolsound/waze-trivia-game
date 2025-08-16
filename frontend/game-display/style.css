@@ -578,7 +578,8 @@ h1.question-text,
   left: 0;
   right: 0;
   bottom: 0;
-  backdrop-filter: blur(10px);
+  background: rgba(0, 0, 0, 0.75); /* Darker background by 50% more opacity */
+  backdrop-filter: blur(15px); /* Increased blur for less attention */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -593,15 +594,16 @@ h1.question-text,
 }
 
 .answer-card {
-  background: rgba(3, 105, 161, 0.95); /* Slightly darker hue variation of accent cyan */
+  background: rgba(15, 23, 42, 0.95); /* Much darker theme color - dark slate */
   border-radius: 24px;
   padding: 48px 64px;
   text-align: center;
   box-shadow: var(--md-sys-elevation-level4);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(6, 182, 212, 0.4);
-  max-width: 90%;
-  min-width: 400px;
+  border: 1px solid rgba(51, 65, 85, 0.6); /* Darker border to match theme */
+  width: 65%; /* Exactly 65% of display width */
+  max-width: 65%;
+  min-width: 500px; /* Minimum for readability */
   max-height: 80vh;
   overflow-y: auto;
   transform: scale(0.95);
@@ -610,7 +612,7 @@ h1.question-text,
 
 .answer-title {
   font: var(--md-sys-typescale-title-large);
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(203, 213, 225, 0.8); /* Muted light gray for darker theme */
   margin: 0 0 32px 0;
   font-weight: 500;
   letter-spacing: 0.02em;
@@ -620,7 +622,7 @@ h1.question-text,
 
 .correct-answer-text {
   font: var(--md-sys-typescale-headline-medium);
-  color: #ffffff;
+  color: rgba(248, 250, 252, 0.95); /* Near white but slightly muted for dark theme */
   line-height: 1.5;
   padding: 0;
   background: none;

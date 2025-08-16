@@ -3293,68 +3293,96 @@ kbd {
   transition: color 0.3s ease;
 }
 
-/* Toggle Switch OFF state (down position) */
+/* Toggle Switch OFF state (down position) - Dimmed colors */
 .toggle-switch-btn.toggle-off {
-  background: linear-gradient(135deg, #e9ecef, #dee2e6) !important;
-  border-color: #adb5bd !important;
-  box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.15) !important;
+  background: linear-gradient(135deg, #2d3748, #4a5568) !important; /* Dimmed dark gray */
+  border-color: #718096 !important;
+  box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.25) !important;
 }
 
 .toggle-switch-btn.toggle-off .control-icon {
   transform: translateY(8px);
-  background: #f8f9fa;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  background: #4a5568;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
 .toggle-switch-btn.toggle-off .control-icon .material-icons {
-  color: #6c757d;
+  color: #a0aec0; /* Dimmed light gray */
 }
 
-/* Toggle Switch ON state (up position) */
+/* Show Answer toggle OFF - dimmed amber */
+.toggle-switch-btn.show-answer-toggle.toggle-off {
+  background: linear-gradient(135deg, #744210, #92400e) !important; /* Dimmed amber/brown */
+  border-color: #b45309 !important;
+}
+
+.toggle-switch-btn.show-answer-toggle.toggle-off .control-icon {
+  background: #92400e;
+}
+
+.toggle-switch-btn.show-answer-toggle.toggle-off .control-icon .material-icons {
+  color: #d69e2e; /* Dimmed amber */
+}
+
+/* Leaderboard toggle OFF - dimmed gold */
+.toggle-switch-btn.leaderboard-toggle.toggle-off {
+  background: linear-gradient(135deg, #b7791f, #d69e2e) !important; /* Dimmed gold */
+  border-color: #ecc94b !important;
+}
+
+.toggle-switch-btn.leaderboard-toggle.toggle-off .control-icon {
+  background: #d69e2e;
+}
+
+.toggle-switch-btn.leaderboard-toggle.toggle-off .control-icon .material-icons {
+  color: #f6e05e; /* Dimmed yellow */
+}
+
+/* Toggle Switch ON state (up position) - Bright colors */
 .toggle-switch-btn.toggle-on {
-  background: linear-gradient(135deg, #d1ecf1, #b8daff) !important;
-  border-color: #4A9EBF !important;
-  box-shadow: 0 0 0 2px rgba(74, 158, 191, 0.1), inset 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  background: linear-gradient(135deg, #4299e1, #63b3ed) !important; /* Bright blue */
+  border-color: #3182ce !important;
+  box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.2), inset 0 1px 3px rgba(0, 0, 0, 0.05) !important;
 }
 
 .toggle-switch-btn.toggle-on .control-icon {
   transform: translateY(-8px);
   background: #fff;
-  box-shadow: 0 4px 12px rgba(74, 158, 191, 0.25);
+  box-shadow: 0 4px 12px rgba(49, 130, 206, 0.35);
 }
 
 .toggle-switch-btn.toggle-on .control-icon .material-icons {
-  color: #4A9EBF;
+  color: #2b77cb; /* Bright blue */
 }
 
-/* Special styling for Show Answer toggle */
+/* Show Answer toggle ON - bright amber */
 .toggle-switch-btn.show-answer-toggle.toggle-on {
-  background: linear-gradient(135deg, #fff3cd, #ffeaa7) !important;
-  border-color: #C18B47 !important;
-  box-shadow: 0 0 0 2px rgba(193, 139, 71, 0.1), inset 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  background: linear-gradient(135deg, #f6ad55, #fbb036) !important; /* Bright amber */
+  border-color: #ed8936 !important;
+  box-shadow: 0 0 0 2px rgba(237, 137, 54, 0.2), inset 0 1px 3px rgba(0, 0, 0, 0.05) !important;
 }
 
 .toggle-switch-btn.show-answer-toggle.toggle-on .control-icon {
-  box-shadow: 0 4px 12px rgba(193, 139, 71, 0.25);
+  box-shadow: 0 4px 12px rgba(237, 137, 54, 0.4);
 }
 
 .toggle-switch-btn.show-answer-toggle.toggle-on .control-icon .material-icons {
-  color: #C18B47;
+  color: #c05621; /* Bright amber/orange */
 }
 
-/* Special styling for Leaderboard toggle */
+/* Leaderboard toggle ON - bright gold */
 .toggle-switch-btn.leaderboard-toggle.toggle-on {
-  background: linear-gradient(135deg, #fff3cd, #FFD700) !important;
-  border-color: #FFA500 !important;
-  box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.2), inset 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  background: linear-gradient(135deg, #ffd700, #ffed4e) !important; /* Bright gold */
+  border-color: #f6e05e !important;
+  box-shadow: 0 0 0 2px rgba(246, 224, 94, 0.3), inset 0 1px 3px rgba(0, 0, 0, 0.05) !important;
 }
 
 .toggle-switch-btn.leaderboard-toggle.toggle-on .control-icon {
-  box-shadow: 0 4px 12px rgba(255, 165, 0, 0.3);
+  box-shadow: 0 4px 12px rgba(246, 224, 94, 0.5);
 }
 
 .toggle-switch-btn.leaderboard-toggle.toggle-on .control-icon .material-icons {
-  color: #FF8C00;
+  color: #d69e2e; /* Bright gold */
 }
 
 /* Hover effects */
@@ -3363,15 +3391,15 @@ kbd {
 }
 
 .toggle-switch-btn.toggle-on:hover {
-  box-shadow: 0 0 0 2px rgba(74, 158, 191, 0.2), 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.3), 0 2px 8px rgba(0, 0, 0, 0.15) !important;
 }
 
 .toggle-switch-btn.show-answer-toggle.toggle-on:hover {
-  box-shadow: 0 0 0 2px rgba(193, 139, 71, 0.2), 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 0 0 2px rgba(237, 137, 54, 0.3), 0 2px 8px rgba(0, 0, 0, 0.15) !important;
 }
 
 .toggle-switch-btn.leaderboard-toggle.toggle-on:hover {
-  box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 0 0 2px rgba(246, 224, 94, 0.4), 0 2px 8px rgba(0, 0, 0, 0.15) !important;
 }
 
 /* Disabled state */

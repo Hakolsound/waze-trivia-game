@@ -801,6 +801,7 @@ class GameDisplay {
         // Calculate available space and optimal sizing
         const remainingTeamsCount = Math.max(0, teamCount - 3); // Teams beyond top 3
         const container = this.elements.leaderboardOverlay;
+        const rankedTeamsList = this.elements.rankedTeamsList;
         
         // Size categories based on team count
         let sizeCategory;
@@ -816,7 +817,54 @@ class GameDisplay {
         // Add appropriate size class
         container.classList.add(`size-${sizeCategory}`);
         
+        // Calculate dynamic spacing to maximize container usage
+        this.calculateDynamicSpacing(teamCount, rankedTeamsList);
+        
         console.log(`Applied dynamic sizing: ${sizeCategory} for ${teamCount} teams`);
+    }
+
+    calculateDynamicSpacing(teamCount, container) {
+        // Get the available height of the leaderboard content area
+        const leaderboardContent = container.closest('.leaderboard-content');
+        if (!leaderboardContent) return;
+        
+        // Wait for next frame to ensure elements are rendered
+        requestAnimationFrame(() => {
+            const contentHeight = leaderboardContent.offsetHeight;
+            const headerHeight = 80; // Approximate header height
+            const footerHeight = 40; // Approximate footer/padding
+            const availableHeight = contentHeight - headerHeight - footerHeight;
+            
+            // Estimate item heights based on scaling
+            const baseItemHeight = 70; // Base row height
+            const scaledHeights = {
+                1: baseItemHeight * 1.12, // Winner (breathing effect max)
+                2: baseItemHeight * 1.06,
+                3: baseItemHeight * 1.04,
+                4: baseItemHeight * 1.02,
+                5: baseItemHeight * 1.02,
+            };
+            
+            // Calculate total height needed for all items
+            let totalItemsHeight = 0;
+            for (let i = 1; i <= teamCount; i++) {
+                if (i <= 5) {
+                    totalItemsHeight += scaledHeights[i] || baseItemHeight;
+                } else {
+                    totalItemsHeight += baseItemHeight;
+                }
+            }
+            
+            // Calculate optimal gap
+            const totalGapsNeeded = teamCount - 1;
+            const availableSpaceForGaps = Math.max(0, availableHeight - totalItemsHeight);
+            const optimalGap = totalGapsNeeded > 0 ? Math.min(20, Math.max(4, availableSpaceForGaps / totalGapsNeeded)) : 8;
+            
+            // Apply the calculated gap
+            container.style.gap = `${optimalGap}px`;
+            
+            console.log(`Dynamic spacing: ${optimalGap}px gap for ${teamCount} teams (available: ${availableHeight}px, items: ${totalItemsHeight}px)`);
+        });
     }
 }
 

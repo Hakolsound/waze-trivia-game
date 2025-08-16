@@ -2555,7 +2555,7 @@ class HostControl {
                     <div class="progress-indicator">
                         <div class="progress-fill" style="width: ${progressPercentage}%"></div>
                     </div>
-                    <span class="progress-text">${Math.floor(timeRemaining)}s left</span>
+                    <span class="progress-text">${timeRemaining > 0 ? Math.ceil(timeRemaining) : 0}s left</span>
                 </div>
             `;
         }
@@ -2637,7 +2637,7 @@ class HostControl {
         const progressText = progressElement.querySelector('.progress-text');
         
         if (progressFill) progressFill.style.width = `${progressPercentage}%`;
-        if (progressText) progressText.textContent = `${Math.floor(timeRemaining)}s left`;
+        if (progressText) progressText.textContent = `${timeRemaining > 0 ? Math.ceil(timeRemaining) : 0}s left`;
     }
 
     updateQuestionTabFeedback(questionIndex, teamName, correct) {

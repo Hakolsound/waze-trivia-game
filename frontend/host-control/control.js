@@ -67,6 +67,9 @@ class HostControl {
             this.teams = game.groups || [];
             this.currentQuestionIndex = game.current_question_index || 0;
             
+            // Synchronize with server game state
+            this.synchronizeGameState(game);
+            
             // Update displays
             this.updateGameDisplay();
             this.updateTeamDisplay();
@@ -98,6 +101,39 @@ class HostControl {
             // Hide virtual buzzer section when no game is loaded
             this.checkVirtualBuzzerSettings();
         }
+    }
+
+    synchronizeGameState(game) {
+        console.log(`Synchronizing game state. Status: ${game.status}, Current question: ${game.current_question_index}`);
+        
+        // Reset local state first
+        this.isQuestionActive = false;
+        this.activeQuestionIndex = -1;
+        this.playedQuestions.clear();
+        
+        // Reconstruct played questions based on game progress
+        if (game.current_question_index > 0) {
+            // All questions before current index are considered played
+            for (let i = 0; i < game.current_question_index; i++) {
+                this.playedQuestions.add(i);
+                console.log(`Reconstructed: Question ${i} marked as played`);
+            }
+        }
+        
+        // Handle current question state based on game status
+        if (game.status === 'question_active') {
+            this.isQuestionActive = true;
+            this.activeQuestionIndex = game.current_question_index;
+            console.log(`Synchronized: Question ${game.current_question_index} is active`);
+        } else if (game.status === 'question_ended') {
+            // Question ended but not resolved - keep it on-air until resolved
+            this.isQuestionActive = false; // Timer not running but still on-air
+            this.activeQuestionIndex = game.current_question_index;
+            console.log(`Synchronized: Question ${game.current_question_index} ended but not resolved`);
+        }
+        
+        console.log(`After sync - Played questions:`, Array.from(this.playedQuestions));
+        console.log(`After sync - Active question: ${this.activeQuestionIndex}, Is active: ${this.isQuestionActive}`);
     }
 
     onGamesLoaded(games) {

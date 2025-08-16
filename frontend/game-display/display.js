@@ -396,6 +396,9 @@ class GameDisplay {
         // The question will be hidden when a correct answer is given or host manually advances
         this.updateGameStatus('Time up - Waiting for answer');
         this.elements.timerText.textContent = 'Time up!';
+        
+        // Pause any playing media when time is up
+        this.pauseMedia();
     }
 
     handleBuzzerPressed(data) {
@@ -602,6 +605,9 @@ class GameDisplay {
         }
         
         console.log('Timer paused on display, remaining:', this.timeRemaining);
+        
+        // Pause any playing media
+        this.pauseMedia();
     }
 
     resumeTimer(data) {
@@ -615,6 +621,9 @@ class GameDisplay {
         this.startTimer();
         
         console.log('Timer resumed on display, remaining:', this.timeRemaining);
+        
+        // Resume any paused media
+        this.resumeMedia();
     }
 
     updateTimer(timeRemaining, totalTime) {
@@ -1423,6 +1432,52 @@ class GameDisplay {
         if (iframeElement) {
             iframeElement.style.display = 'none';
             iframeElement.src = '';
+        }
+    }
+
+    // Pause media playback
+    pauseMedia() {
+        const videoElement = document.getElementById('question-video');
+        const iframeElement = document.getElementById('question-iframe');
+        
+        // Pause HTML5 video
+        if (videoElement && videoElement.style.display !== 'none' && !videoElement.paused) {
+            videoElement.pause();
+            console.log('Video paused');
+        }
+        
+        // Pause YouTube video via postMessage
+        if (iframeElement && iframeElement.style.display !== 'none' && iframeElement.src.includes('youtube.com')) {
+            try {
+                iframeElement.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+                console.log('YouTube video paused');
+            } catch (e) {
+                console.log('YouTube pause failed:', e.message);
+            }
+        }
+    }
+
+    // Resume media playback  
+    resumeMedia() {
+        const videoElement = document.getElementById('question-video');
+        const iframeElement = document.getElementById('question-iframe');
+        
+        // Resume HTML5 video
+        if (videoElement && videoElement.style.display !== 'none' && videoElement.paused) {
+            videoElement.play().catch(e => {
+                console.log('Video resume failed (may require user interaction):', e.message);
+            });
+            console.log('Video resumed');
+        }
+        
+        // Resume YouTube video via postMessage
+        if (iframeElement && iframeElement.style.display !== 'none' && iframeElement.src.includes('youtube.com')) {
+            try {
+                iframeElement.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+                console.log('YouTube video resumed');
+            } catch (e) {
+                console.log('YouTube resume failed:', e.message);
+            }
         }
     }
 }

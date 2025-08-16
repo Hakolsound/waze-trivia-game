@@ -924,13 +924,17 @@ class GameDisplay {
         // Show the leaderboard overlay
         this.elements.leaderboardOverlay.classList.remove('hidden');
         
-        // Ensure first item is scrolled into view
+        // Ensure first item is visible and scrolled into view
         setTimeout(() => {
             const firstItem = this.elements.rankedTeamsList.querySelector('.ranked-team-item:first-child');
             if (firstItem) {
+                // Force visibility by adding a class and ensuring proper styles
+                firstItem.classList.add('first-place-visible');
+                firstItem.style.opacity = '1';
+                firstItem.style.transform = 'translateY(0)';
                 firstItem.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
-        }, 100);
+        }, 50); // Reduced delay for faster visibility
         
         console.log(`Leaderboard shown (${view}) with`, teamCount, 'teams', teamsToShow.map(t => `${t.name}: ${t.score}`));
     }

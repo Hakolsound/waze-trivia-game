@@ -1006,10 +1006,14 @@ h1.question-text,
   animation: breathingGlow 4s ease-in-out infinite;
 }
 
-/* Ensure first place is always visible */
+/* Ensure first place is always visible and properly animated */
 .ranked-team-item:first-child {
   scroll-margin-top: 20px;
   margin-top: 0;
+  opacity: 1 !important; /* Force visibility to override animation issues */
+  transform: translateY(0) !important; /* Ensure it's in correct position */
+  animation-delay: 0s !important; /* Ensure immediate animation */
+  animation-duration: 0.1s !important; /* Quick animation to avoid delays */
 }
 
 /* Subtle shine effects for top 5 positions */
@@ -1460,7 +1464,7 @@ h1.question-text,
 
 /* Top 3 Podium View Styles */
 .view-top3 .leaderboard-title h1 {
-  font-size: 4rem;
+  font-size: 2.5rem;
   background: linear-gradient(135deg, #FFD700, #FFA500, #FFD700);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -1471,16 +1475,16 @@ h1.question-text,
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  height: 65vh;
-  padding: 20px;
+  height: 50vh;
+  padding: 15px;
   width: 100%;
 }
 
 .podium-platforms {
   display: flex;
   align-items: flex-end;
-  gap: 30px;
-  width: 70%;
+  gap: 20px;
+  width: 60%;
   justify-content: center;
 }
 
@@ -1502,13 +1506,13 @@ h1.question-text,
 
 .podium-team-info {
   text-align: center;
-  margin-bottom: 25px;
-  padding: 30px 25px;
+  margin-bottom: 15px;
+  padding: 20px 15px;
   background: rgba(255, 255, 255, 0.1);
-  border-radius: 25px;
-  border: 3px solid rgba(255, 255, 255, 0.2);
+  border-radius: 15px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(10px);
-  min-width: 200px;
+  min-width: 150px;
 }
 
 .first-place .podium-team-info {
@@ -1528,44 +1532,44 @@ h1.question-text,
 }
 
 .podium-position {
-  font-size: 1.8rem;
+  font-size: 1.2rem;
   font-weight: 800;
   color: white;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .podium-team-name {
-  font-size: 2.2rem;
+  font-size: 1.4rem;
   font-weight: 700;
   color: white;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   word-break: break-word;
 }
 
 .first-place .podium-team-name {
   color: #FFD700;
-  font-size: 2.6rem;
+  font-size: 1.6rem;
 }
 
 .podium-score {
-  font-size: 2.4rem;
+  font-size: 1.6rem;
   font-weight: 800;
   color: white;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
 }
 
 .first-place .podium-score {
   color: #FFD700;
-  font-size: 3rem;
+  font-size: 1.8rem;
 }
 
 .podium-medal {
-  font-size: 3rem;
+  font-size: 2rem;
   animation: medalFloat 3s ease-in-out infinite;
 }
 
 .first-place .podium-medal {
-  font-size: 4rem;
+  font-size: 2.5rem;
 }
 
 @keyframes medalFloat {
@@ -1574,29 +1578,29 @@ h1.question-text,
 }
 
 .podium-base {
-  width: 160px;
-  border-radius: 15px 15px 0 0;
+  width: 100px;
+  border-radius: 10px 10px 0 0;
   position: relative;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
 }
 
 .podium-base.first {
-  height: 180px;
+  height: 120px;
   background: linear-gradient(135deg, #FFD700, #FFA500);
-  width: 180px;
-  box-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
+  width: 120px;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
 }
 
 .podium-base.second {
-  height: 140px;
+  height: 90px;
   background: linear-gradient(135deg, #C0C0C0, #A9A9A9);
-  width: 160px;
+  width: 100px;
 }
 
 .podium-base.third {
-  height: 110px;
+  height: 70px;
   background: linear-gradient(135deg, #CD7F32, #B87333);
-  width: 150px;
+  width: 90px;
 }
 
 /* Top 5 Highlight View Styles */

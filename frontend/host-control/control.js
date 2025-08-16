@@ -3198,7 +3198,13 @@ class HostControl {
             return;
         }
         
-        this.toggleCorrectAnswer();
+        // CMD/Ctrl click acts as force override (like triple-A)
+        if (this.isAnswerVisible) {
+            this.hideCorrectAnswer();
+        } else {
+            // Force show answer with CMD/Ctrl click (bypass normal conditions)
+            this.showCorrectAnswerForced();
+        }
     }
 
     toggleCorrectAnswer() {
@@ -3209,7 +3215,12 @@ class HostControl {
         }
     }
 
-    async showCorrectAnswer() {
+    async showCorrectAnswerForced() {
+        // Force show answer without validation (used by CMD/Ctrl click)
+        return this.showCorrectAnswer(true);
+    }
+
+    async showCorrectAnswer(forceShow = false) {
         if (!this.currentGame) {
             this.showToast('No game selected', 'error');
             return;
@@ -3220,8 +3231,8 @@ class HostControl {
             return;
         }
         
-        // Check if forced (triple-A) or conditions met
-        if (!this.canShowAnswer() && this.keyPressCount.A < 3) {
+        // Check if forced (triple-A, CMD/Ctrl click) or conditions met
+        if (!forceShow && !this.canShowAnswer() && this.keyPressCount.A < 3) {
             this.showToast('Cannot show answer yet', 'error');
             return;
         }

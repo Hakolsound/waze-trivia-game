@@ -69,6 +69,7 @@ class HostControl {
             this.updateGameDisplay();
             this.updateTeamDisplay();
             this.updateQuestionSelector();
+            this.initializeQuestionTabs();
             this.updateQuestionControls();
             this.updateQuestionDisplay();
             
@@ -88,6 +89,7 @@ class HostControl {
             this.updateGameDisplay();
             this.updateTeamDisplay();
             this.updateQuestionSelector();
+            this.initializeQuestionTabs();
             this.updateQuestionControls();
             this.updateQuestionDisplay();
             
@@ -133,6 +135,11 @@ class HostControl {
             // Correct answer elements
             correctAnswerDisplay: document.getElementById('correct-answer-display'),
             correctAnswerText: document.getElementById('correct-answer-text'),
+            
+            // Question tabs elements
+            questionTabs: document.getElementById('question-tabs'),
+            scrollTabsLeft: document.getElementById('scroll-tabs-left'),
+            scrollTabsRight: document.getElementById('scroll-tabs-right'),
             
             // Current answerer elements
             currentAnswererHighlight: document.getElementById('current-answerer-highlight'),
@@ -383,6 +390,10 @@ class HostControl {
         // Game actions modal
         if (this.elements.showGameActionsBtn) this.elements.showGameActionsBtn.addEventListener('click', () => this.showGameActionsModal());
         if (this.elements.closeGameActionsModalBtn) this.elements.closeGameActionsModalBtn.addEventListener('click', () => this.hideGameActionsModal());
+        
+        // Question tabs event listeners
+        if (this.elements.scrollTabsLeft) this.elements.scrollTabsLeft.addEventListener('click', () => this.scrollQuestionTabs(-1));
+        if (this.elements.scrollTabsRight) this.elements.scrollTabsRight.addEventListener('click', () => this.scrollQuestionTabs(1));
         
         // Header navigation buttons
         if (this.elements.navOpenDisplayBtn) this.elements.navOpenDisplayBtn.addEventListener('click', () => window.open('/display', '_blank'));
@@ -1891,6 +1902,21 @@ class HostControl {
             const statusMessage = isCorrect ? 'Correct answer!' : 'Incorrect answer';
             this.showToast(statusMessage, isCorrect ? 'success' : 'warning');
 
+            // Update question tabs with feedback
+            const currentBuzzer = this.buzzerOrder[this.currentBuzzerPosition];
+            if (currentBuzzer) {
+                const teamName = this.getTeamName(currentBuzzer.groupId);
+                this.updateQuestionTabFeedback(this.currentQuestionIndex, teamName, isCorrect);
+                
+                // Store in evaluation history
+                this.evaluationHistory.push({
+                    questionIndex: this.currentQuestionIndex,
+                    teamName: teamName,
+                    correct: isCorrect,
+                    pointsAwarded: result.pointsAwarded || 0
+                });
+            }
+
             // Update buzzer results display
             this.updateBuzzerResults();
 
@@ -2324,6 +2350,286 @@ class HostControl {
 
             this.elements.virtualBuzzers.appendChild(buzzerElement);
         });
+    }
+
+    // Question Tabs Functionality
+    initializeQuestionTabs() {
+        if (!this.questions || this.questions.length === 0) {
+            this.elements.questionTabs.innerHTML = '<div class="no-tabs">No questions loaded</div>';
+            return;
+        }
+
+        // Remove sample tabs
+        const sampleTabs = this.elements.questionTabs.querySelectorAll('.sample-tab');
+        sampleTabs.forEach(tab => tab.remove());
+
+        // Create question tabs
+        this.elements.questionTabs.innerHTML = '';
+        this.questions.forEach((question, index) => {
+            const tab = this.createQuestionTab(question, index);
+            this.elements.questionTabs.appendChild(tab);
+        });
+
+        // Update current question
+        this.updateQuestionTabsState();
+    }
+
+    createQuestionTab(question, index) {
+        const tab = document.createElement('div');
+        tab.className = 'question-tab';
+        tab.dataset.questionIndex = index;
+        
+        // Determine tab state
+        let tabState = 'pending';
+        let statusIcon = '⏳';
+        let feedbackContent = '';
+        
+        if (index < this.currentQuestionIndex) {
+            tabState = 'completed';
+            statusIcon = '✓';
+            // Add feedback from evaluation history if available
+            const evaluation = this.evaluationHistory.find(e => e.questionIndex === index);
+            if (evaluation) {
+                const iconClass = evaluation.correct ? 'correct' : 'incorrect';
+                const iconSymbol = evaluation.correct ? '✓' : '✗';
+                feedbackContent = `
+                    <div class="tab-feedback">
+                        <span class="feedback-icon ${iconClass}">${iconSymbol}</span>
+                        <span class="feedback-team">${evaluation.teamName}</span>
+                    </div>
+                `;
+            }
+        } else if (index === this.currentQuestionIndex) {
+            if (this.isQuestionActive) {
+                tabState = 'active';
+                statusIcon = '▶';
+            } else {
+                tabState = 'current';
+                statusIcon = '▶';
+            }
+        }
+
+        tab.classList.add(tabState);
+        if (index === this.currentQuestionIndex) {
+            tab.classList.add('current');
+        }
+
+        // Add progress content for active questions
+        let progressContent = '';
+        if (tabState === 'active' && this.isQuestionActive) {
+            const timeRemaining = Math.max(0, (this.questionStartTime + this.questionTimeLimit * 1000 - Date.now()) / 1000);
+            const progressPercentage = Math.max(0, (timeRemaining / this.questionTimeLimit) * 100);
+            progressContent = `
+                <div class="tab-progress">
+                    <div class="progress-indicator">
+                        <div class="progress-fill" style="width: ${progressPercentage}%"></div>
+                    </div>
+                    <span class="progress-text">${Math.ceil(timeRemaining)}s left</span>
+                </div>
+            `;
+        }
+
+        tab.innerHTML = `
+            <div class="tab-status">${statusIcon}</div>
+            <div class="tab-info">
+                <span class="tab-number">Q${index + 1}</span>
+                <span class="tab-points">${question.points || 100}pts</span>
+            </div>
+            ${feedbackContent}
+            ${progressContent}
+        `;
+
+        // Add click event for navigation
+        tab.addEventListener('click', () => this.navigateToQuestion(index));
+
+        return tab;
+    }
+
+    updateQuestionTabsState() {
+        if (!this.elements.questionTabs) return;
+
+        const tabs = this.elements.questionTabs.querySelectorAll('.question-tab');
+        tabs.forEach((tab, index) => {
+            const tabIndex = parseInt(tab.dataset.questionIndex);
+            
+            // Reset classes
+            tab.className = 'question-tab';
+            
+            // Determine state
+            if (tabIndex < this.currentQuestionIndex) {
+                tab.classList.add('completed');
+                tab.querySelector('.tab-status').textContent = '✓';
+            } else if (tabIndex === this.currentQuestionIndex) {
+                tab.classList.add('current');
+                if (this.isQuestionActive) {
+                    tab.classList.add('active');
+                    tab.querySelector('.tab-status').textContent = '▶';
+                } else {
+                    tab.querySelector('.tab-status').textContent = '▶';
+                }
+            } else {
+                tab.classList.add('pending');
+                tab.querySelector('.tab-status').textContent = '⏳';
+            }
+
+            // Update progress for active question
+            if (tabIndex === this.currentQuestionIndex && this.isQuestionActive) {
+                this.updateTabProgress(tab);
+            }
+        });
+
+        // Scroll current question into view
+        this.scrollTabIntoView(this.currentQuestionIndex);
+    }
+
+    updateTabProgress(tab) {
+        if (!this.isQuestionActive || !this.questionStartTime) return;
+        
+        const timeRemaining = Math.max(0, (this.questionStartTime + this.questionTimeLimit * 1000 - Date.now()) / 1000);
+        const progressPercentage = Math.max(0, (timeRemaining / this.questionTimeLimit) * 100);
+        
+        let progressElement = tab.querySelector('.tab-progress');
+        if (!progressElement) {
+            progressElement = document.createElement('div');
+            progressElement.className = 'tab-progress';
+            progressElement.innerHTML = `
+                <div class="progress-indicator">
+                    <div class="progress-fill"></div>
+                </div>
+                <span class="progress-text"></span>
+            `;
+            tab.appendChild(progressElement);
+        }
+        
+        const progressFill = progressElement.querySelector('.progress-fill');
+        const progressText = progressElement.querySelector('.progress-text');
+        
+        if (progressFill) progressFill.style.width = `${progressPercentage}%`;
+        if (progressText) progressText.textContent = `${Math.ceil(timeRemaining)}s left`;
+    }
+
+    updateQuestionTabFeedback(questionIndex, teamName, correct) {
+        const tab = this.elements.questionTabs.querySelector(`[data-question-index="${questionIndex}"]`);
+        if (!tab) return;
+
+        // Remove existing feedback
+        const existingFeedback = tab.querySelector('.tab-feedback');
+        if (existingFeedback) {
+            existingFeedback.remove();
+        }
+
+        // Add new feedback
+        const iconClass = correct ? 'correct' : 'incorrect';
+        const iconSymbol = correct ? '✓' : '✗';
+        
+        const feedbackElement = document.createElement('div');
+        feedbackElement.className = 'tab-feedback';
+        feedbackElement.innerHTML = `
+            <span class="feedback-icon ${iconClass}">${iconSymbol}</span>
+            <span class="feedback-team">${teamName}</span>
+        `;
+        
+        tab.appendChild(feedbackElement);
+    }
+
+    navigateToQuestion(questionIndex) {
+        if (questionIndex < 0 || questionIndex >= this.questions.length) return;
+        if (questionIndex === this.currentQuestionIndex) return;
+
+        // Update current question
+        this.currentQuestionIndex = questionIndex;
+        this.updateQuestionDisplay();
+        this.updateQuestionControls();
+        this.updateQuestionTabsState();
+        
+        // Show toast
+        this.showToast(`Navigated to Question ${questionIndex + 1}`, 'info');
+    }
+
+    scrollQuestionTabs(direction) {
+        const tabsContainer = this.elements.questionTabs;
+        const scrollAmount = 140; // Width of one tab plus gap
+        const currentScroll = tabsContainer.scrollLeft;
+        const newScroll = currentScroll + (direction * scrollAmount);
+        
+        tabsContainer.scrollTo({
+            left: newScroll,
+            behavior: 'smooth'
+        });
+    }
+
+    scrollTabIntoView(questionIndex) {
+        const tab = this.elements.questionTabs.querySelector(`[data-question-index="${questionIndex}"]`);
+        if (!tab) return;
+
+        tab.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'center'
+        });
+    }
+
+    // Override existing methods to integrate with tabs
+    startQuestion() {
+        // Original startQuestion logic
+        if (!this.canStartQuestion()) return;
+        
+        this.clearBuzzerResults();
+        this.clearAnswerEvaluation();
+        this.hideAnswerEvaluationModal();
+        this.updateCurrentAnswererHighlight(null);
+        this.isQuestionActive = true;
+        this.questionStartTime = Date.now();
+        this.questionTimeLimit = this.questions[this.currentQuestionIndex]?.time_limit || 30;
+        
+        const question = this.questions[this.currentQuestionIndex];
+        this.socket.emit('start-question', { 
+            questionIndex: this.currentQuestionIndex,
+            question: question
+        });
+        
+        this.updateQuestionControls();
+        this.startQuestionTimer();
+        
+        // Update tabs
+        this.updateQuestionTabsState();
+        this.startTabProgressUpdates();
+        
+        this.showToast('Question started!', 'success');
+    }
+
+    endQuestion() {
+        // Original endQuestion logic
+        this.isQuestionActive = false;
+        this.socket.emit('end-question', { 
+            questionIndex: this.currentQuestionIndex 
+        });
+        
+        this.updateQuestionControls();
+        this.stopQuestionTimer();
+        
+        // Update tabs
+        this.updateQuestionTabsState();
+        this.stopTabProgressUpdates();
+        
+        this.showToast('Question ended', 'warning');
+    }
+
+    startTabProgressUpdates() {
+        this.stopTabProgressUpdates();
+        this.tabProgressInterval = setInterval(() => {
+            const currentTab = this.elements.questionTabs.querySelector(`[data-question-index="${this.currentQuestionIndex}"]`);
+            if (currentTab && this.isQuestionActive) {
+                this.updateTabProgress(currentTab);
+            }
+        }, 100); // Update every 100ms for smooth progress
+    }
+
+    stopTabProgressUpdates() {
+        if (this.tabProgressInterval) {
+            clearInterval(this.tabProgressInterval);
+            this.tabProgressInterval = null;
+        }
     }
 }
 

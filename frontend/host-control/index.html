@@ -73,7 +73,7 @@
                 <!-- Question Display Card -->
                 <div class="question-card">
                     <div class="card-header">
-                        <h2>🎯 Active Question</h2>
+                        <h2>🎯 Game Progress</h2>
                         <div class="question-progress-info">
                             <div class="question-counter">
                                 <span class="counter-text">Question <span id="current-question-num">1</span> of <span id="total-questions">10</span></span>
@@ -87,6 +87,85 @@
                             <div class="question-meta" id="question-meta">
                                 <span class="points">100 pts</span>
                                 <span class="time">30s</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Question Tabs Navigation -->
+                    <div class="question-tabs-container">
+                        <div class="question-tabs-header">
+                            <h3>📋 Question Overview</h3>
+                            <div class="tabs-controls">
+                                <button id="scroll-tabs-left" class="tab-scroll-btn" title="Scroll Left">
+                                    <span class="material-icons">chevron_left</span>
+                                </button>
+                                <button id="scroll-tabs-right" class="tab-scroll-btn" title="Scroll Right">
+                                    <span class="material-icons">chevron_right</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="question-tabs-wrapper">
+                            <div id="question-tabs" class="question-tabs">
+                                <!-- Question tabs will be populated dynamically -->
+                                <div class="question-tab sample-tab completed" data-question-index="0">
+                                    <div class="tab-status">✓</div>
+                                    <div class="tab-info">
+                                        <span class="tab-number">Q1</span>
+                                        <span class="tab-points">100pts</span>
+                                    </div>
+                                    <div class="tab-feedback">
+                                        <span class="feedback-icon correct">✓</span>
+                                        <span class="feedback-team">Team Alpha</span>
+                                    </div>
+                                </div>
+                                <div class="question-tab sample-tab active current" data-question-index="1">
+                                    <div class="tab-status">▶</div>
+                                    <div class="tab-info">
+                                        <span class="tab-number">Q2</span>
+                                        <span class="tab-points">150pts</span>
+                                    </div>
+                                    <div class="tab-progress">
+                                        <div class="progress-indicator">
+                                            <div class="progress-fill" style="width: 60%"></div>
+                                        </div>
+                                        <span class="progress-text">15s left</span>
+                                    </div>
+                                </div>
+                                <div class="question-tab sample-tab pending" data-question-index="2">
+                                    <div class="tab-status">⏳</div>
+                                    <div class="tab-info">
+                                        <span class="tab-number">Q3</span>
+                                        <span class="tab-points">200pts</span>
+                                    </div>
+                                </div>
+                                <div class="question-tab sample-tab pending" data-question-index="3">
+                                    <div class="tab-status">⏳</div>
+                                    <div class="tab-info">
+                                        <span class="tab-number">Q4</span>
+                                        <span class="tab-points">100pts</span>
+                                    </div>
+                                </div>
+                                <div class="question-tab sample-tab pending" data-question-index="4">
+                                    <div class="tab-status">⏳</div>
+                                    <div class="tab-info">
+                                        <span class="tab-number">Q5</span>
+                                        <span class="tab-points">250pts</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tabs-legend">
+                            <div class="legend-item">
+                                <span class="legend-status completed">✓</span>
+                                <span>Completed</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-status active">▶</span>
+                                <span>Active</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-status pending">⏳</span>
+                                <span>Pending</span>
                             </div>
                         </div>
                     </div>

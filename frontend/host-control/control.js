@@ -861,6 +861,19 @@ class HostControl {
         const canStart = hasGame && hasQuestions && !this.isQuestionActive && !isCurrentQuestionPlayed;
         const canEnd = this.isQuestionActive;
         
+        // Debug logging for the GO button issue
+        if (hasGame && hasQuestions && !canStart) {
+            console.log('GO button disabled - Debug info:', {
+                hasGame,
+                hasQuestions,
+                currentQuestionIndex: this.currentQuestionIndex,
+                isQuestionActive: this.isQuestionActive,
+                isCurrentQuestionPlayed,
+                playedQuestions: this.currentGame?.played_questions,
+                canStart
+            });
+        }
+        
         // Check if next/previous navigation is possible (not to played questions)
         const canGoNext = hasGame && this.currentQuestionIndex < this.questions.length - 1;
         const canGoPrev = hasGame && this.currentQuestionIndex > 0 && !this.isQuestionPlayed(this.currentQuestionIndex - 1);
@@ -1873,19 +1886,32 @@ class HostControl {
         }, 50);
     }
 
-    handleQuestionPrepared(data) {
+    async handleQuestionPrepared(data) {
         this.showToast(`Next question prepared: ${data.question.text.substring(0, 50)}...`, 'info');
         this.resetAnswerEvaluation();
         
         // Update current question index and sync with server state
         this.currentQuestionIndex = data.nextQuestionIndex;
         
-        // Update the current game's server state for consistency
+        // Refresh game state from server to ensure played_questions is accurate
         if (this.currentGame) {
-            this.currentGame.current_question_index = data.nextQuestionIndex;
+            try {
+                const response = await fetch(`/api/games/${this.currentGame.id}`);
+                if (response.ok) {
+                    const updatedGame = await response.json();
+                    this.currentGame = updatedGame;
+                    console.log('Game state refreshed after question prepared:', {
+                        currentIndex: this.currentGame.current_question_index,
+                        playedQuestions: this.currentGame.played_questions
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to refresh game state after question prepared:', error);
+            }
         }
         
         this.updateQuestionDisplay();
+        this.updateQuestionControls(); // Add this to ensure button states are updated
         this.updateQuestionTabsState();
     }
 

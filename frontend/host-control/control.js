@@ -1522,6 +1522,11 @@ class HostControl {
             const device = this.buzzerDevices.get(deviceId);
             device.last_seen = now;
             device.status = 'online';
+            // Preserve last_online timestamp from backend API
+            // Only update last_online if device is actually online
+            if (data.online === true || device.online === true) {
+                device.last_online = device.last_online || now; // Keep existing or set to now
+            }
             this.buzzerDevices.set(deviceId, device);
         } else {
             // Create new device entry from heartbeat
@@ -1530,6 +1535,7 @@ class HostControl {
                 name: `Buzzer ${deviceId}`,
                 last_seen: now,
                 status: 'online',
+                last_online: data.online === true ? now : null, // Set last_online only if actually online
                 ...data
             });
         }
@@ -2546,6 +2552,9 @@ class HostControl {
                 this.buzzerDevices = new Map();
             }
             
+            // Get existing device data to preserve last_online timestamp
+            const existingDevice = this.buzzerDevices.get(deviceId) || {};
+            
             const deviceData = {
                 device_id: deviceId,
                 name: `Buzzer ${deviceId}`,
@@ -2557,7 +2566,9 @@ class HostControl {
                 mac: params.mac || '',
                 teamName: this.getTeamNameByBuzzerId(deviceId),
                 reported_online: reportedOnline,
-                time_since_last_seen: timeSinceLastSeen
+                time_since_last_seen: timeSinceLastSeen,
+                // Preserve or update last_online timestamp
+                last_online: actuallyOnline ? (existingDevice.last_online || now) : existingDevice.last_online
             };
             
             this.buzzerDevices.set(deviceId, deviceData);

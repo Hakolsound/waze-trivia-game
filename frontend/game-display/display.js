@@ -1262,15 +1262,18 @@ class GameDisplay {
         const mediaContainer = document.getElementById('question-media-container');
         const imageElement = document.getElementById('question-media');
         const videoElement = document.getElementById('question-video');
+        const iframeElement = document.getElementById('question-iframe');
         
-        if (!mediaContainer || !imageElement || !videoElement) return;
+        if (!mediaContainer || !imageElement || !videoElement || !iframeElement) return;
 
-        // Reset both elements
+        // Reset all elements
         mediaContainer.classList.add('hidden');
         imageElement.style.display = 'none';
         videoElement.style.display = 'none';
+        iframeElement.style.display = 'none';
         imageElement.src = '';
         videoElement.src = '';
+        iframeElement.src = '';
 
         // Handle different URL types
         let finalUrl = mediaUrl;
@@ -1286,11 +1289,30 @@ class GameDisplay {
 
         console.log('Loading media from URL:', finalUrl);
 
-        // Determine if it's a video or image based on file extension
+        // Check if it's a YouTube URL and convert to embed format
+        const youtubeMatch = finalUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+        const isYouTube = youtubeMatch !== null;
+        
+        // Determine if it's a video file based on file extension
         const isVideo = /\.(mp4|webm|ogg|mov|avi|mkv)(\?.*)?$/i.test(finalUrl);
         
-        if (isVideo) {
-            // Handle video
+        if (isYouTube) {
+            // Handle YouTube video via iframe
+            const videoId = youtubeMatch[1];
+            const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0&modestbranding=1`;
+            
+            iframeElement.src = embedUrl;
+            iframeElement.style.display = 'block';
+            iframeElement.onload = () => {
+                console.log('YouTube video loaded successfully:', embedUrl);
+                mediaContainer.classList.remove('hidden');
+            };
+            iframeElement.onerror = () => {
+                console.error('Failed to load YouTube video:', embedUrl);
+                this.showMediaError(finalUrl);
+            };
+        } else if (isVideo) {
+            // Handle regular video files
             videoElement.src = finalUrl;
             videoElement.style.display = 'block';
             videoElement.onloadedmetadata = () => {

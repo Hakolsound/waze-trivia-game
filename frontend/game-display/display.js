@@ -191,8 +191,8 @@ class GameDisplay {
         });
 
         // Leaderboard events
-        this.socket.on('show-leaderboard', () => {
-            this.showLeaderboard();
+        this.socket.on('show-leaderboard', (data) => {
+            this.showLeaderboard(data?.view || 'all');
         });
 
         this.socket.on('hide-leaderboard', () => {
@@ -856,7 +856,7 @@ class GameDisplay {
     }
 
     // Leaderboard Methods
-    showLeaderboard() {
+    showLeaderboard(view = 'all') {
         if (!this.currentGame || !this.currentGame.groups) {
             console.log('No game or teams available for leaderboard');
             return;
@@ -870,42 +870,184 @@ class GameDisplay {
             if (gameData && gameData.groups) {
                 // Update current game data with fresh scores
                 this.currentGame.groups = gameData.groups;
-                this.displayLeaderboardWithCurrentData();
+                this.displayLeaderboardWithCurrentData(view);
             } else {
                 // Fallback to existing data if request fails
-                this.displayLeaderboardWithCurrentData();
+                this.displayLeaderboardWithCurrentData(view);
             }
         });
         
         // Also immediately show with current data (will be updated when fresh data arrives)
-        this.displayLeaderboardWithCurrentData();
+        this.displayLeaderboardWithCurrentData(view);
     }
     
-    displayLeaderboardWithCurrentData() {
+    displayLeaderboardWithCurrentData(view = 'all') {
         if (!this.currentGame || !this.currentGame.groups) {
             console.log('No game or teams available for leaderboard display');
             return;
         }
 
         // Sort teams by score (descending)
-        const sortedTeams = [...this.currentGame.groups].sort((a, b) => b.score - a.score);
-        const teamCount = sortedTeams.length;
+        const allTeams = [...this.currentGame.groups].sort((a, b) => b.score - a.score);
         
-        // Apply dynamic sizing based on team count
-        this.applyDynamicSizing(teamCount);
+        // Filter teams based on view
+        let teamsToShow = allTeams;
+        switch (view) {
+            case 'top3':
+                teamsToShow = allTeams.slice(0, 3);
+                break;
+            case 'top5':
+                teamsToShow = allTeams.slice(0, 5);
+                break;
+            case 'all':
+            default:
+                teamsToShow = allTeams;
+                break;
+        }
         
-        // Update ranked teams list
-        this.updateRankedTeamsList(sortedTeams);
+        const teamCount = teamsToShow.length;
+        
+        // Apply view-specific styling to overlay
+        this.applyViewSpecificStyling(view, teamCount);
+        
+        // Update ranked teams list based on view
+        if (view === 'top3') {
+            this.updateTop3PodiumView(teamsToShow);
+        } else if (view === 'top5') {
+            this.updateTop5HighlightView(teamsToShow);
+        } else {
+            // Apply dynamic sizing based on team count for 'all' view
+            this.applyDynamicSizing(teamCount);
+            this.updateRankedTeamsList(teamsToShow);
+        }
         
         // Show the leaderboard overlay
         this.elements.leaderboardOverlay.classList.remove('hidden');
         
-        console.log('Leaderboard shown with', teamCount, 'teams', sortedTeams.map(t => `${t.name}: ${t.score}`));
+        console.log(`Leaderboard shown (${view}) with`, teamCount, 'teams', teamsToShow.map(t => `${t.name}: ${t.score}`));
     }
 
     hideLeaderboard() {
+        this.elements.leaderboardOverlay.classList.remove('view-top3', 'view-top5', 'view-all');
         this.elements.leaderboardOverlay.classList.add('hidden');
         console.log('Leaderboard hidden');
+    }
+
+    applyViewSpecificStyling(view, teamCount) {
+        // Remove existing view classes
+        this.elements.leaderboardOverlay.classList.remove('view-top3', 'view-top5', 'view-all');
+        
+        // Add current view class
+        this.elements.leaderboardOverlay.classList.add(`view-${view}`);
+        
+        // For 'all' view, also apply the existing dynamic sizing
+        if (view === 'all') {
+            this.applyDynamicSizing(teamCount);
+        }
+    }
+
+    updateTop3PodiumView(teams) {
+        const container = this.elements.rankedTeamsList;
+        
+        if (!teams || teams.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: rgba(255, 255, 255, 0.6); padding: 40px;">No teams available</p>';
+            return;
+        }
+
+        // Create podium-style layout for top 3
+        container.innerHTML = `
+            <div class="podium-container">
+                <div class="podium-platforms">
+                    ${teams[1] ? `
+                        <div class="podium-platform second-place" style="animation-delay: 100ms">
+                            <div class="podium-team-info">
+                                <div class="podium-position">2</div>
+                                <div class="podium-team-name">${teams[1].name || `Team ${teams[1].id}`}</div>
+                                <div class="podium-score">${teams[1].score || 0}</div>
+                                <div class="podium-medal">🥈</div>
+                            </div>
+                            <div class="podium-base second"></div>
+                        </div>
+                    ` : ''}
+                    
+                    ${teams[0] ? `
+                        <div class="podium-platform first-place" style="animation-delay: 200ms">
+                            <div class="podium-team-info">
+                                <div class="podium-position">1</div>
+                                <div class="podium-team-name">${teams[0].name || `Team ${teams[0].id}`}</div>
+                                <div class="podium-score">${teams[0].score || 0}</div>
+                                <div class="podium-medal">🏆</div>
+                            </div>
+                            <div class="podium-base first"></div>
+                        </div>
+                    ` : ''}
+                    
+                    ${teams[2] ? `
+                        <div class="podium-platform third-place" style="animation-delay: 300ms">
+                            <div class="podium-team-info">
+                                <div class="podium-position">3</div>
+                                <div class="podium-team-name">${teams[2].name || `Team ${teams[2].id}`}</div>
+                                <div class="podium-score">${teams[2].score || 0}</div>
+                                <div class="podium-medal">🥉</div>
+                            </div>
+                            <div class="podium-base third"></div>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    updateTop5HighlightView(teams) {
+        const container = this.elements.rankedTeamsList;
+        
+        if (!teams || teams.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: rgba(255, 255, 255, 0.6); padding: 40px;">No teams available</p>';
+            return;
+        }
+
+        // Create highlight view for top 5 with special emphasis on top 3
+        container.innerHTML = teams.map((team, index) => {
+            const position = index + 1;
+            const isTop3 = position <= 3;
+            
+            let positionIcon = '';
+            let specialClass = '';
+            
+            if (position === 1) {
+                positionIcon = '👑';
+                specialClass = 'highlight-first';
+            } else if (position === 2) {
+                positionIcon = '🥈';
+                specialClass = 'highlight-second';
+            } else if (position === 3) {
+                positionIcon = '🥉';
+                specialClass = 'highlight-third';
+            } else if (position === 4) {
+                positionIcon = '⭐';
+                specialClass = 'highlight-fourth';
+            } else {
+                positionIcon = '🌟';
+                specialClass = 'highlight-fifth';
+            }
+            
+            return `
+                <div class="top5-team-item ${specialClass}" style="animation-delay: ${index * 150}ms">
+                    <div class="top5-rank-section">
+                        <div class="top5-position-icon">${positionIcon}</div>
+                        <div class="top5-position-number">${position}</div>
+                    </div>
+                    <div class="top5-info-section">
+                        <div class="top5-team-name">${team.name || `Team ${team.id}`}</div>
+                        ${isTop3 ? `<div class="top5-badge">${position === 1 ? 'CHAMPION' : position === 2 ? 'RUNNER-UP' : 'THIRD PLACE'}</div>` : ''}
+                    </div>
+                    <div class="top5-score-section">
+                        <div class="top5-team-score">${team.score || 0}</div>
+                        <div class="top5-points-label">pts</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
 
     toggleLeaderboard() {

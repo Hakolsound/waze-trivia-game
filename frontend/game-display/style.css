@@ -870,7 +870,7 @@ h1.question-text,
 /* Ranked Teams List */
 .ranked-teams-list {
   flex: 1;
-  padding: 0 20px;
+  padding: 25px 25px 10px 25px; /* Increase padding to accommodate 1.12x scaling */
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -973,6 +973,7 @@ h1.question-text,
 .ranked-team-item.rank-first {
   transform: scale(1.08);
   box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+  margin: 10px 0; /* Add margin to prevent clipping from scaling */
 }
 
 .ranked-team-item.rank-second {
@@ -1450,6 +1451,281 @@ h1.question-text,
 
 .leaderboard-overlay.size-maximum .winner .team-score {
   font-size: 1.8rem;
+}
+
+/* Top 3 Podium View Styles */
+.view-top3 .leaderboard-title h1 {
+  font-size: 4rem;
+  background: linear-gradient(135deg, #FFD700, #FFA500, #FFD700);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.podium-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  height: 60vh;
+  padding: 20px;
+}
+
+.podium-platforms {
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+}
+
+.podium-platform {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: podiumRise 0.8s ease-out forwards;
+  opacity: 0;
+  transform: translateY(50px);
+}
+
+@keyframes podiumRise {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.podium-team-info {
+  text-align: center;
+  margin-bottom: 20px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+}
+
+.first-place .podium-team-info {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 165, 0, 0.1));
+  border-color: rgba(255, 215, 0, 0.4);
+  box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+}
+
+.second-place .podium-team-info {
+  background: linear-gradient(135deg, rgba(192, 192, 192, 0.2), rgba(169, 169, 169, 0.1));
+  border-color: rgba(192, 192, 192, 0.4);
+}
+
+.third-place .podium-team-info {
+  background: linear-gradient(135deg, rgba(205, 127, 50, 0.2), rgba(184, 115, 51, 0.1));
+  border-color: rgba(205, 127, 50, 0.4);
+}
+
+.podium-position {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: white;
+  margin-bottom: 10px;
+}
+
+.podium-team-name {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 10px;
+}
+
+.first-place .podium-team-name {
+  color: #FFD700;
+  font-size: 2.2rem;
+}
+
+.podium-score {
+  font-size: 2rem;
+  font-weight: 800;
+  color: white;
+  margin-bottom: 15px;
+}
+
+.first-place .podium-score {
+  color: #FFD700;
+  font-size: 2.5rem;
+}
+
+.podium-medal {
+  font-size: 3rem;
+  animation: medalFloat 3s ease-in-out infinite;
+}
+
+.first-place .podium-medal {
+  font-size: 4rem;
+}
+
+@keyframes medalFloat {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(5deg); }
+}
+
+.podium-base {
+  width: 120px;
+  border-radius: 10px 10px 0 0;
+  position: relative;
+}
+
+.podium-base.first {
+  height: 150px;
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  width: 140px;
+}
+
+.podium-base.second {
+  height: 120px;
+  background: linear-gradient(135deg, #C0C0C0, #A9A9A9);
+}
+
+.podium-base.third {
+  height: 90px;
+  background: linear-gradient(135deg, #CD7F32, #B87333);
+}
+
+/* Top 5 Highlight View Styles */
+.view-top5 .ranked-teams-list {
+  padding: 30px 30px 20px 30px;
+  gap: 15px;
+}
+
+.top5-team-item {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 25px 30px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: top5SlideIn 0.7s ease-out forwards;
+  opacity: 0;
+  transform: translateX(-50px);
+  margin-bottom: 10px;
+}
+
+@keyframes top5SlideIn {
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.top5-team-item.highlight-first {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.25), rgba(255, 165, 0, 0.15));
+  border-color: rgba(255, 215, 0, 0.5);
+  box-shadow: 0 0 40px rgba(255, 215, 0, 0.4);
+  transform: scale(1.05);
+}
+
+.top5-team-item.highlight-second {
+  background: linear-gradient(135deg, rgba(192, 192, 192, 0.25), rgba(169, 169, 169, 0.15));
+  border-color: rgba(192, 192, 192, 0.5);
+  box-shadow: 0 0 25px rgba(192, 192, 192, 0.3);
+  transform: scale(1.03);
+}
+
+.top5-team-item.highlight-third {
+  background: linear-gradient(135deg, rgba(205, 127, 50, 0.25), rgba(184, 115, 51, 0.15));
+  border-color: rgba(205, 127, 50, 0.5);
+  box-shadow: 0 0 25px rgba(205, 127, 50, 0.3);
+  transform: scale(1.02);
+}
+
+.top5-rank-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: 25px;
+}
+
+.top5-position-icon {
+  font-size: 2.5rem;
+  margin-bottom: 8px;
+}
+
+.highlight-first .top5-position-icon {
+  font-size: 3rem;
+  animation: crownGlow 2s ease-in-out infinite alternate;
+}
+
+.top5-position-number {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: white;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  width: 35px;
+  height: 35px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.highlight-first .top5-position-number {
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  color: #1a1a1a;
+  font-size: 1.7rem;
+  width: 40px;
+  height: 40px;
+}
+
+.top5-info-section {
+  flex: 1;
+  margin-right: 20px;
+}
+
+.top5-team-name {
+  font-size: 2rem;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 8px;
+}
+
+.highlight-first .top5-team-name {
+  color: #FFD700;
+  font-size: 2.3rem;
+}
+
+.top5-badge {
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.highlight-first .top5-badge {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.4), rgba(255, 165, 0, 0.3));
+  color: #FFD700;
+  border-color: rgba(255, 215, 0, 0.5);
+}
+
+.top5-score-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.top5-team-score {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: white;
+}
+
+.highlight-first .top5-team-score {
+  color: #FFD700;
+  font-size: 2.8rem;
+}
+
+.top5-points-label {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 600;
 }
 
 /* Responsive Design for Hierarchical Leaderboard */

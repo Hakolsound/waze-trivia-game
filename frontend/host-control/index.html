@@ -256,14 +256,23 @@
                             <span class="control-title">Stop</span>
                         </div>
                         
-                        <div class="control-group">
+                        <div class="control-group leaderboard-control-group">
                             <button id="show-leaderboard-btn" class="control-btn toggle-switch-btn leaderboard-toggle toggle-off" title="Toggle Leaderboard [L]">
                                 <div class="control-icon">
                                     <span class="material-icons">emoji_events</span>
                                 </div>
                                 <span class="control-shortcut">L</span>
                             </button>
-                            <span class="control-title">Leaderboard</span>
+                            <div class="control-info">
+                                <span class="control-title">Leaderboard</span>
+                                <div class="leaderboard-view-selector">
+                                    <select id="leaderboard-view-select" class="view-selector">
+                                        <option value="top3">🥇 Top 3</option>
+                                        <option value="top5">⭐ Top 5</option>
+                                        <option value="all" selected>📊 All Teams</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
                         
                         <div class="control-group">

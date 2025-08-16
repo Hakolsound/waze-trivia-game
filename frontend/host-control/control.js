@@ -15,6 +15,7 @@ class HostControl {
         this.virtualBuzzersEnabled = false; // Track if virtual buzzers are enabled
         this.isLeaderboardVisible = false; // Track leaderboard state
         this.isAnswerVisible = false; // Track answer display state
+        this.currentLeaderboardView = 'all'; // Track current leaderboard view
         this.gameSelector = null;
         
         // Show Correct Answer state
@@ -210,6 +211,7 @@ class HostControl {
             resetQuestionsBtn: document.getElementById('reset-questions-btn'),
             resetGameBtn: document.getElementById('reset-game-btn'),
             showLeaderboardBtn: document.getElementById('show-leaderboard-btn'),
+            leaderboardViewSelect: document.getElementById('leaderboard-view-select'),
             endGameBtn: document.getElementById('end-game-btn'),
             
             // Floating action buttons
@@ -461,6 +463,7 @@ class HostControl {
         if (this.elements.resetQuestionsBtn) this.elements.resetQuestionsBtn.addEventListener('click', () => this.resetQuestions());
         if (this.elements.resetGameBtn) this.elements.resetGameBtn.addEventListener('click', () => this.resetGame());
         if (this.elements.showLeaderboardBtn) this.elements.showLeaderboardBtn.addEventListener('click', () => this.toggleLeaderboard());
+        if (this.elements.leaderboardViewSelect) this.elements.leaderboardViewSelect.addEventListener('change', (e) => this.changeLeaderboardView(e.target.value));
         if (this.elements.endGameBtn) this.elements.endGameBtn.addEventListener('click', () => this.endGame());
         
         // Buzzer controls
@@ -1531,15 +1534,33 @@ class HostControl {
     }
 
     showLeaderboard() {
-        this.socket.emit('show-leaderboard');
+        this.socket.emit('show-leaderboard', { view: this.currentLeaderboardView });
         this.isLeaderboardVisible = true;
-        this.showToast('🏆 Leaderboard shown on display', 'success');
+        this.showToast(`🏆 Leaderboard shown (${this.getViewDisplayName()})`, 'success');
     }
 
     hideLeaderboard() {
         this.socket.emit('hide-leaderboard');
         this.isLeaderboardVisible = false;
         this.showToast('Leaderboard hidden', 'info');
+    }
+
+    changeLeaderboardView(newView) {
+        this.currentLeaderboardView = newView;
+        // If leaderboard is currently visible, update it with new view
+        if (this.isLeaderboardVisible) {
+            this.socket.emit('show-leaderboard', { view: newView });
+            this.showToast(`🏆 Switched to ${this.getViewDisplayName()}`, 'success');
+        }
+    }
+
+    getViewDisplayName() {
+        switch (this.currentLeaderboardView) {
+            case 'top3': return 'Top 3';
+            case 'top5': return 'Top 5';
+            case 'all': return 'All Teams';
+            default: return 'All Teams';
+        }
     }
 
     async refreshSystemStatus() {

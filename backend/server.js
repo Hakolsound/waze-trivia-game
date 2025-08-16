@@ -165,10 +165,11 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('show-leaderboard', () => {
-    // Broadcast leaderboard show to all display clients
-    io.to('game-display').emit('show-leaderboard');
-    console.log('Leaderboard show broadcasted to display clients');
+  socket.on('show-leaderboard', (data) => {
+    // Broadcast leaderboard show to all display clients with view parameter
+    const viewData = data || { view: 'all' };
+    io.to('game-display').emit('show-leaderboard', viewData);
+    console.log(`Leaderboard show broadcasted to display clients (view: ${viewData.view})`);
   });
 
   socket.on('hide-leaderboard', () => {

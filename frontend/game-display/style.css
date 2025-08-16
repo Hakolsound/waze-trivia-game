@@ -870,7 +870,7 @@ h1.question-text,
 /* Ranked Teams List */
 .ranked-teams-list {
   flex: 1;
-  padding: 25px 25px 10px 25px; /* Increase padding to accommodate 1.12x scaling */
+  padding: 15px 20px 10px 20px; /* Reduced padding to ensure first place is visible */
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -971,9 +971,9 @@ h1.question-text,
 
 /* Progressive width scaling for top 5 positions */
 .ranked-team-item.rank-first {
-  transform: scale(1.08);
+  transform: scale(1.05);
   box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
-  margin: 10px 0; /* Add margin to prevent clipping from scaling */
+  margin: 3px 0; /* Minimal margin to prevent clipping */
 }
 
 .ranked-team-item.rank-second {
@@ -991,20 +991,20 @@ h1.question-text,
   box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
 }
 
-/* Breathing animation for the winner */
+/* Breathing animation for the winner - reduced intensity */
 @keyframes breathingGlow {
   0%, 100% {
-    transform: scale(1.08);
-    box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+    transform: scale(1.05);
+    box-shadow: 0 0 25px rgba(255, 215, 0, 0.3);
   }
   50% {
-    transform: scale(1.12);
-    box-shadow: 0 0 40px rgba(255, 215, 0, 0.5), 0 0 60px rgba(255, 215, 0, 0.2);
+    transform: scale(1.08);
+    box-shadow: 0 0 35px rgba(255, 215, 0, 0.4), 0 0 50px rgba(255, 215, 0, 0.15);
   }
 }
 
 .ranked-team-item.winner {
-  animation: breathingGlow 3s ease-in-out infinite;
+  animation: breathingGlow 4s ease-in-out infinite;
 }
 
 /* Subtle shine effects for top 5 positions */
@@ -1466,14 +1466,17 @@ h1.question-text,
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  height: 60vh;
+  height: 65vh;
   padding: 20px;
+  width: 100%;
 }
 
 .podium-platforms {
   display: flex;
   align-items: flex-end;
-  gap: 20px;
+  gap: 30px;
+  width: 70%;
+  justify-content: center;
 }
 
 .podium-platform {
@@ -1494,12 +1497,13 @@ h1.question-text,
 
 .podium-team-info {
   text-align: center;
-  margin-bottom: 20px;
-  padding: 20px;
+  margin-bottom: 25px;
+  padding: 30px 25px;
   background: rgba(255, 255, 255, 0.1);
-  border-radius: 20px;
-  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 25px;
+  border: 3px solid rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(10px);
+  min-width: 200px;
 }
 
 .first-place .podium-team-info {
@@ -1519,26 +1523,27 @@ h1.question-text,
 }
 
 .podium-position {
-  font-size: 1.5rem;
+  font-size: 1.8rem;
   font-weight: 800;
   color: white;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .podium-team-name {
-  font-size: 1.8rem;
+  font-size: 2.2rem;
   font-weight: 700;
   color: white;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+  word-break: break-word;
 }
 
 .first-place .podium-team-name {
   color: #FFD700;
-  font-size: 2.2rem;
+  font-size: 2.6rem;
 }
 
 .podium-score {
-  font-size: 2rem;
+  font-size: 2.4rem;
   font-weight: 800;
   color: white;
   margin-bottom: 15px;
@@ -1546,7 +1551,7 @@ h1.question-text,
 
 .first-place .podium-score {
   color: #FFD700;
-  font-size: 2.5rem;
+  font-size: 3rem;
 }
 
 .podium-medal {
@@ -1564,25 +1569,29 @@ h1.question-text,
 }
 
 .podium-base {
-  width: 120px;
-  border-radius: 10px 10px 0 0;
+  width: 160px;
+  border-radius: 15px 15px 0 0;
   position: relative;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
 }
 
 .podium-base.first {
-  height: 150px;
+  height: 180px;
   background: linear-gradient(135deg, #FFD700, #FFA500);
-  width: 140px;
+  width: 180px;
+  box-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
 }
 
 .podium-base.second {
-  height: 120px;
+  height: 140px;
   background: linear-gradient(135deg, #C0C0C0, #A9A9A9);
+  width: 160px;
 }
 
 .podium-base.third {
-  height: 90px;
+  height: 110px;
   background: linear-gradient(135deg, #CD7F32, #B87333);
+  width: 150px;
 }
 
 /* Top 5 Highlight View Styles */

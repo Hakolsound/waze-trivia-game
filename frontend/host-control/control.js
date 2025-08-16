@@ -816,6 +816,7 @@ class HostControl {
         if (!this.currentGame) return;
         
         // Prevent replaying already played questions
+        console.log(`Checking if question ${this.currentQuestionIndex} is played. Played set:`, Array.from(this.playedQuestions));
         if (this.playedQuestions.has(this.currentQuestionIndex)) {
             this.showToast('Question already played', 'warning');
             return;
@@ -2051,7 +2052,10 @@ class HostControl {
             // Handle game flow based on answer correctness
             if (isCorrect) {
                 // Mark question as played when answered correctly
-                this.playedQuestions.add(this.activeQuestionIndex);
+                if (this.activeQuestionIndex >= 0) {
+                    this.playedQuestions.add(this.activeQuestionIndex);
+                    console.log(`Marked question ${this.activeQuestionIndex} as played. Played set:`, Array.from(this.playedQuestions));
+                }
                 this.updateQuestionTabsState(); // Update tabs immediately to show played state
                 
                 // Hide modal and prepare for next question if answer is correct
@@ -2072,7 +2076,10 @@ class HostControl {
                         this.showCurrentAnswererHighlight(nextBuzzer);
                     } else {
                         // No more teams to answer - mark as played and prepare next question
-                        this.playedQuestions.add(this.activeQuestionIndex);
+                        if (this.activeQuestionIndex >= 0) {
+                            this.playedQuestions.add(this.activeQuestionIndex);
+                            console.log(`Marked question ${this.activeQuestionIndex} as played (no more teams). Played set:`, Array.from(this.playedQuestions));
+                        }
                         this.updateQuestionTabsState(); // Update tabs immediately to show played state
                         this.hideAnswerEvaluationModal();
                         this.nextQuestion();
@@ -2104,7 +2111,10 @@ class HostControl {
             }
 
             // Mark question as played when skipped/given up
-            this.playedQuestions.add(this.activeQuestionIndex);
+            if (this.activeQuestionIndex >= 0) {
+                this.playedQuestions.add(this.activeQuestionIndex);
+                console.log(`Marked question ${this.activeQuestionIndex} as played (skipped). Played set:`, Array.from(this.playedQuestions));
+            }
             this.updateQuestionTabsState(); // Update tabs immediately to show played state
             
             // Show feedback and hide modal
@@ -2597,6 +2607,7 @@ class HostControl {
             // Determine state based on played status, active question, and current position
             if (this.playedQuestions.has(tabIndex)) {
                 // Question has been played
+                console.log(`Tab ${tabIndex} is played`);
                 tab.classList.add('played');
                 tab.querySelector('.tab-status').textContent = '✗';
             } else if (tabIndex === this.activeQuestionIndex) {

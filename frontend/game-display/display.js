@@ -782,8 +782,10 @@ class GameDisplay {
                         <div class="position-number">${position}</div>
                     </div>
                     <div class="team-info-section">
-                        <div class="team-name">${team.name || `Team ${team.id}`}</div>
-                        ${isTop3 ? `<div class="team-badge">${position === 1 ? 'CHAMPION' : position === 2 ? 'RUNNER-UP' : 'THIRD PLACE'}</div>` : ''}
+                        <div class="team-name-line">
+                            <span class="team-name">${team.name || `Team ${team.id}`}</span>
+                            ${isTop3 ? `<span class="team-badge">${position === 1 ? 'CHAMPION' : position === 2 ? 'RUNNER-UP' : 'THIRD PLACE'}</span>` : ''}
+                        </div>
                     </div>
                     <div class="team-score-section">
                         <div class="team-score">${team.score || 0}</div>

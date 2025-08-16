@@ -887,6 +887,13 @@ h1.question-text,
   gap: 4px;
 }
 
+.team-name-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .team-name {
   font: 600 1.3rem/1.2 'Google Sans';
   color: white;
@@ -906,8 +913,8 @@ h1.question-text,
   letter-spacing: 1px;
   padding: 2px 8px;
   border-radius: 10px;
-  align-self: flex-start;
   text-shadow: none;
+  flex-shrink: 0;
 }
 
 .winner .team-badge {
@@ -1237,6 +1244,10 @@ h1.question-text,
     width: 30px;
     height: 30px;
     font-size: 1.1rem;
+  }
+  
+  .team-name-line {
+    gap: 8px;
   }
   
   .team-name {

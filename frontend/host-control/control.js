@@ -450,7 +450,7 @@ class HostControl {
         // Main game controls (with null checks to prevent errors)
         if (this.elements.startQuestionBtn) this.elements.startQuestionBtn.addEventListener('click', () => this.startQuestion());
         if (this.elements.endQuestionBtn) this.elements.endQuestionBtn.addEventListener('click', () => this.endQuestion());
-        if (this.elements.showAnswerBtn) this.elements.showAnswerBtn.addEventListener('click', () => this.toggleCorrectAnswer());
+        if (this.elements.showAnswerBtn) this.elements.showAnswerBtn.addEventListener('click', (e) => this.handleShowAnswerClick(e));
         if (this.elements.decreaseFontBtn) this.elements.decreaseFontBtn.addEventListener('click', () => this.decreaseDisplayFontSize());
         if (this.elements.increaseFontBtn) this.elements.increaseFontBtn.addEventListener('click', () => this.increaseDisplayFontSize());
         if (this.elements.nextQuestionBtn) this.elements.nextQuestionBtn.addEventListener('click', () => this.nextQuestion());
@@ -892,8 +892,9 @@ class HostControl {
         if (this.elements.questionSelect) this.elements.questionSelect.disabled = !hasGame;
         if (this.elements.showQuestionSelectBtn) this.elements.showQuestionSelectBtn.disabled = !hasGame;
         
-        // Update show answer button state
+        // Update toggle button states
         this.updateShowAnswerButton();
+        this.updateLeaderboardButton();
     }
 
     updateBuzzerStatus() {
@@ -1484,6 +1485,24 @@ class HostControl {
             this.hideLeaderboard();
         } else {
             this.showLeaderboard();
+        }
+        this.updateLeaderboardButton();
+    }
+
+    updateLeaderboardButton() {
+        if (!this.elements.showLeaderboardBtn) return;
+        
+        // Update toggle switch appearance based on state
+        if (this.isLeaderboardVisible) {
+            // Leaderboard is currently shown - button should show "on" state (up position)
+            this.elements.showLeaderboardBtn.classList.remove('toggle-off');
+            this.elements.showLeaderboardBtn.classList.add('toggle-on');
+            this.elements.showLeaderboardBtn.title = 'Hide Leaderboard [L] • Currently visible';
+        } else {
+            // Leaderboard is hidden - button should show "off" state (down position)
+            this.elements.showLeaderboardBtn.classList.remove('toggle-on');
+            this.elements.showLeaderboardBtn.classList.add('toggle-off');
+            this.elements.showLeaderboardBtn.title = 'Show Leaderboard [L]';
         }
     }
 
@@ -3139,43 +3158,47 @@ class HostControl {
     updateShowAnswerButton() {
         if (!this.elements.showAnswerBtn) return;
         
-        const canShow = this.canShowAnswer();
+        // Enable button by default (safety is handled by CMD/Ctrl check)
+        this.elements.showAnswerBtn.disabled = false;
         
-        // Enable button if conditions are met OR if triple-A is possible OR if answer is currently visible (for hide)
-        this.elements.showAnswerBtn.disabled = !canShow && this.keyPressCount.A < 3 && !this.isAnswerVisible;
-        
-        // Update button appearance based on state
+        // Update toggle switch appearance based on state
         if (this.isAnswerVisible) {
-            // Answer is currently shown - button should show "hide" state
-            this.elements.showAnswerBtn.classList.remove('btn-info', 'btn-warning');
-            this.elements.showAnswerBtn.classList.add('btn-success');
-            this.elements.showAnswerBtn.title = 'Hide Correct Answer [A] • Currently visible';
+            // Answer is currently shown - button should show "on" state (up position)
+            this.elements.showAnswerBtn.classList.remove('toggle-off');
+            this.elements.showAnswerBtn.classList.add('toggle-on');
+            this.elements.showAnswerBtn.title = 'Hide Correct Answer [CMD/Ctrl + Click] • Currently visible';
             
-            // Update icon to show "up" state (answer is shown)
+            // Update icon to show "on" state (answer is shown)
             const icon = this.elements.showAnswerBtn.querySelector('.material-icons');
             if (icon) icon.textContent = 'lightbulb';
             
             const shortcut = this.elements.showAnswerBtn.querySelector('.control-shortcut');
-            if (shortcut) shortcut.textContent = 'A';
+            if (shortcut) shortcut.textContent = '⌘';
         } else {
-            // Answer is hidden - button should show "show" state
-            if (canShow) {
-                this.elements.showAnswerBtn.classList.remove('btn-info', 'btn-success');
-                this.elements.showAnswerBtn.classList.add('btn-warning');
-                this.elements.showAnswerBtn.title = 'Show Correct Answer [A] • Ready to show';
-            } else {
-                this.elements.showAnswerBtn.classList.remove('btn-warning', 'btn-success');
-                this.elements.showAnswerBtn.classList.add('btn-info');
-                this.elements.showAnswerBtn.title = 'Show Correct Answer [A] • Press A 3x to force enable';
-            }
+            // Answer is hidden - button should show "off" state (down position)
+            this.elements.showAnswerBtn.classList.remove('toggle-on');
+            this.elements.showAnswerBtn.classList.add('toggle-off');
+            this.elements.showAnswerBtn.title = 'Show Correct Answer [CMD/Ctrl + Click] • Hold CMD/Ctrl and click';
             
-            // Update icon to show "down" state (answer is hidden)
+            // Update icon to show "off" state (answer is hidden)
             const icon = this.elements.showAnswerBtn.querySelector('.material-icons');
             if (icon) icon.textContent = 'lightbulb_outline';
             
             const shortcut = this.elements.showAnswerBtn.querySelector('.control-shortcut');
-            if (shortcut) shortcut.textContent = 'A×3';
+            if (shortcut) shortcut.textContent = '⌘';
         }
+    }
+
+    handleShowAnswerClick(event) {
+        // Check if CMD (Mac) or Ctrl (Windows/Linux) key is pressed
+        const isModifierPressed = event.metaKey || event.ctrlKey;
+        
+        if (!isModifierPressed) {
+            this.showToast('Hold CMD (Mac) or Ctrl (Windows) while clicking to toggle answer', 'warning');
+            return;
+        }
+        
+        this.toggleCorrectAnswer();
     }
 
     toggleCorrectAnswer() {

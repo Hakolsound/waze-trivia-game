@@ -876,6 +876,9 @@ class HostControl {
         if (this.elements.teamSelect) this.elements.teamSelect.disabled = !hasGame;
         if (this.elements.questionSelect) this.elements.questionSelect.disabled = !hasGame;
         if (this.elements.showQuestionSelectBtn) this.elements.showQuestionSelectBtn.disabled = !hasGame;
+        
+        // Update show answer button state
+        this.updateShowAnswerButton();
     }
 
     updateBuzzerStatus() {
@@ -2082,6 +2085,9 @@ class HostControl {
             const elapsed = Math.floor((Date.now() - this.questionStartTime) / 1000);
             const remaining = Math.max(0, this.questionTimeLimit - elapsed);
             
+            // Update timeRemaining property
+            this.timeRemaining = remaining;
+            
             // Update progress bar timer text only if it changed
             if (this.elements.progressTimeText && this.lastDisplayedTime !== remaining) {
                 this.elements.progressTimeText.textContent = `${remaining}s remaining`;
@@ -2126,6 +2132,9 @@ class HostControl {
                 }
                 this.lastTimerState = currentState;
             }
+            
+            // Update show answer button when time changes
+            this.updateShowAnswerButton();
             
             // Auto-stop when time is up
             if (remaining <= 0) {
@@ -3074,7 +3083,8 @@ class HostControl {
     }
 
     canShowAnswer() {
-        if (!this.currentGame || !this.currentQuestion) return false;
+        if (!this.currentGame) return false;
+        if (this.currentQuestionIndex < 0 || this.currentQuestionIndex >= this.questions.length) return false;
         if (this.answerShown) return false; // Already shown
         
         // Enable if: question skipped, time expired, or triple-A pressed
@@ -3103,8 +3113,13 @@ class HostControl {
     }
 
     async showCorrectAnswer() {
-        if (!this.currentGame || !this.currentQuestion) {
-            this.showToast('No active question', 'error');
+        if (!this.currentGame) {
+            this.showToast('No game selected', 'error');
+            return;
+        }
+        
+        if (this.currentQuestionIndex < 0 || this.currentQuestionIndex >= this.questions.length) {
+            this.showToast('No valid question selected', 'error');
             return;
         }
         

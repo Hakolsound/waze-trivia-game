@@ -563,7 +563,7 @@ class GameDisplay {
             this.lastTimerPercentage = roundedPercentage;
         }
         
-        const seconds = Math.max(0, Math.ceil(timeRemaining)); // Round up to show whole seconds
+        const seconds = Math.max(0, Math.floor(timeRemaining)); // Round down to show accurate seconds
         if (seconds > 0) {
             // Only update timer text if seconds changed
             if (this.lastDisplayedSeconds !== seconds) {

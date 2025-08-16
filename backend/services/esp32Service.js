@@ -250,10 +250,14 @@ class ESP32Service extends EventEmitter {
       // Device is online ONLY if ESP32 reported online=1 AND it's recent
       const isOnline = state.online === true && timeSinceLastSeen < staleThreshold;
       
-      // For last_online: if device is currently online but no last_online timestamp, use last_seen
-      let lastOnlineTimestamp = state.last_online;
-      if (isOnline && !lastOnlineTimestamp) {
-        lastOnlineTimestamp = state.last_seen || now;
+      // For last_online: if device is currently online, use last_online or fallback to last_seen
+      let lastOnlineTimestamp = null;
+      if (isOnline) {
+        // Currently online: use last_online if available, otherwise last_seen
+        lastOnlineTimestamp = state.last_online || state.last_seen || now;
+      } else {
+        // Currently offline: only use last_online if it exists (when device was last online)
+        lastOnlineTimestamp = state.last_online || null;
       }
       const timeSinceLastOnline = lastOnlineTimestamp ? now - lastOnlineTimestamp : null;
       

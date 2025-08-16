@@ -106,6 +106,9 @@ class HostControl {
     synchronizeGameState(game) {
         console.log(`Synchronizing game state. Status: ${game.status}, Current question: ${game.current_question_index}`);
         
+        // Set the authoritative server state
+        this.currentQuestionIndex = game.current_question_index;
+        
         // Reset local state first
         this.isQuestionActive = false;
         this.activeQuestionIndex = -1;
@@ -681,7 +684,16 @@ class HostControl {
         this.questions.forEach((question, index) => {
             const option = document.createElement('option');
             option.value = index;
-            option.textContent = `${index + 1}. ${question.text.substring(0, 50)}...`;
+            
+            // Mark played questions in the dropdown
+            if (this.isQuestionPlayed(index)) {
+                option.textContent = `${index + 1}. ${question.text.substring(0, 50)}... [PLAYED]`;
+                option.disabled = true; // Disable played questions in dropdown
+                option.style.color = '#999'; // Gray out played questions
+            } else {
+                option.textContent = `${index + 1}. ${question.text.substring(0, 50)}...`;
+            }
+            
             this.elements.questionSelect.appendChild(option);
         });
         this.elements.questionSelect.disabled = false;
@@ -754,15 +766,19 @@ class HostControl {
     updateQuestionControls() {
         const hasGame = this.currentGame !== null;
         const hasQuestions = this.questions.length > 0;
-        const isCurrentQuestionPlayed = this.playedQuestions.has(this.currentQuestionIndex);
+        const isCurrentQuestionPlayed = this.isQuestionPlayed(this.currentQuestionIndex);
         const canStart = hasGame && hasQuestions && !this.isQuestionActive && !isCurrentQuestionPlayed;
         const canEnd = this.isQuestionActive;
+        
+        // Check if next/previous navigation is possible (not to played questions)
+        const canGoNext = hasGame && this.currentQuestionIndex < this.questions.length - 1;
+        const canGoPrev = hasGame && this.currentQuestionIndex > 0 && !this.isQuestionPlayed(this.currentQuestionIndex - 1);
         
         // Add null checks to prevent errors
         if (this.elements.startQuestionBtn) this.elements.startQuestionBtn.disabled = !canStart;
         if (this.elements.endQuestionBtn) this.elements.endQuestionBtn.disabled = !canEnd;
-        if (this.elements.nextQuestionBtn) this.elements.nextQuestionBtn.disabled = !hasGame || this.currentQuestionIndex >= this.questions.length - 1;
-        if (this.elements.prevQuestionBtn) this.elements.prevQuestionBtn.disabled = !hasGame || this.currentQuestionIndex <= 0;
+        if (this.elements.nextQuestionBtn) this.elements.nextQuestionBtn.disabled = !canGoNext;
+        if (this.elements.prevQuestionBtn) this.elements.prevQuestionBtn.disabled = !canGoPrev;
         if (this.elements.armBuzzersBtn) this.elements.armBuzzersBtn.disabled = !canStart;
         if (this.elements.disarmBuzzersBtn) this.elements.disarmBuzzersBtn.disabled = !this.isBuzzersArmed;
         if (this.elements.awardPointsBtn) this.elements.awardPointsBtn.disabled = !hasGame;
@@ -842,8 +858,13 @@ class HostControl {
     async startQuestion() {
         if (!this.currentGame) return;
         
-        // Prevent replaying already played questions or restarting on-air question
-        console.log(`Checking if question ${this.currentQuestionIndex} is playable. Active: ${this.activeQuestionIndex}, Current: ${this.currentQuestionIndex}`);
+        // Prevent replaying already played questions
+        if (this.isQuestionPlayed(this.currentQuestionIndex)) {
+            this.showToast(`Question ${this.currentQuestionIndex + 1} has already been played`, 'warning');
+            return;
+        }
+        
+        // Prevent restarting on-air question
         if (this.activeQuestionIndex >= 0) {
             this.showToast('Another question is already on-air', 'warning');
             return;
@@ -918,6 +939,10 @@ class HostControl {
             
             if (response.ok) {
                 this.currentQuestionIndex = newQuestionIndex;
+                // Update current game's server state for consistency
+                if (this.currentGame) {
+                    this.currentGame.current_question_index = newQuestionIndex;
+                }
                 this.updateQuestionDisplay();
                 this.updateQuestionControls();
                 this.updateQuestionTabsState();
@@ -937,6 +962,14 @@ class HostControl {
             return;
         }
 
+        const newQuestionIndex = this.currentQuestionIndex - 1;
+        
+        // Prevent navigating back to already played questions
+        if (this.isQuestionPlayed(newQuestionIndex)) {
+            this.showToast(`Cannot go back to Question ${newQuestionIndex + 1} - it has already been played`, 'warning');
+            return;
+        }
+
         try {
             // Disarm buzzers when navigating to previous question
             if (this.isBuzzersArmed) {
@@ -947,8 +980,6 @@ class HostControl {
             this.activeQuestionIndex = -1;
             this.isQuestionActive = false;
             
-            const newQuestionIndex = this.currentQuestionIndex - 1;
-            
             // Call backend to update server state
             const response = await fetch(`/api/games/${this.currentGame.id}/navigate-to-question/${newQuestionIndex}`, {
                 method: 'POST'
@@ -956,6 +987,10 @@ class HostControl {
             
             if (response.ok) {
                 this.currentQuestionIndex = newQuestionIndex;
+                // Update current game's server state for consistency
+                if (this.currentGame) {
+                    this.currentGame.current_question_index = newQuestionIndex;
+                }
                 this.updateQuestionDisplay();
                 this.updateQuestionControls();
                 this.updateQuestionTabsState();
@@ -975,6 +1010,14 @@ class HostControl {
             return;
         }
 
+        const newQuestionIndex = parseInt(index);
+        
+        // Prevent jumping to already played questions
+        if (this.isQuestionPlayed(newQuestionIndex)) {
+            this.showToast(`Cannot jump to Question ${newQuestionIndex + 1} - it has already been played`, 'warning');
+            return;
+        }
+
         try {
             // Disarm buzzers when jumping to a different question
             if (this.isBuzzersArmed) {
@@ -985,8 +1028,6 @@ class HostControl {
             this.activeQuestionIndex = -1;
             this.isQuestionActive = false;
             
-            const newQuestionIndex = parseInt(index);
-            
             // Call backend to update server state
             const response = await fetch(`/api/games/${this.currentGame.id}/navigate-to-question/${newQuestionIndex}`, {
                 method: 'POST'
@@ -994,6 +1035,10 @@ class HostControl {
             
             if (response.ok) {
                 this.currentQuestionIndex = newQuestionIndex;
+                // Update current game's server state for consistency
+                if (this.currentGame) {
+                    this.currentGame.current_question_index = newQuestionIndex;
+                }
                 this.updateQuestionDisplay();
                 this.updateQuestionControls();
                 this.updateQuestionTabsState();
@@ -1176,6 +1221,11 @@ class HostControl {
             });
             
             if (response.ok) {
+                // Update current game's server state for consistency
+                if (this.currentGame) {
+                    this.currentGame.current_question_index = 0;
+                }
+                
                 // Update displays after successful reset
                 this.updateQuestionDisplay();
                 this.updateQuestionControls();
@@ -1256,6 +1306,11 @@ class HostControl {
             });
             
             if (response.ok) {
+                // Update current game's server state for consistency
+                if (this.currentGame) {
+                    this.currentGame.current_question_index = 0;
+                }
+                
                 // Update all displays after successful reset
                 this.updateQuestionDisplay();
                 this.updateQuestionControls();
@@ -1703,9 +1758,16 @@ class HostControl {
         this.showToast(`Next question prepared: ${data.question.text.substring(0, 50)}...`, 'info');
         this.resetAnswerEvaluation();
         
-        // Update current question index
+        // Update current question index and sync with server state
         this.currentQuestionIndex = data.nextQuestionIndex;
+        
+        // Update the current game's server state for consistency
+        if (this.currentGame) {
+            this.currentGame.current_question_index = data.nextQuestionIndex;
+        }
+        
         this.updateQuestionDisplay();
+        this.updateQuestionTabsState();
     }
 
     handleGameCompleted(data) {
@@ -2670,35 +2732,45 @@ class HostControl {
         return tab;
     }
 
+    isQuestionPlayed(questionIndex) {
+        // A question is played if it's before the current question index
+        return questionIndex < this.currentQuestionIndex;
+    }
+
     updateQuestionTabsState() {
         if (!this.elements.questionTabs) return;
 
         const tabs = this.elements.questionTabs.querySelectorAll('.question-tab');
+        
         tabs.forEach((tab, index) => {
             const tabIndex = parseInt(tab.dataset.questionIndex);
             
             // Reset classes
             tab.className = 'question-tab';
             
-            // Determine state based on question position and active status
+            // Simple, clear state logic:
             if (tabIndex < this.currentQuestionIndex) {
-                // Questions before current index are played/completed
-                console.log(`Tab ${tabIndex} is played (before current index ${this.currentQuestionIndex})`);
+                // Questions before current index are PLAYED (completed/resolved)
+                console.log(`Tab ${tabIndex} is PLAYED (current index: ${this.currentQuestionIndex})`);
                 tab.classList.add('played');
+                tab.classList.add('disabled'); // Disable clicking on played questions
                 tab.querySelector('.tab-status').textContent = '✗';
+                
             } else if (tabIndex === this.activeQuestionIndex && this.activeQuestionIndex >= 0) {
-                // Currently on-air question (timer running OR finished but not answered/skipped)
-                console.log(`Tab ${tabIndex} is on-air (activeQuestionIndex: ${this.activeQuestionIndex})`);
+                // Question is ON-AIR (actively running OR ended but awaiting host decision)
+                console.log(`Tab ${tabIndex} is ON-AIR (activeIndex: ${this.activeQuestionIndex}, isActive: ${this.isQuestionActive})`);
                 tab.classList.add('active');
                 tab.querySelector('.tab-status').textContent = '▶';
+                
             } else if (tabIndex === this.currentQuestionIndex) {
-                // Selected question (host is viewing but not on-air)
-                console.log(`Tab ${tabIndex} is selected (currentQuestionIndex: ${this.currentQuestionIndex})`);
+                // Host is currently viewing this question (SELECTED)
+                console.log(`Tab ${tabIndex} is SELECTED (current index: ${this.currentQuestionIndex})`);
                 tab.classList.add('selected');
                 tab.querySelector('.tab-status').textContent = '►';
+                
             } else {
-                // Pending questions
-                console.log(`Tab ${tabIndex} is pending`);
+                // Future questions are PENDING
+                console.log(`Tab ${tabIndex} is PENDING`);
                 tab.classList.add('pending');
                 tab.querySelector('.tab-status').textContent = '⏳';
             }
@@ -2775,6 +2847,12 @@ class HostControl {
         if (questionIndex < 0 || questionIndex >= this.questions.length) return;
         if (questionIndex === this.currentQuestionIndex) return;
 
+        // Prevent navigating to already played questions
+        if (this.isQuestionPlayed(questionIndex)) {
+            this.showToast(`Cannot navigate to Question ${questionIndex + 1} - it has already been played`, 'warning');
+            return;
+        }
+
         // Show confirmation dialog
         const currentQ = this.currentQuestionIndex + 1;
         const targetQ = questionIndex + 1;
@@ -2784,11 +2862,8 @@ class HostControl {
             return;
         }
 
-        // Update current question
-        this.currentQuestionIndex = questionIndex;
-        this.updateQuestionDisplay();
-        this.updateQuestionControls();
-        this.updateQuestionTabsState();
+        // Use the API to navigate to the question (to sync server state)
+        this.jumpToQuestion(questionIndex);
         
         // Show toast
         this.showToast(`Navigated to Question ${questionIndex + 1}`, 'info');

@@ -839,6 +839,19 @@ body {
   color: rgba(255, 255, 255, 0.6);
 }
 
+/* Disabled question tabs (played questions) */
+.question-tab.disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+  filter: grayscale(0.5);
+  pointer-events: none; /* Prevent all click events */
+}
+.question-tab.disabled:hover {
+  transform: none !important;
+  box-shadow: none !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
 /* Tab Feedback Section */
 .tab-feedback {
   display: flex;

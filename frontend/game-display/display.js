@@ -108,10 +108,7 @@ class GameDisplay {
             
             // Leaderboard elements
             leaderboardOverlay: document.getElementById('leaderboard-overlay'),
-            firstPlace: document.getElementById('first-place'),
-            secondPlace: document.getElementById('second-place'),
-            thirdPlace: document.getElementById('third-place'),
-            remainingTeams: document.getElementById('remaining-teams')
+            rankedTeamsList: document.getElementById('ranked-teams-list')
         };
     }
 
@@ -721,13 +718,8 @@ class GameDisplay {
         // Apply dynamic sizing based on team count
         this.applyDynamicSizing(teamCount);
         
-        // Update podium positions (top 3)
-        this.updatePodiumPosition(this.elements.firstPlace, sortedTeams[0], 1);
-        this.updatePodiumPosition(this.elements.secondPlace, sortedTeams[1], 2);
-        this.updatePodiumPosition(this.elements.thirdPlace, sortedTeams[2], 3);
-        
-        // Update remaining teams
-        this.updateRemainingTeams(sortedTeams.slice(3));
+        // Update ranked teams list
+        this.updateRankedTeamsList(sortedTeams);
         
         // Show the leaderboard overlay
         this.elements.leaderboardOverlay.classList.remove('hidden');
@@ -748,42 +740,59 @@ class GameDisplay {
         }
     }
 
-    updatePodiumPosition(element, team, position) {
-        if (!element || !team) {
-            element.style.display = 'none';
-            return;
-        }
-
-        element.style.display = 'flex';
-        
-        // Update team name and score
-        const teamNameElement = element.querySelector('.podium-team');
-        const scoreElement = element.querySelector('.podium-score');
-        
-        if (teamNameElement) {
-            teamNameElement.textContent = team.name || `Team ${team.id}`;
-        }
-        
-        if (scoreElement) {
-            scoreElement.textContent = team.score || 0;
-        }
-    }
-
-    updateRemainingTeams(teams) {
-        const container = this.elements.remainingTeams;
+    updateRankedTeamsList(teams) {
+        const container = this.elements.rankedTeamsList;
         
         if (!teams || teams.length === 0) {
-            container.innerHTML = '<p style="text-align: center; color: rgba(255, 255, 255, 0.6); padding: 40px;">No additional teams</p>';
+            container.innerHTML = '<p style="text-align: center; color: rgba(255, 255, 255, 0.6); padding: 40px;">No teams available</p>';
             return;
         }
 
-        container.innerHTML = teams.map((team, index) => `
-            <div class="remaining-team-item">
-                <div class="remaining-team-rank">${index + 4}</div>
-                <div class="remaining-team-name">${team.name || `Team ${team.id}`}</div>
-                <div class="remaining-team-score">${team.score || 0}</div>
-            </div>
-        `).join('');
+        container.innerHTML = teams.map((team, index) => {
+            const position = index + 1;
+            const isTop3 = position <= 3;
+            const isWinner = position === 1;
+            
+            // Get position icon and styling
+            let positionIcon = '';
+            let rankClass = '';
+            
+            if (position === 1) {
+                positionIcon = '👑';
+                rankClass = 'rank-first';
+            } else if (position === 2) {
+                positionIcon = '🥈';
+                rankClass = 'rank-second';
+            } else if (position === 3) {
+                positionIcon = '🥉';
+                rankClass = 'rank-third';
+            } else if (position <= 5) {
+                positionIcon = '⭐';
+                rankClass = 'rank-top5';
+            } else {
+                positionIcon = '📍';
+                rankClass = 'rank-standard';
+            }
+            
+            return `
+                <div class="ranked-team-item ${rankClass} ${isTop3 ? 'top-three' : ''} ${isWinner ? 'winner' : ''}" 
+                     style="animation-delay: ${index * 100}ms">
+                    <div class="team-rank-section">
+                        <div class="position-icon">${positionIcon}</div>
+                        <div class="position-number">${position}</div>
+                    </div>
+                    <div class="team-info-section">
+                        <div class="team-name">${team.name || `Team ${team.id}`}</div>
+                        ${isTop3 ? `<div class="team-badge">${position === 1 ? 'CHAMPION' : position === 2 ? 'RUNNER-UP' : 'THIRD PLACE'}</div>` : ''}
+                    </div>
+                    <div class="team-score-section">
+                        <div class="team-score">${team.score || 0}</div>
+                        <div class="points-label">pts</div>
+                    </div>
+                    ${isTop3 ? '<div class="sparkle-trail"></div>' : ''}
+                </div>
+            `;
+        }).join('');
     }
 
     applyDynamicSizing(teamCount) {

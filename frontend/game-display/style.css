@@ -722,198 +722,293 @@ h1.question-text,
   letter-spacing: 2px;
 }
 
-/* Podium Container */
-.podium-container {
+/* Ranked Teams List */
+.ranked-teams-list {
+  flex: 1;
+  padding: 0 20px;
   display: flex;
-  justify-content: center;
-  align-items: flex-end;
-  gap: 30px;
-  margin-bottom: 30px;
+  flex-direction: column;
+  gap: 8px;
+  align-content: start;
+  overflow: hidden;
+  max-height: 70vh;
+}
+
+.ranked-team-item {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 16px;
+  padding: 16px 20px;
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  position: relative;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: slideInUp 0.6s ease-out forwards;
+  opacity: 0;
+  transform: translateY(30px);
+  overflow: hidden;
+}
+
+@keyframes slideInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ranked-team-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(99, 102, 241, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.2);
+}
+
+/* Winner Styling - #1 Position */
+.ranked-team-item.winner {
+  background: linear-gradient(135deg, 
+    rgba(255, 215, 0, 0.15) 0%, 
+    rgba(255, 165, 0, 0.08) 50%, 
+    rgba(255, 215, 0, 0.05) 100%);
+  border: 2px solid rgba(255, 215, 0, 0.4);
+  box-shadow: 
+    0 0 30px rgba(255, 215, 0, 0.25),
+    0 8px 25px rgba(255, 215, 0, 0.15),
+    inset 0 1px 0 rgba(255, 215, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.ranked-team-item.winner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.1), transparent);
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { left: -100%; }
+  50% { left: 100%; }
+  100% { left: 100%; }
+}
+
+/* Top 3 Special Styling */
+.ranked-team-item.rank-second {
+  background: linear-gradient(135deg, 
+    rgba(192, 192, 192, 0.12) 0%, 
+    rgba(169, 169, 169, 0.06) 50%, 
+    rgba(192, 192, 192, 0.04) 100%);
+  border: 1.5px solid rgba(192, 192, 192, 0.3);
+  box-shadow: 0 0 20px rgba(192, 192, 192, 0.15);
+}
+
+.ranked-team-item.rank-third {
+  background: linear-gradient(135deg, 
+    rgba(205, 127, 50, 0.12) 0%, 
+    rgba(184, 115, 51, 0.06) 50%, 
+    rgba(205, 127, 50, 0.04) 100%);
+  border: 1.5px solid rgba(205, 127, 50, 0.3);
+  box-shadow: 0 0 18px rgba(205, 127, 50, 0.15);
+}
+
+.ranked-team-item.rank-top5 {
+  background: linear-gradient(135deg, 
+    rgba(99, 102, 241, 0.1) 0%, 
+    rgba(168, 85, 247, 0.05) 50%, 
+    rgba(99, 102, 241, 0.03) 100%);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.1);
+}
+
+/* Team Sections */
+.team-rank-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 80px;
   flex-shrink: 0;
 }
 
-.podium-position {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: relative;
+.position-icon {
+  font-size: 1.8rem;
+  text-shadow: 0 0 10px currentColor;
 }
 
-.podium-position.first-place {
-  background: radial-gradient(circle at center, rgba(255, 215, 0, 0.1) 0%, transparent 70%);
-  border-radius: 20px;
-  padding: 20px;
-  box-shadow: 0 0 40px rgba(255, 215, 0, 0.3);
+.winner .position-icon {
+  font-size: 2.2rem;
+  animation: crownGlow 2s ease-in-out infinite alternate;
 }
 
-.podium-position.second-place {
-  background: radial-gradient(circle at center, rgba(192, 192, 192, 0.08) 0%, transparent 70%);
-  border-radius: 20px;
-  padding: 20px;
-  box-shadow: 0 0 30px rgba(192, 192, 192, 0.25);
+@keyframes crownGlow {
+  from { text-shadow: 0 0 10px rgba(255, 215, 0, 0.8); }
+  to { text-shadow: 0 0 20px rgba(255, 215, 0, 1), 0 0 30px rgba(255, 215, 0, 0.6); }
 }
 
-.podium-position.third-place {
-  background: radial-gradient(circle at center, rgba(205, 127, 50, 0.08) 0%, transparent 70%);
-  border-radius: 20px;
-  padding: 20px;
-  box-shadow: 0 0 25px rgba(205, 127, 50, 0.25);
-}
-
-.podium-crown {
-  font-size: 2rem;
-  margin-bottom: 5px;
-  text-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
-}
-
-.podium-rank {
-  font: 700 1.8rem/1 'Google Sans';
+.position-number {
+  font: 700 1.4rem/1 'Google Sans';
   color: white;
-  width: 45px;
-  height: 45px;
+  width: 35px;
+  height: 35px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 12px;
-  position: relative;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.first-place .podium-rank {
-  background: #FFD700;
-  box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+.winner .position-number {
+  background: linear-gradient(135deg, #FFD700, #FFA500);
   color: #1a1a1a;
+  font-weight: 800;
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
 }
 
-.second-place .podium-rank {
-  background: #C0C0C0;
-  box-shadow: 0 0 15px rgba(192, 192, 192, 0.4);
+.rank-second .position-number {
+  background: linear-gradient(135deg, #C0C0C0, #A8A8A8);
   color: #1a1a1a;
+  font-weight: 800;
 }
 
-.third-place .podium-rank {
-  background: #CD7F32;
-  box-shadow: 0 0 15px rgba(205, 127, 50, 0.4);
-}
-
-.podium-team {
-  font: 600 1.2rem/1.2 'Google Sans';
+.rank-third .position-number {
+  background: linear-gradient(135deg, #CD7F32, #B87333);
   color: white;
-  text-align: center;
-  margin-bottom: 8px;
-  max-width: 150px;
-  word-wrap: break-word;
+  font-weight: 800;
 }
 
-.podium-score {
-  font: 700 1.5rem/1 'Google Sans';
-  margin-bottom: 15px;
-  padding: 8px 16px;
-  border-radius: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.2);
+.team-info-section {
+  flex: 1;
+  margin-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.first-place .podium-score {
-  background: rgba(255, 215, 0, 0.2);
+.team-name {
+  font: 600 1.3rem/1.2 'Google Sans';
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.winner .team-name {
+  font-size: 1.5rem;
+  font-weight: 700;
   color: #FFD700;
-  border-color: rgba(255, 215, 0, 0.4);
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
 }
 
-.second-place .podium-score {
+.team-badge {
+  font: 600 0.8rem/1 'Google Sans';
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  align-self: flex-start;
+  text-shadow: none;
+}
+
+.winner .team-badge {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 165, 0, 0.2));
+  color: #FFD700;
+  border: 1px solid rgba(255, 215, 0, 0.4);
+}
+
+.rank-second .team-badge {
   background: rgba(192, 192, 192, 0.2);
   color: #C0C0C0;
-  border-color: rgba(192, 192, 192, 0.4);
+  border: 1px solid rgba(192, 192, 192, 0.3);
 }
 
-.third-place .podium-score {
+.rank-third .team-badge {
   background: rgba(205, 127, 50, 0.2);
   color: #CD7F32;
-  border-color: rgba(205, 127, 50, 0.4);
+  border: 1px solid rgba(205, 127, 50, 0.3);
 }
 
-.podium-base {
-  width: 80px;
-  border-radius: 6px 6px 0 0;
-  position: relative;
-}
-
-.podium-base.gold {
-  height: 50px;
-  background: linear-gradient(135deg, #FFD700, #FFA500);
-  box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
-}
-
-.podium-base.silver {
-  height: 40px;
-  background: linear-gradient(135deg, #C0C0C0, #A8A8A8);
-  box-shadow: 0 0 15px rgba(192, 192, 192, 0.3);
-}
-
-.podium-base.bronze {
-  height: 30px;
-  background: linear-gradient(135deg, #CD7F32, #B87333);
-  box-shadow: 0 0 15px rgba(205, 127, 50, 0.3);
-}
-
-/* Remaining Teams */
-.remaining-teams {
-  flex: 1;
-  padding: 0 15px;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 10px;
-  align-content: start;
-  overflow: hidden;
-}
-
-.remaining-team-item {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 10px;
-  padding: 12px 16px;
+.team-score-section {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  border: 1px solid rgba(99, 102, 241, 0.2);
-  transition: all 0.3s ease;
-  min-height: 50px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.remaining-team-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(99, 102, 241, 0.4);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
-}
-
-.remaining-team-rank {
-  font: 700 1.2rem/1 'Google Sans';
-  color: var(--md-sys-color-primary);
-  width: 35px;
-  text-align: center;
+  gap: 2px;
+  min-width: 80px;
   flex-shrink: 0;
 }
 
-.remaining-team-name {
-  font: 600 1.1rem/1.2 'Google Sans';
+.team-score {
+  font: 700 1.6rem/1 'Google Sans';
   color: white;
-  flex: 1;
-  margin-left: 15px;
-  margin-right: 15px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
-.remaining-team-score {
-  font: 700 1.2rem/1 'Google Sans';
-  color: var(--md-sys-color-on-surface);
-  padding: 6px 12px;
-  background: rgba(99, 102, 241, 0.2);
-  border-radius: 12px;
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  flex-shrink: 0;
-  min-width: 60px;
-  text-align: center;
+.winner .team-score {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #FFD700;
+  text-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+}
+
+.rank-second .team-score {
+  color: #C0C0C0;
+  font-size: 1.8rem;
+}
+
+.rank-third .team-score {
+  color: #CD7F32;
+  font-size: 1.7rem;
+}
+
+.points-label {
+  font: 500 0.8rem/1 'Google Sans';
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Sparkle Trail for Top 3 */
+.sparkle-trail {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  width: 4px;
+  height: 4px;
+  background: currentColor;
+  border-radius: 50%;
+  opacity: 0;
+  animation: sparkleTrail 2s ease-in-out infinite;
+}
+
+.winner .sparkle-trail {
+  color: #FFD700;
+  animation: sparkleTrailGold 2s ease-in-out infinite;
+}
+
+.rank-second .sparkle-trail {
+  color: #C0C0C0;
+}
+
+.rank-third .sparkle-trail {
+  color: #CD7F32;
+}
+
+@keyframes sparkleTrail {
+  0%, 100% { opacity: 0; transform: translateY(-50%) scale(0); }
+  50% { opacity: 1; transform: translateY(-50%) scale(1); }
+}
+
+@keyframes sparkleTrailGold {
+  0%, 100% { 
+    opacity: 0; 
+    transform: translateY(-50%) scale(0); 
+    box-shadow: 0 0 0 rgba(255, 215, 0, 0);
+  }
+  50% { 
+    opacity: 1; 
+    transform: translateY(-50%) scale(1.5); 
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+  }
 }
 
 /* Leaderboard Footer */
@@ -938,23 +1033,32 @@ h1.question-text,
   font-size: 3rem;
 }
 
-.leaderboard-overlay.size-minimal .podium-crown {
-  font-size: 3rem;
+.leaderboard-overlay.size-minimal .ranked-team-item {
+  padding: 24px 28px;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
-.leaderboard-overlay.size-minimal .podium-rank {
-  font-size: 2.2rem;
-  width: 55px;
-  height: 55px;
+.leaderboard-overlay.size-minimal .position-icon {
+  font-size: 2.5rem;
 }
 
-.leaderboard-overlay.size-minimal .podium-team {
-  font-size: 1.5rem;
-}
-
-.leaderboard-overlay.size-minimal .podium-score {
+.leaderboard-overlay.size-minimal .position-number {
+  width: 45px;
+  height: 45px;
   font-size: 1.8rem;
-  padding: 10px 20px;
+}
+
+.leaderboard-overlay.size-minimal .team-name {
+  font-size: 1.8rem;
+}
+
+.leaderboard-overlay.size-minimal .team-score {
+  font-size: 2.2rem;
+}
+
+.leaderboard-overlay.size-minimal .winner .team-score {
+  font-size: 2.8rem;
 }
 
 /* Small: 4-6 teams */
@@ -966,43 +1070,31 @@ h1.question-text,
   font-size: 2.5rem;
 }
 
-.leaderboard-overlay.size-small .podium-crown {
-  font-size: 2.5rem;
+.leaderboard-overlay.size-small .ranked-team-item {
+  padding: 20px 24px;
+  gap: 10px;
 }
 
-.leaderboard-overlay.size-small .podium-rank {
-  font-size: 2rem;
-  width: 50px;
-  height: 50px;
+.leaderboard-overlay.size-small .position-icon {
+  font-size: 2.2rem;
 }
 
-.leaderboard-overlay.size-small .podium-team {
-  font-size: 1.4rem;
-}
-
-.leaderboard-overlay.size-small .podium-score {
-  font-size: 1.7rem;
-  padding: 9px 18px;
-}
-
-.leaderboard-overlay.size-small .remaining-team-item {
-  min-height: 60px;
-  padding: 16px 20px;
-}
-
-.leaderboard-overlay.size-small .remaining-team-rank {
-  font-size: 1.4rem;
+.leaderboard-overlay.size-small .position-number {
   width: 40px;
+  height: 40px;
+  font-size: 1.6rem;
 }
 
-.leaderboard-overlay.size-small .remaining-team-name {
-  font-size: 1.3rem;
+.leaderboard-overlay.size-small .team-name {
+  font-size: 1.5rem;
 }
 
-.leaderboard-overlay.size-small .remaining-team-score {
-  font-size: 1.4rem;
-  padding: 8px 16px;
-  min-width: 70px;
+.leaderboard-overlay.size-small .team-score {
+  font-size: 1.9rem;
+}
+
+.leaderboard-overlay.size-small .winner .team-score {
+  font-size: 2.4rem;
 }
 
 /* Medium: 7-9 teams */
@@ -1014,43 +1106,31 @@ h1.question-text,
   font-size: 2.2rem;
 }
 
-.leaderboard-overlay.size-medium .podium-crown {
-  font-size: 2.2rem;
+.leaderboard-overlay.size-medium .ranked-team-item {
+  padding: 18px 22px;
+  gap: 8px;
 }
 
-.leaderboard-overlay.size-medium .podium-rank {
-  font-size: 1.9rem;
-  width: 48px;
-  height: 48px;
+.leaderboard-overlay.size-medium .position-icon {
+  font-size: 2rem;
 }
 
-.leaderboard-overlay.size-medium .podium-team {
-  font-size: 1.3rem;
-}
-
-.leaderboard-overlay.size-medium .podium-score {
-  font-size: 1.6rem;
-  padding: 8px 16px;
-}
-
-.leaderboard-overlay.size-medium .remaining-team-item {
-  min-height: 55px;
-  padding: 14px 18px;
-}
-
-.leaderboard-overlay.size-medium .remaining-team-rank {
-  font-size: 1.3rem;
+.leaderboard-overlay.size-medium .position-number {
   width: 38px;
+  height: 38px;
+  font-size: 1.5rem;
 }
 
-.leaderboard-overlay.size-medium .remaining-team-name {
-  font-size: 1.2rem;
+.leaderboard-overlay.size-medium .team-name {
+  font-size: 1.4rem;
 }
 
-.leaderboard-overlay.size-medium .remaining-team-score {
-  font-size: 1.3rem;
-  padding: 7px 14px;
-  min-width: 65px;
+.leaderboard-overlay.size-medium .team-score {
+  font-size: 1.7rem;
+}
+
+.leaderboard-overlay.size-medium .winner .team-score {
+  font-size: 2.1rem;
 }
 
 /* Large: 10-12 teams */
@@ -1062,43 +1142,31 @@ h1.question-text,
   font-size: 2rem;
 }
 
-.leaderboard-overlay.size-large .podium-crown {
-  font-size: 2rem;
+.leaderboard-overlay.size-large .ranked-team-item {
+  padding: 16px 20px;
+  gap: 6px;
 }
 
-.leaderboard-overlay.size-large .podium-rank {
+.leaderboard-overlay.size-large .position-icon {
   font-size: 1.8rem;
-  width: 45px;
-  height: 45px;
 }
 
-.leaderboard-overlay.size-large .podium-team {
-  font-size: 1.2rem;
-}
-
-.leaderboard-overlay.size-large .podium-score {
-  font-size: 1.5rem;
-  padding: 8px 16px;
-}
-
-.leaderboard-overlay.size-large .remaining-team-item {
-  min-height: 50px;
-  padding: 12px 16px;
-}
-
-.leaderboard-overlay.size-large .remaining-team-rank {
-  font-size: 1.2rem;
+.leaderboard-overlay.size-large .position-number {
   width: 35px;
+  height: 35px;
+  font-size: 1.4rem;
 }
 
-.leaderboard-overlay.size-large .remaining-team-name {
-  font-size: 1.1rem;
+.leaderboard-overlay.size-large .team-name {
+  font-size: 1.3rem;
 }
 
-.leaderboard-overlay.size-large .remaining-team-score {
-  font-size: 1.2rem;
-  padding: 6px 12px;
-  min-width: 60px;
+.leaderboard-overlay.size-large .team-score {
+  font-size: 1.6rem;
+}
+
+.leaderboard-overlay.size-large .winner .team-score {
+  font-size: 2rem;
 }
 
 /* Maximum: 13-15 teams */
@@ -1110,94 +1178,35 @@ h1.question-text,
   font-size: 1.8rem;
 }
 
-.leaderboard-overlay.size-maximum .podium-crown {
+.leaderboard-overlay.size-maximum .ranked-team-item {
+  padding: 14px 18px;
+  gap: 6px;
+}
+
+.leaderboard-overlay.size-maximum .position-icon {
+  font-size: 1.6rem;
+}
+
+.leaderboard-overlay.size-maximum .position-number {
+  width: 32px;
+  height: 32px;
+  font-size: 1.2rem;
+}
+
+.leaderboard-overlay.size-maximum .team-name {
+  font-size: 1.1rem;
+}
+
+.leaderboard-overlay.size-maximum .team-score {
+  font-size: 1.4rem;
+}
+
+.leaderboard-overlay.size-maximum .winner .team-score {
   font-size: 1.8rem;
 }
 
-.leaderboard-overlay.size-maximum .podium-rank {
-  font-size: 1.6rem;
-  width: 42px;
-  height: 42px;
-}
-
-.leaderboard-overlay.size-maximum .podium-team {
-  font-size: 1.1rem;
-}
-
-.leaderboard-overlay.size-maximum .podium-score {
-  font-size: 1.4rem;
-  padding: 7px 14px;
-}
-
-.leaderboard-overlay.size-maximum .remaining-team-item {
-  min-height: 46px;
-  padding: 10px 14px;
-}
-
-.leaderboard-overlay.size-maximum .remaining-team-rank {
-  font-size: 1.1rem;
-  width: 32px;
-}
-
-.leaderboard-overlay.size-maximum .remaining-team-name {
-  font-size: 1rem;
-}
-
-.leaderboard-overlay.size-maximum .remaining-team-score {
-  font-size: 1.1rem;
-  padding: 5px 10px;
-  min-width: 55px;
-}
-
-/* Responsive Design for Leaderboard */
-@media (min-width: 1400px) {
-  .remaining-teams {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-@media (max-width: 1399px) and (min-width: 900px) {
-  .remaining-teams {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-  }
-  
-  .remaining-team-item {
-    padding: 10px 14px;
-    min-height: 45px;
-  }
-  
-  .remaining-team-rank {
-    font-size: 1.1rem;
-    width: 30px;
-  }
-  
-  .remaining-team-name {
-    font-size: 1rem;
-  }
-  
-  .remaining-team-score {
-    font-size: 1.1rem;
-    padding: 5px 10px;
-  }
-}
-
+/* Responsive Design for Hierarchical Leaderboard */
 @media (max-width: 899px) {
-  .remaining-teams {
-    grid-template-columns: 1fr;
-    gap: 6px;
-  }
-  
-  .remaining-team-item {
-    padding: 8px 12px;
-    min-height: 40px;
-  }
-  
-  .podium-container {
-    gap: 20px;
-    margin-bottom: 20px;
-  }
-  
   .leaderboard-header {
     margin-bottom: 20px;
   }
@@ -1206,17 +1215,45 @@ h1.question-text,
     font-size: 2.5rem;
   }
   
-  .podium-crown {
-    font-size: 1.5rem;
+  .trophy-icon {
+    font-size: 1.8rem;
   }
   
-  .podium-team {
-    font-size: 1rem;
+  .ranked-teams-list {
+    gap: 6px;
+    padding: 0 15px;
   }
   
-  .podium-score {
+  .ranked-team-item {
+    padding: 12px 16px;
+    gap: 6px;
+  }
+  
+  .position-icon {
+    font-size: 1.4rem;
+  }
+  
+  .position-number {
+    width: 30px;
+    height: 30px;
+    font-size: 1.1rem;
+  }
+  
+  .team-name {
+    font-size: 1.1rem;
+  }
+  
+  .team-score {
     font-size: 1.3rem;
-    padding: 6px 12px;
+  }
+  
+  .winner .team-score {
+    font-size: 1.6rem;
+  }
+  
+  .team-badge {
+    font-size: 0.7rem;
+    padding: 1px 6px;
   }
 }
 

@@ -1044,7 +1044,9 @@ class HostControl {
             // Clear on-air state when moving to different question
             this.activeQuestionIndex = -1;
             this.isQuestionActive = false;
-            this.answerShown = false; // Reset answer shown state for new question
+            
+            // Reset toggles for idle state when advancing to next question
+            this.resetTogglesForIdleState();
             
             const newQuestionIndex = this.currentQuestionIndex + 1;
             
@@ -1095,7 +1097,9 @@ class HostControl {
             // Clear on-air state when moving to different question  
             this.activeQuestionIndex = -1;
             this.isQuestionActive = false;
-            this.answerShown = false; // Reset answer shown state for new question
+            
+            // Reset toggles for idle state when navigating to previous question
+            this.resetTogglesForIdleState();
             
             // Call backend to update server state
             const response = await fetch(`/api/games/${this.currentGame.id}/navigate-to-question/${newQuestionIndex}`, {
@@ -1144,7 +1148,9 @@ class HostControl {
             // Clear on-air state when jumping to different question
             this.activeQuestionIndex = -1;
             this.isQuestionActive = false;
-            this.answerShown = false; // Reset answer shown state for new question
+            
+            // Reset toggles for idle state when jumping to question
+            this.resetTogglesForIdleState();
             
             // Call backend to update server state
             const response = await fetch(`/api/games/${this.currentGame.id}/navigate-to-question/${newQuestionIndex}`, {
@@ -1503,6 +1509,24 @@ class HostControl {
             this.elements.showLeaderboardBtn.classList.remove('toggle-on');
             this.elements.showLeaderboardBtn.classList.add('toggle-off');
             this.elements.showLeaderboardBtn.title = 'Show Leaderboard [L]';
+        }
+    }
+
+    resetTogglesForIdleState() {
+        // Reset show answer toggle to off state
+        this.isAnswerVisible = false;
+        this.answerShown = false;
+        
+        // Reset leaderboard toggle to off state
+        this.isLeaderboardVisible = false;
+        
+        // Update button appearances
+        this.updateShowAnswerButton();
+        this.updateLeaderboardButton();
+        
+        // Send hide commands to display to ensure it's in sync
+        if (this.currentGame) {
+            this.socket.emit('hide-leaderboard');
         }
     }
 
@@ -1919,6 +1943,9 @@ class HostControl {
         // Clear any lingering on-air state from previous question
         this.isQuestionActive = false;
         this.activeQuestionIndex = -1;
+        
+        // Reset toggles for idle state when question is prepared (transitioning to idle)
+        this.resetTogglesForIdleState();
         
         // Update current question index and sync with server state
         this.currentQuestionIndex = data.nextQuestionIndex;

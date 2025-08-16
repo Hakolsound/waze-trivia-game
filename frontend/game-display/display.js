@@ -1299,13 +1299,28 @@ class GameDisplay {
         if (isYouTube) {
             // Handle YouTube video via iframe
             const videoId = youtubeMatch[1] || youtubeMatch[2]; // Handle both youtube.com and youtu.be formats
-            const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=0&rel=0&modestbranding=1&showinfo=0&fs=0&disablekb=1`;
+            
+            // Try unmuted first, browsers will block if not allowed
+            const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=0&controls=0&rel=0&modestbranding=1&showinfo=0&fs=0&disablekb=1&playsinline=1&loop=0&start=0&enablejsapi=1`;
+            
+            // Set iframe attributes for autoplay permissions
+            iframeElement.setAttribute('allow', 'autoplay; encrypted-media; fullscreen');
+            iframeElement.setAttribute('allowfullscreen', 'true');
             
             iframeElement.src = embedUrl;
             iframeElement.style.display = 'block';
             iframeElement.onload = () => {
                 console.log('YouTube video loaded successfully:', embedUrl);
                 mediaContainer.classList.remove('hidden');
+                
+                // Fallback: Try to trigger autoplay via postMessage API
+                setTimeout(() => {
+                    try {
+                        iframeElement.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+                    } catch (e) {
+                        console.log('YouTube autoplay fallback failed (expected in some cases):', e.message);
+                    }
+                }, 1000);
             };
             iframeElement.onerror = () => {
                 console.error('Failed to load YouTube video:', embedUrl);

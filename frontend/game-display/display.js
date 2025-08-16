@@ -277,8 +277,8 @@ class GameDisplay {
         this.elements.questionSection.classList.remove('active');
         this.elements.answerFeedback.classList.add('hidden');
         
-        // Expand sidebar and clear any auto-expand timers
-        this.expandSidebar();
+        // Collapse sidebar on idle screen to hide buzzer activity
+        this.collapseSidebar();
         
         this.updateGameStatus('Ready to play');
         this.clearBuzzerQueue();

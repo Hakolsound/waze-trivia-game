@@ -2608,9 +2608,15 @@ class HostControl {
                 tab.querySelector('.tab-status').textContent = '⏳';
             }
 
-            // Update progress for active question
+            // Update progress for active question or remove progress for inactive ones
             if (tabIndex === this.activeQuestionIndex && this.isQuestionActive) {
                 this.updateTabProgress(tab);
+            } else {
+                // Remove progress display for non-active questions
+                const existingProgress = tab.querySelector('.tab-progress');
+                if (existingProgress) {
+                    existingProgress.remove();
+                }
             }
         });
 

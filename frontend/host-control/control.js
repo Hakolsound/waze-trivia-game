@@ -16,6 +16,10 @@ class HostControl {
         this.isLeaderboardVisible = false; // Track leaderboard state
         this.gameSelector = null;
         
+        // Timer pause state
+        this.timerPaused = false;
+        this.timerPausedAt = null;
+        
         this.initializeGameSelector();
         this.initializeElements();
         this.setupSocketListeners();
@@ -1458,7 +1462,16 @@ class HostControl {
             this.showCurrentAnswererHighlight(data);
             // Auto-show answer evaluation modal when first team buzzes
             this.showAnswerEvaluationModal();
+            
+            // PAUSE TIMER when first team buzzes (only if question is active and timer is running)
+            if (this.isQuestionActive && this.questionTimer && !this.timerPaused) {
+                this.pauseTimer();
+                console.log('Timer paused - first team buzzed in');
+            }
         }
+        
+        // If additional teams buzz while timer is already paused, keep it paused
+        // This handles the case where multiple teams buzz in quick succession
     }
 
     resetControlPanel() {
@@ -1820,6 +1833,11 @@ class HostControl {
         if (this.elements.evaluationList) {
             this.elements.evaluationList.innerHTML = '';
         }
+        
+        // Reset timer pause state when starting new question
+        this.timerPaused = false;
+        this.timerPausedAt = null;
+        
         this.hideAnswerEvaluationModal();
     }
 
@@ -1990,6 +2008,9 @@ class HostControl {
     startTimer() {
         if (!this.questionStartTime) return;
 
+        // Don't restart if timer is paused
+        if (this.timerPaused) return;
+
         this.stopTimer(); // Clear any existing timer first
         
         // Initialize performance tracking variables
@@ -2061,12 +2082,50 @@ class HostControl {
         this.questionTimer = setInterval(updateTimer, 1000);
     }
 
+    pauseTimer() {
+        // Pause the timer but preserve the pause time
+        if (this.questionTimer && !this.timerPaused) {
+            clearInterval(this.questionTimer);
+            this.questionTimer = null;
+            this.timerPaused = true;
+            this.timerPausedAt = Date.now();
+            
+            // Visual indication that timer is paused
+            if (this.elements.progressTimeText) {
+                const elapsed = Math.floor((this.timerPausedAt - this.questionStartTime) / 1000);
+                const remaining = Math.max(0, this.questionTimeLimit - elapsed);
+                this.elements.progressTimeText.textContent = `⏸️ ${remaining}s (paused)`;
+            }
+            
+            console.log('Timer paused at', new Date(this.timerPausedAt).toISOString());
+        }
+    }
+    
+    resumeTimer() {
+        // Resume the timer by adjusting the start time
+        if (this.timerPaused && this.timerPausedAt) {
+            const pausedDuration = Date.now() - this.timerPausedAt;
+            this.questionStartTime += pausedDuration; // Extend start time by pause duration
+            this.timerPaused = false;
+            this.timerPausedAt = null;
+            
+            console.log('Timer resumed, adjusted start time by', pausedDuration, 'ms');
+            
+            // Restart the timer interval
+            this.startTimer();
+        }
+    }
+
     stopTimer() {
         // Clear the interval first
         if (this.questionTimer) {
             clearInterval(this.questionTimer);
             this.questionTimer = null;
         }
+        
+        // Reset pause state
+        this.timerPaused = false;
+        this.timerPausedAt = null;
     }
     
     hideTimers() {
@@ -2248,24 +2307,35 @@ class HostControl {
 
             // Handle game flow based on answer correctness
             if (isCorrect) {
+                // Correct answer - stop timer completely
+                this.stopTimer();
                 // Hide modal - server will handle advancing to next question via prepareNextQuestion
                 setTimeout(() => {
                     this.hideAnswerEvaluationModal();
                 }, 1000);
             } else {
-                // Update the evaluation interface for next buzzer if answer is wrong
-                setTimeout(() => {
-                    this.updateAnswerEvaluation();
-                    // Show next answerer if available
-                    const nextBuzzer = this.buzzerOrder.find(b => !b.evaluated);
-                    if (nextBuzzer) {
+                // Incorrect answer - check if there are more teams waiting
+                const nextBuzzer = this.buzzerOrder.find(b => !b.evaluated);
+                if (nextBuzzer) {
+                    // There are more teams waiting - keep timer paused
+                    setTimeout(() => {
+                        this.updateAnswerEvaluation();
                         this.showCurrentAnswererHighlight(nextBuzzer);
-                    } else {
-                        // No more teams to answer - advance to next question manually
-                        this.hideAnswerEvaluationModal();
-                        this.nextQuestion();
+                        console.log('Next team ready, timer stays paused');
+                    }, 500);
+                } else {
+                    // No more teams waiting - resume timer for remaining time
+                    if (this.timerPaused && this.isQuestionActive) {
+                        setTimeout(() => {
+                            this.resumeTimer();
+                            console.log('No more teams, timer resumed');
+                        }, 500);
                     }
-                }, 500);
+                    // Hide modal and let question continue
+                    setTimeout(() => {
+                        this.hideAnswerEvaluationModal();
+                    }, 1000);
+                }
             }
 
         } catch (error) {
@@ -2281,6 +2351,9 @@ class HostControl {
         }
 
         try {
+            // Stop timer when giving up
+            this.stopTimer();
+            
             // End the current question without evaluating any answers
             const response = await fetch(`/api/games/${this.currentGame.id}/end-question`, {
                 method: 'POST',

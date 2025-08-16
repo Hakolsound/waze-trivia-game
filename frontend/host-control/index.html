@@ -330,70 +330,76 @@
 
         <!-- Answer Evaluation Modal -->
         <div id="answer-evaluation-modal" class="modal hidden">
-            <div class="modal-content evaluation-modal">
-                <div class="modal-header">
-                    <h3>🎯 Answer Evaluation</h3>
-                    <button id="close-evaluation-btn" class="btn btn-secondary">
-                        <span class="material-icons">close</span>
-                    </button>
-                </div>
+            <div class="modal-content evaluation-modal-redesign">
+                <button id="close-evaluation-btn" class="evaluation-close-btn">✕</button>
                 
-                <div class="modal-body">
+                <div class="evaluation-container">
                     <div id="no-buzzer-content" class="no-buzzer-content">
-                        <div class="empty-state">
-                            <span class="material-icons">quiz</span>
-                            <h4>Waiting for Buzzer Presses</h4>
-                            <p>Start a question and wait for teams to buzz in</p>
+                        <div class="empty-state-redesign">
+                            <div class="empty-icon">🎯</div>
+                            <h2>Waiting for Teams</h2>
+                            <p>Start a question and teams will buzz in here</p>
+                            <div class="waiting-animation">
+                                <div class="pulse-dot"></div>
+                                <div class="pulse-dot"></div>
+                                <div class="pulse-dot"></div>
+                            </div>
                         </div>
                     </div>
 
                     <div id="current-answerer-content" class="current-answerer-content hidden">
-                        <div class="answerer-card">
-                            <div class="answerer-info">
-                                <div class="position-badge">
-                                    <span id="current-position">1st</span>
-                                </div>
-                                <div class="team-details">
-                                    <h4 id="current-team-name">Team Alpha</h4>
-                                    <p id="current-buzzer-time">Buzzed in at 2.3s</p>
-                                </div>
-                                <div class="points-display">
-                                    <span id="question-points">+100</span>
-                                    <small>points</small>
+                        <div class="answerer-header">
+                            <div class="position-indicator">
+                                <span id="current-position">1st</span>
+                            </div>
+                            <div class="team-info">
+                                <h1 id="current-team-name">Team Alpha</h1>
+                                <div class="buzzer-timing">
+                                    <span class="timing-icon">⚡</span>
+                                    <span id="current-buzzer-time">Buzzed at 2.3s</span>
                                 </div>
                             </div>
-                            
-                            <div class="evaluation-actions">
-                                <button id="mark-correct-btn" class="btn btn-success btn-large">
-                                    <span class="material-icons">check_circle</span>
-                                    Correct Answer
-                                </button>
-                                <button id="mark-incorrect-btn" class="btn btn-danger btn-large">
-                                    <span class="material-icons">cancel</span>
-                                    Incorrect Answer
-                                </button>
-                                <button id="give-up-btn" class="btn btn-secondary btn-large">
-                                    <span class="material-icons">skip_next</span>
-                                    Give Up & Skip
-                                </button>
+                            <div class="points-showcase">
+                                <div class="points-value" id="question-points">+100</div>
+                                <div class="points-label">POINTS</div>
                             </div>
                         </div>
+                        
+                        <div class="evaluation-mega-buttons">
+                            <button id="mark-correct-btn" class="mega-btn mega-btn-correct">
+                                <div class="mega-btn-icon">✓</div>
+                                <div class="mega-btn-text">CORRECT</div>
+                                <div class="mega-btn-hint">Award Points</div>
+                            </button>
+                            
+                            <button id="mark-incorrect-btn" class="mega-btn mega-btn-incorrect">
+                                <div class="mega-btn-icon">✗</div>
+                                <div class="mega-btn-text">INCORRECT</div>
+                                <div class="mega-btn-hint">No Points</div>
+                            </button>
+                            
+                            <button id="give-up-btn" class="mega-btn mega-btn-skip">
+                                <div class="mega-btn-icon">⏭</div>
+                                <div class="mega-btn-text">SKIP</div>
+                                <div class="mega-btn-hint">Move On</div>
+                            </button>
+                        </div>
 
-                        <div id="next-in-line-card" class="next-in-line-card hidden">
-                            <div class="next-info">
-                                <span class="material-icons">queue</span>
-                                <div>
-                                    <strong>Next in line:</strong>
-                                    <span id="next-team-name">Team Beta</span>
-                                    <small>(buzzed at <span id="next-buzzer-time">3.1s</span>)</small>
-                                </div>
+                        <div id="next-in-line-card" class="next-in-line-redesign hidden">
+                            <div class="next-indicator">NEXT UP</div>
+                            <div class="next-team-info">
+                                <span class="next-team-name" id="next-team-name">Team Beta</span>
+                                <span class="next-timing" id="next-buzzer-time">at 3.1s</span>
                             </div>
                         </div>
                     </div>
 
-                    <div id="evaluation-history-section" class="evaluation-history-section hidden">
-                        <h4>📋 Answer History</h4>
-                        <div id="evaluation-list" class="evaluation-list"></div>
+                    <div id="evaluation-history-section" class="evaluation-history-redesign hidden">
+                        <div class="history-header">
+                            <div class="history-icon">📝</div>
+                            <h3>Answer History</h3>
+                        </div>
+                        <div id="evaluation-list" class="evaluation-list-redesign"></div>
                     </div>
                 </div>
             </div>

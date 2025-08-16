@@ -924,6 +924,14 @@ class GameDisplay {
         // Show the leaderboard overlay
         this.elements.leaderboardOverlay.classList.remove('hidden');
         
+        // Ensure first item is scrolled into view
+        setTimeout(() => {
+            const firstItem = this.elements.rankedTeamsList.querySelector('.ranked-team-item:first-child');
+            if (firstItem) {
+                firstItem.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 100);
+        
         console.log(`Leaderboard shown (${view}) with`, teamCount, 'teams', teamsToShow.map(t => `${t.name}: ${t.score}`));
     }
 

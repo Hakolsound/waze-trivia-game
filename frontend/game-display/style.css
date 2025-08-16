@@ -864,17 +864,17 @@ h1.question-text,
   display: flex;
   flex-direction: column;
   overflow: visible;
-  max-height: calc(98vh - 200px);
+  max-height: calc(98vh - 150px); /* Reduced header space */
 }
 
 /* Ranked Teams List */
 .ranked-teams-list {
   flex: 1;
-  padding: 15px 20px 10px 20px; /* Reduced padding to ensure first place is visible */
+  padding: 5px 20px 10px 20px; /* Minimal top padding to ensure first place is visible */
   display: flex;
   flex-direction: column;
   gap: 8px;
-  align-content: start;
+  align-items: stretch; /* Changed from align-content: start */
   overflow-y: auto;
   overflow-x: hidden;
   max-height: 100%;
@@ -893,6 +893,7 @@ h1.question-text,
   opacity: 0;
   transform: translateY(30px);
   overflow: hidden;
+  flex-shrink: 0; /* Prevent shrinking that might affect visibility */
 }
 
 @keyframes slideInUp {
@@ -971,9 +972,9 @@ h1.question-text,
 
 /* Progressive width scaling for top 5 positions */
 .ranked-team-item.rank-first {
-  transform: scale(1.05);
+  /* Removed transform scale to prevent viewport issues */
   box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
-  margin: 3px 0; /* Minimal margin to prevent clipping */
+  margin: 0; /* No margin to ensure visibility */
 }
 
 .ranked-team-item.rank-second {
@@ -991,20 +992,24 @@ h1.question-text,
   box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
 }
 
-/* Breathing animation for the winner - reduced intensity */
+/* Breathing animation for the winner - glow only, no scaling */
 @keyframes breathingGlow {
   0%, 100% {
-    transform: scale(1.05);
     box-shadow: 0 0 25px rgba(255, 215, 0, 0.3);
   }
   50% {
-    transform: scale(1.08);
-    box-shadow: 0 0 35px rgba(255, 215, 0, 0.4), 0 0 50px rgba(255, 215, 0, 0.15);
+    box-shadow: 0 0 40px rgba(255, 215, 0, 0.5), 0 0 60px rgba(255, 215, 0, 0.2);
   }
 }
 
 .ranked-team-item.winner {
   animation: breathingGlow 4s ease-in-out infinite;
+}
+
+/* Ensure first place is always visible */
+.ranked-team-item:first-child {
+  scroll-margin-top: 20px;
+  margin-top: 0;
 }
 
 /* Subtle shine effects for top 5 positions */

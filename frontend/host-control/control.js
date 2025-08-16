@@ -1109,7 +1109,7 @@ class HostControl {
             // Clear UI elements
             this.updateBuzzerResults();
             this.hideAnswerEvaluationModal();
-            this.updateCurrentAnswererHighlight(null);
+            this.hideCurrentAnswererHighlight();
             
             // Hide correct answer display
             if (this.elements.correctAnswerDisplay) {
@@ -1194,7 +1194,7 @@ class HostControl {
             // Clear buzzer results
             this.updateBuzzerResults();
             this.hideAnswerEvaluationModal();
-            this.updateCurrentAnswererHighlight(null);
+            this.hideCurrentAnswererHighlight();
             
             // Reset question tabs to initial state
             this.initializeQuestionTabs();

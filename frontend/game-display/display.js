@@ -275,6 +275,9 @@ class GameDisplay {
         // Auto-hide correct answer overlay when transitioning to idle
         this.hideCorrectAnswer();
         
+        // Clear any media from previous questions
+        this.clearQuestionMedia();
+        
         this.elements.idleState.classList.add('active');
         this.elements.idleState.classList.remove('hidden');
         this.elements.questionSection.classList.add('hidden');
@@ -293,6 +296,9 @@ class GameDisplay {
         
         // Auto-hide correct answer overlay when showing new question
         this.hideCorrectAnswer();
+        
+        // Clear any previous media first
+        this.clearQuestionMedia();
         
         this.elements.idleState.classList.remove('active');
         this.elements.idleState.classList.add('hidden');
@@ -1379,7 +1385,45 @@ class GameDisplay {
         if (mediaContainer) {
             mediaContainer.classList.add('hidden');
         }
-        document.querySelector('.question-content').classList.remove('has-media');
+        document.querySelector('.question-content').classList.remove('has-media', 'media-right');
+    }
+
+    // Clear all media from previous questions
+    clearQuestionMedia() {
+        console.log('Clearing previous question media');
+        
+        const questionContent = document.querySelector('.question-content');
+        const mediaContainer = document.getElementById('question-media-container');
+        const imageElement = document.getElementById('question-media');
+        const videoElement = document.getElementById('question-video');
+        const iframeElement = document.getElementById('question-iframe');
+        
+        // Remove all media-related CSS classes
+        if (questionContent) {
+            questionContent.classList.remove('has-media', 'media-right');
+        }
+        
+        // Hide media container
+        if (mediaContainer) {
+            mediaContainer.classList.add('hidden');
+        }
+        
+        // Clear all media elements
+        if (imageElement) {
+            imageElement.style.display = 'none';
+            imageElement.src = '';
+        }
+        
+        if (videoElement) {
+            videoElement.style.display = 'none';
+            videoElement.src = '';
+            videoElement.pause(); // Stop any playing video
+        }
+        
+        if (iframeElement) {
+            iframeElement.style.display = 'none';
+            iframeElement.src = '';
+        }
     }
 }
 

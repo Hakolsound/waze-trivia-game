@@ -104,10 +104,15 @@ class HostControl {
     }
 
     synchronizeGameState(game) {
-        console.log(`Synchronizing game state. Status: ${game.status}, Current question: ${game.current_question_index}`);
+        console.log(`Synchronizing game state. Status: ${game.status}, Current question: ${game.current_question_index}, Played: ${JSON.stringify(game.played_questions || [])}`);
         
         // Set the authoritative server state
         this.currentQuestionIndex = game.current_question_index;
+        
+        // Ensure played_questions array is available
+        if (!game.played_questions) {
+            game.played_questions = [];
+        }
         
         // Reset local state first
         this.isQuestionActive = false;
@@ -316,6 +321,11 @@ class HostControl {
             this.updateQuestionControls();
             this.resetAnswerEvaluation(); // Clear previous evaluation state
             this.hideCurrentAnswererHighlight();
+            
+            // Refresh game state to get updated played_questions
+            if (this.currentGame) {
+                this.gameSelector.loadGame(this.currentGame.id);
+            }
         });
 
         this.socket.on('question-end', async (data) => {
@@ -1224,6 +1234,7 @@ class HostControl {
                 // Update current game's server state for consistency
                 if (this.currentGame) {
                     this.currentGame.current_question_index = 0;
+                    this.currentGame.played_questions = [];
                 }
                 
                 // Update displays after successful reset
@@ -1309,6 +1320,7 @@ class HostControl {
                 // Update current game's server state for consistency
                 if (this.currentGame) {
                     this.currentGame.current_question_index = 0;
+                    this.currentGame.played_questions = [];
                 }
                 
                 // Update all displays after successful reset
@@ -2733,8 +2745,14 @@ class HostControl {
     }
 
     isQuestionPlayed(questionIndex) {
-        // A question is played if it's before the current question index
-        return questionIndex < this.currentQuestionIndex;
+        // A question is played if it was actually started/fired, not just navigated to
+        // Check if this question index exists in the game's played questions list
+        if (this.currentGame && this.currentGame.played_questions) {
+            return this.currentGame.played_questions.includes(questionIndex);
+        }
+        
+        // Fallback to old logic if no played_questions data available
+        return false;
     }
 
     updateQuestionTabsState() {
@@ -2748,10 +2766,12 @@ class HostControl {
             // Reset classes
             tab.className = 'question-tab';
             
-            // Simple, clear state logic:
-            if (tabIndex < this.currentQuestionIndex) {
-                // Questions before current index are PLAYED (completed/resolved)
-                console.log(`Tab ${tabIndex} is PLAYED (current index: ${this.currentQuestionIndex})`);
+            // Clear state logic: Check if actually played vs just navigated to
+            const isActuallyPlayed = this.isQuestionPlayed(tabIndex);
+            
+            if (isActuallyPlayed) {
+                // Questions that were actually started/fired are PLAYED
+                console.log(`Tab ${tabIndex} is PLAYED (actually started)`);
                 tab.classList.add('played');
                 tab.classList.add('disabled'); // Disable clicking on played questions
                 tab.querySelector('.tab-status').textContent = '✗';
@@ -2763,7 +2783,7 @@ class HostControl {
                 tab.querySelector('.tab-status').textContent = '▶';
                 
             } else if (tabIndex === this.currentQuestionIndex) {
-                // Host is currently viewing this question (SELECTED)
+                // Host is currently viewing this question (SELECTED - mid-height)
                 console.log(`Tab ${tabIndex} is SELECTED (current index: ${this.currentQuestionIndex})`);
                 tab.classList.add('selected');
                 tab.querySelector('.tab-status').textContent = '►';

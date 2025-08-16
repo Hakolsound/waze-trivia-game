@@ -28,12 +28,24 @@ class Database {
   }
 
   async createTables() {
+    // Add played_questions column to existing games if it doesn't exist
+    try {
+      await this.db.run('ALTER TABLE games ADD COLUMN played_questions TEXT DEFAULT "[]"');
+      console.log('Added played_questions column to games table');
+    } catch (e) {
+      // Column probably already exists, ignore the error
+      if (!e.message.includes('duplicate column name')) {
+        console.log('played_questions column already exists or other error:', e.message);
+      }
+    }
+
     const tables = [
       `CREATE TABLE IF NOT EXISTS games (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         status TEXT DEFAULT 'setup',
         current_question_index INTEGER DEFAULT 0,
+        played_questions TEXT DEFAULT '[]',
         logo_url TEXT,
         logo_position TEXT DEFAULT 'top-right',
         logo_size TEXT DEFAULT 'medium',

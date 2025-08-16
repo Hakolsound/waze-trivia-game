@@ -49,7 +49,15 @@ class GameService {
     const groups = await this.db.all('SELECT * FROM groups WHERE game_id = ? ORDER BY position', [gameId]);
     const questions = await this.db.all('SELECT * FROM questions WHERE game_id = ? ORDER BY question_order', [gameId]);
 
-    return { ...game, groups, questions };
+    // Parse the played_questions JSON array
+    let played_questions = [];
+    try {
+      played_questions = JSON.parse(game.played_questions || '[]');
+    } catch (e) {
+      played_questions = [];
+    }
+
+    return { ...game, groups, questions, played_questions };
   }
 
   async getAllGames() {
@@ -72,9 +80,15 @@ class GameService {
       throw new Error('Question index out of bounds');
     }
 
+    // Add this question to the played questions list if not already there
+    let playedQuestions = [...game.played_questions];
+    if (!playedQuestions.includes(questionIndex)) {
+      playedQuestions.push(questionIndex);
+    }
+
     await this.db.run(
-      'UPDATE games SET current_question_index = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [questionIndex, 'question_active', gameId]
+      'UPDATE games SET current_question_index = ?, status = ?, played_questions = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [questionIndex, 'question_active', JSON.stringify(playedQuestions), gameId]
     );
 
     const currentQuestion = game.questions[questionIndex];
@@ -377,8 +391,8 @@ class GameService {
 
   async resetGame(gameId) {
     await this.db.run(
-      'UPDATE games SET status = ?, current_question_index = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      ['setup', gameId]
+      'UPDATE games SET status = ?, current_question_index = 0, played_questions = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      ['setup', JSON.stringify([]), gameId]
     );
 
     await this.db.run(
@@ -406,8 +420,8 @@ class GameService {
 
   async resetQuestions(gameId) {
     await this.db.run(
-      'UPDATE games SET status = ?, current_question_index = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      ['setup', gameId]
+      'UPDATE games SET status = ?, current_question_index = 0, played_questions = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      ['setup', JSON.stringify([]), gameId]
     );
 
     await this.db.run(

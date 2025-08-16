@@ -818,6 +818,8 @@ body {
   background: linear-gradient(135deg, rgba(76, 175, 80, 0.15), rgba(129, 199, 132, 0.1));
   box-shadow: 0 0 15px rgba(76, 175, 80, 0.2);
   transform: translateY(-1px);
+  min-height: 47px; /* Mid-height: between default (~40px) and active (55px) */
+  padding: 7px 8px 5px; /* Slightly more padding than default */
 }
 
 .question-tab.selected .tab-status {

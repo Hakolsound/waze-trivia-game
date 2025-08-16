@@ -262,14 +262,15 @@ h1.question-text,
 
 .question-content.has-media h1.question-text,
 .question-content.has-media #question-text {
-  font-size: 6rem !important;
+  font-size: 4.5rem !important;
   grid-column: 2;
   grid-row: 1;
-  align-self: start;
+  align-self: center;
   justify-self: start;
   text-align: left !important;
   max-width: 100%;
-  padding-left: 20px;
+  padding-left: 15px;
+  line-height: 1.2 !important;
 }
 
 .question-content {
@@ -284,9 +285,9 @@ h1.question-text,
 
 .question-content.has-media {
   display: grid;
-  grid-template-columns: 1fr 1.85fr;
+  grid-template-columns: 1.5fr 1fr;
   grid-template-rows: 1fr;
-  gap: 40px;
+  gap: 30px;
   align-items: center;
   justify-items: center;
 }
@@ -309,7 +310,9 @@ h1.question-text,
 .question-content.has-media .question-media {
   margin-top: 0;
   max-width: 100%;
-  max-height: 60vh;
+  max-height: 70vh;
+  width: 100%;
+  align-self: center;
 }
 
 .media-element {
@@ -325,7 +328,19 @@ h1.question-text,
 }
 
 .question-content.has-media .media-element {
-  max-height: 50vh;
+  max-height: 70vh;
+  max-width: 100%;
+  width: 100%;
+  height: auto;
+}
+
+.question-content.has-media .media-element iframe,
+.question-content.has-media iframe.media-element {
+  width: 100%;
+  aspect-ratio: 16/9;
+  height: auto;
+  min-height: 300px;
+  max-height: 70vh;
 }
 
 .media-element:hover {

@@ -1248,6 +1248,11 @@ class HostControl {
                     this.currentGame.played_questions = [];
                 }
                 
+                // Reset local team scores to match backend reset
+                this.teams.forEach(team => {
+                    team.score = 0;
+                });
+                
                 // Update displays after successful reset
                 this.updateQuestionDisplay();
                 this.updateQuestionControls();

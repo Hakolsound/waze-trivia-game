@@ -1023,6 +1023,7 @@ class HostControl {
             // Clear on-air state when moving to different question
             this.activeQuestionIndex = -1;
             this.isQuestionActive = false;
+            this.answerShown = false; // Reset answer shown state for new question
             
             const newQuestionIndex = this.currentQuestionIndex + 1;
             
@@ -1073,6 +1074,7 @@ class HostControl {
             // Clear on-air state when moving to different question  
             this.activeQuestionIndex = -1;
             this.isQuestionActive = false;
+            this.answerShown = false; // Reset answer shown state for new question
             
             // Call backend to update server state
             const response = await fetch(`/api/games/${this.currentGame.id}/navigate-to-question/${newQuestionIndex}`, {
@@ -1121,6 +1123,7 @@ class HostControl {
             // Clear on-air state when jumping to different question
             this.activeQuestionIndex = -1;
             this.isQuestionActive = false;
+            this.answerShown = false; // Reset answer shown state for new question
             
             // Call backend to update server state
             const response = await fetch(`/api/games/${this.currentGame.id}/navigate-to-question/${newQuestionIndex}`, {
@@ -1895,6 +1898,7 @@ class HostControl {
     resetAnswerEvaluation() {
         this.currentBuzzerPosition = -1;
         this.evaluationHistory = [];
+        this.answerShown = false; // Reset answer shown state
         if (this.elements.evaluationList) {
             this.elements.evaluationList.innerHTML = '';
         }

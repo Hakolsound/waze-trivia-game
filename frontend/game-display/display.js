@@ -207,10 +207,14 @@ class GameDisplay {
         // Question navigation events - hide answer when navigating
         this.socket.on('question-prepared', (data) => {
             this.hideCorrectAnswer();
+            this.showIdleState();
+            console.log('Question prepared:', data.nextQuestionIndex + 1);
         });
 
         this.socket.on('question-navigation', (data) => {
             this.hideCorrectAnswer();
+            this.showIdleState();
+            console.log('Navigation to question:', data.questionIndex + 1);
         });
 
         // Window resize listener for dynamic text sizing

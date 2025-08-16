@@ -37,6 +37,16 @@ body {
     -webkit-tap-highlight-color: transparent;
 }
 
+/* Allow scrolling on team selection screen */
+body:has(#team-selection.active) {
+    overflow: auto;
+}
+
+/* Fallback for browsers that don't support :has() */
+.allow-scroll {
+    overflow: auto !important;
+}
+
 #app {
     height: 100vh;
     width: 100vw;
@@ -116,9 +126,12 @@ body {
 /* Team Selection Screen */
 #team-selection {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     padding: 20px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 100vh;
 }
 
 .selection-container {
@@ -138,6 +151,8 @@ body {
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 20px;
     margin-bottom: 20px;
+    /* Enable smooth scrolling on mobile */
+    -webkit-overflow-scrolling: touch;
 }
 
 .team-card {
@@ -481,15 +496,34 @@ body {
     
     .selection-container h2 {
         font-size: 1.5rem;
+        margin-bottom: 20px;
     }
     
     .teams-grid {
         grid-template-columns: 1fr;
         gap: 15px;
+        max-height: none;
+        padding-bottom: 60px; /* Space for safe scrolling */
+    }
+    
+    .team-card {
+        padding: 15px;
+    }
+    
+    .team-avatar {
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
     }
     
     .change-team-btn {
         bottom: 20px;
+    }
+    
+    /* Ensure proper scroll behavior on mobile */
+    #team-selection {
+        padding: 20px 15px;
+        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
     }
 }
 

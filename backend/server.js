@@ -154,6 +154,17 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('get-game-state', async (gameId) => {
+    try {
+      const game = await gameService.getGame(gameId);
+      socket.emit('game-state-response', game);
+      console.log(`Game state sent for game ${gameId}`);
+    } catch (error) {
+      console.error('Error getting game state:', error);
+      socket.emit('game-state-response', null);
+    }
+  });
+
   socket.on('show-leaderboard', () => {
     // Broadcast leaderboard show to all display clients
     io.to('game-display').emit('show-leaderboard');

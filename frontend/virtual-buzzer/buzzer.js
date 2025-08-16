@@ -314,18 +314,24 @@ class VirtualBuzzer {
     showTeamSelection() {
         this.hideAllScreens();
         this.elements.teamSelection.classList.add('active');
+        // Enable scrolling for team selection on mobile
+        document.body.classList.add('allow-scroll');
         this.updateTeamSelection();
     }
 
     showBuzzerScreen() {
         this.hideAllScreens();
         this.elements.buzzerScreen.classList.add('active');
+        // Disable scrolling for buzzer screen
+        document.body.classList.remove('allow-scroll');
         this.updateBuzzerState();
     }
 
     showError(message) {
         this.hideAllScreens();
         this.elements.errorScreen.classList.add('active');
+        // Disable scrolling for error screen
+        document.body.classList.remove('allow-scroll');
         if (this.elements.errorMessage) {
             this.elements.errorMessage.textContent = message;
         }
@@ -335,6 +341,8 @@ class VirtualBuzzer {
         this.elements.teamSelection.classList.remove('active');
         this.elements.buzzerScreen.classList.remove('active');
         this.elements.errorScreen.classList.remove('active');
+        // Reset scroll state
+        document.body.classList.remove('allow-scroll');
     }
 
     updateBuzzerState() {

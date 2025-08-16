@@ -181,6 +181,10 @@ class GameDisplay {
             this.handleTeamsUpdated(teams);
         });
 
+        this.socket.on('score-update', (data) => {
+            this.handleScoreUpdate(data);
+        });
+
         // Game control events
         this.socket.on('game-reset', () => {
             this.handleGameReset();
@@ -434,12 +438,30 @@ class GameDisplay {
     }
 
     handleTeamsUpdated(teams) {
-        // Update team names mapping
+        // Update team names mapping and current game data
         teams.forEach(team => {
             // Map both groupId and buzzer_id for compatibility
             this.teamNames.set(team.id, team.name);
             this.teamNames.set(team.buzzer_id || team.id, team.name);
         });
+        
+        // Update current game groups data if we have a current game
+        if (this.currentGame && this.currentGame.groups) {
+            this.currentGame.groups = teams;
+        }
+    }
+
+    handleScoreUpdate(data) {
+        console.log('Score update received:', data);
+        
+        // Update the specific team's score in current game data
+        if (this.currentGame && this.currentGame.groups) {
+            const team = this.currentGame.groups.find(t => t.id === data.groupId);
+            if (team) {
+                team.score = data.newScore;
+                console.log(`Updated ${team.name} score to ${data.newScore}`);
+            }
+        }
     }
 
     handleGameReset() {
@@ -840,6 +862,31 @@ class GameDisplay {
             return;
         }
 
+        // Request fresh game data before showing leaderboard
+        this.socket.emit('get-game-state', this.currentGame.id);
+        
+        // Listen for the response with fresh data
+        this.socket.once('game-state-response', (gameData) => {
+            if (gameData && gameData.groups) {
+                // Update current game data with fresh scores
+                this.currentGame.groups = gameData.groups;
+                this.displayLeaderboardWithCurrentData();
+            } else {
+                // Fallback to existing data if request fails
+                this.displayLeaderboardWithCurrentData();
+            }
+        });
+        
+        // Also immediately show with current data (will be updated when fresh data arrives)
+        this.displayLeaderboardWithCurrentData();
+    }
+    
+    displayLeaderboardWithCurrentData() {
+        if (!this.currentGame || !this.currentGame.groups) {
+            console.log('No game or teams available for leaderboard display');
+            return;
+        }
+
         // Sort teams by score (descending)
         const sortedTeams = [...this.currentGame.groups].sort((a, b) => b.score - a.score);
         const teamCount = sortedTeams.length;
@@ -853,7 +900,7 @@ class GameDisplay {
         // Show the leaderboard overlay
         this.elements.leaderboardOverlay.classList.remove('hidden');
         
-        console.log('Leaderboard shown with', teamCount, 'teams');
+        console.log('Leaderboard shown with', teamCount, 'teams', sortedTeams.map(t => `${t.name}: ${t.score}`));
     }
 
     hideLeaderboard() {

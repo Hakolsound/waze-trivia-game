@@ -251,6 +251,8 @@ class GameService {
       pointsToAward = -Math.floor(currentQuestion.points * 0.5);
     }
     
+    console.log(`[DEBUG] Evaluate Answer - Correct: ${isCorrect}, Question Points: ${currentQuestion.points}, Points to Award: ${pointsToAward}`);
+    
     // Award or deduct points
     await this.awardPoints(gameId, buzzerEntry.groupId, pointsToAward);
     
@@ -444,9 +446,15 @@ class GameService {
     const currentScore = currentGroup ? currentGroup.score : 0;
     const newScore = currentScore + points;
     
+    // Debug logging for negative scores
+    console.log(`[DEBUG] Award Points - Game: ${gameId}, Group: ${groupId}, Points: ${points}`);
+    console.log(`[DEBUG] Current Score: ${currentScore}, New Score: ${newScore}, Allow Negative: ${allowNegativeScores}`);
+    
     // If negative scores are not allowed, clamp at 0
     const finalScore = allowNegativeScores ? newScore : Math.max(0, newScore);
     const actualPointsAwarded = finalScore - currentScore;
+    
+    console.log(`[DEBUG] Final Score: ${finalScore}, Actual Points Awarded: ${actualPointsAwarded}`);
     
     await this.db.run(
       'UPDATE groups SET score = ? WHERE id = ? AND game_id = ?',

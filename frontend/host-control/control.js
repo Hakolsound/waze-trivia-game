@@ -828,9 +828,6 @@ class HostControl {
             this.buzzerOrder = [];
             this.updateBuzzerResults();
             
-            // Mark question as played
-            this.playedQuestions.add(this.currentQuestionIndex);
-            
             // Update tab state for active question
             this.isQuestionActive = true;
             this.activeQuestionIndex = this.currentQuestionIndex; // Set which question is on-air
@@ -2053,6 +2050,9 @@ class HostControl {
 
             // Handle game flow based on answer correctness
             if (isCorrect) {
+                // Mark question as played when answered correctly
+                this.playedQuestions.add(this.activeQuestionIndex);
+                
                 // Hide modal and prepare for next question if answer is correct
                 setTimeout(() => {
                     this.hideAnswerEvaluationModal();
@@ -2070,7 +2070,8 @@ class HostControl {
                     if (nextBuzzer) {
                         this.showCurrentAnswererHighlight(nextBuzzer);
                     } else {
-                        // No more teams to answer - hide modal and prepare next question
+                        // No more teams to answer - mark as played and prepare next question
+                        this.playedQuestions.add(this.activeQuestionIndex);
                         this.hideAnswerEvaluationModal();
                         this.nextQuestion();
                     }
@@ -2100,6 +2101,9 @@ class HostControl {
                 throw new Error('Failed to end question');
             }
 
+            // Mark question as played when skipped/given up
+            this.playedQuestions.add(this.activeQuestionIndex);
+            
             // Show feedback and hide modal
             this.showToast('Question skipped - moving to next question', 'info');
             this.hideAnswerEvaluationModal();

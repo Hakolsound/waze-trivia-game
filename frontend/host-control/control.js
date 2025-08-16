@@ -380,6 +380,7 @@ class HostControl {
 
         this.socket.on('question-end', async (data) => {
             this.isQuestionActive = false;
+            this.activeQuestionIndex = -1; // Clear on-air status
             this.buzzerOrder = data.buzzerOrder || [];
             this.stopTimer();
             this.hideTimers();
@@ -973,6 +974,11 @@ class HostControl {
         
         // Prevent restarting on-air question
         if (this.activeQuestionIndex >= 0) {
+            console.log('Start question blocked - Debug info:', {
+                activeQuestionIndex: this.activeQuestionIndex,
+                currentQuestionIndex: this.currentQuestionIndex,
+                isQuestionActive: this.isQuestionActive
+            });
             this.showToast('Another question is already on-air', 'warning');
             return;
         }
@@ -1889,6 +1895,10 @@ class HostControl {
     async handleQuestionPrepared(data) {
         this.showToast(`Next question prepared: ${data.question.text.substring(0, 50)}...`, 'info');
         this.resetAnswerEvaluation();
+        
+        // Clear any lingering on-air state from previous question
+        this.isQuestionActive = false;
+        this.activeQuestionIndex = -1;
         
         // Update current question index and sync with server state
         this.currentQuestionIndex = data.nextQuestionIndex;

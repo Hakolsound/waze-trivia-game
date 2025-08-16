@@ -818,6 +818,14 @@ class HostControl {
             });
             this.buzzerOrder = [];
             this.updateBuzzerResults();
+            
+            // Update tab state for active question
+            this.isQuestionActive = true;
+            this.questionStartTime = Date.now();
+            this.questionTimeLimit = this.questions[this.currentQuestionIndex]?.time_limit || 30;
+            this.updateQuestionTabsState();
+            this.startTabProgressUpdates();
+            
             this.showToast('Question started', 'success');
         } catch (error) {
             this.showToast('Failed to start question', 'error');
@@ -836,6 +844,11 @@ class HostControl {
             if (this.isBuzzersArmed) {
                 await this.disarmBuzzers(true, 'question-end');
             }
+            
+            // Update tab state for ended question
+            this.isQuestionActive = false;
+            this.stopTabProgressUpdates();
+            this.updateQuestionTabsState();
             
             this.showToast('Question ended', 'info');
         } catch (error) {
@@ -1018,7 +1031,7 @@ class HostControl {
             }
             
             // Stop any active timers
-            this.stopQuestionTimer();
+            this.stopTimer();
             this.stopTabProgressUpdates();
             
             // Reset all local state
@@ -1030,8 +1043,7 @@ class HostControl {
             this.currentBuzzerPosition = 0;
             
             // Clear UI elements
-            this.clearBuzzerResults();
-            this.clearAnswerEvaluation();
+            this.updateBuzzerResults();
             this.hideAnswerEvaluationModal();
             this.updateCurrentAnswererHighlight(null);
             
@@ -1102,7 +1114,7 @@ class HostControl {
 
         try {
             // Stop any active question timers
-            this.stopQuestionTimer();
+            this.stopTimer();
             this.stopTabProgressUpdates();
             
             // Reset question state
@@ -1114,8 +1126,7 @@ class HostControl {
             this.evaluationHistory = [];
             
             // Clear buzzer results
-            this.clearBuzzerResults();
-            this.clearAnswerEvaluation();
+            this.updateBuzzerResults();
             this.hideAnswerEvaluationModal();
             this.updateCurrentAnswererHighlight(null);
             
@@ -2665,51 +2676,6 @@ class HostControl {
         });
     }
 
-    // Override existing methods to integrate with tabs
-    startQuestion() {
-        // Original startQuestion logic
-        if (!this.canStartQuestion()) return;
-        
-        this.clearBuzzerResults();
-        this.clearAnswerEvaluation();
-        this.hideAnswerEvaluationModal();
-        this.updateCurrentAnswererHighlight(null);
-        this.isQuestionActive = true;
-        this.questionStartTime = Date.now();
-        this.questionTimeLimit = this.questions[this.currentQuestionIndex]?.time_limit || 30;
-        
-        const question = this.questions[this.currentQuestionIndex];
-        this.socket.emit('start-question', { 
-            questionIndex: this.currentQuestionIndex,
-            question: question
-        });
-        
-        this.updateQuestionControls();
-        this.startQuestionTimer();
-        
-        // Update tabs
-        this.updateQuestionTabsState();
-        this.startTabProgressUpdates();
-        
-        this.showToast('Question started!', 'success');
-    }
-
-    endQuestion() {
-        // Original endQuestion logic
-        this.isQuestionActive = false;
-        this.socket.emit('end-question', { 
-            questionIndex: this.currentQuestionIndex 
-        });
-        
-        this.updateQuestionControls();
-        this.stopQuestionTimer();
-        
-        // Update tabs
-        this.updateQuestionTabsState();
-        this.stopTabProgressUpdates();
-        
-        this.showToast('Question ended', 'warning');
-    }
 
     startTabProgressUpdates() {
         this.stopTabProgressUpdates();

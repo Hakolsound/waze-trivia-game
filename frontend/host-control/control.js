@@ -7,6 +7,7 @@ class HostControl {
         this.teams = [];
         this.buzzerOrder = [];
         this.isQuestionActive = false;
+        this.activeQuestionIndex = -1; // Track which question is actually on-air/running
         this.isBuzzersArmed = false;
         this.playedQuestions = new Set(); // Track which questions have been played
         this.buzzerDevices = new Map();
@@ -832,6 +833,7 @@ class HostControl {
             
             // Update tab state for active question
             this.isQuestionActive = true;
+            this.activeQuestionIndex = this.currentQuestionIndex; // Set which question is on-air
             this.questionStartTime = Date.now();
             this.questionTimeLimit = this.questions[this.currentQuestionIndex]?.time_limit || 30;
             this.updateQuestionTabsState();
@@ -874,9 +876,14 @@ class HostControl {
                 await this.disarmBuzzers(true, 'navigation');
             }
             
+            // Clear on-air state when moving to different question
+            this.activeQuestionIndex = -1;
+            this.isQuestionActive = false;
+            
             this.currentQuestionIndex++;
             this.updateQuestionDisplay();
             this.updateQuestionControls();
+            this.updateQuestionTabsState();
         }
     }
 
@@ -887,9 +894,14 @@ class HostControl {
                 await this.disarmBuzzers(true, 'navigation');
             }
             
+            // Clear on-air state when moving to different question  
+            this.activeQuestionIndex = -1;
+            this.isQuestionActive = false;
+            
             this.currentQuestionIndex--;
             this.updateQuestionDisplay();
             this.updateQuestionControls();
+            this.updateQuestionTabsState();
         }
     }
 
@@ -900,9 +912,14 @@ class HostControl {
                 await this.disarmBuzzers(true, 'navigation');
             }
             
+            // Clear on-air state when jumping to different question
+            this.activeQuestionIndex = -1;
+            this.isQuestionActive = false;
+            
             this.currentQuestionIndex = parseInt(index);
             this.updateQuestionDisplay();
             this.updateQuestionControls();
+            this.updateQuestionTabsState();
         }
     }
 
@@ -1048,6 +1065,7 @@ class HostControl {
             // Reset all local state
             this.currentQuestionIndex = 0;
             this.isQuestionActive = false;
+            this.activeQuestionIndex = -1;
             this.questionStartTime = null;
             this.evaluationHistory = [];
             this.buzzerOrder = [];
@@ -1132,6 +1150,7 @@ class HostControl {
             // Reset question state
             this.currentQuestionIndex = 0;
             this.isQuestionActive = false;
+            this.activeQuestionIndex = -1;
             this.questionStartTime = null;
             
             // Clear evaluation history
@@ -2566,17 +2585,17 @@ class HostControl {
             // Reset classes
             tab.className = 'question-tab';
             
-            // Determine state based on played status and current position
+            // Determine state based on played status, active question, and current position
             if (this.playedQuestions.has(tabIndex)) {
                 // Question has been played
                 tab.classList.add('played');
                 tab.querySelector('.tab-status').textContent = '✗';
-            } else if (tabIndex === this.currentQuestionIndex && this.isQuestionActive) {
-                // Currently active/on-air question
+            } else if (tabIndex === this.activeQuestionIndex) {
+                // Currently on-air question (timer running OR finished but not answered/skipped)
                 tab.classList.add('active');
                 tab.querySelector('.tab-status').textContent = '▶';
             } else if (tabIndex === this.currentQuestionIndex) {
-                // Selected/current question (not playing)
+                // Selected question (host is viewing but not on-air)
                 tab.classList.add('selected');
                 tab.querySelector('.tab-status').textContent = '►';
             } else {
@@ -2586,7 +2605,7 @@ class HostControl {
             }
 
             // Update progress for active question
-            if (tabIndex === this.currentQuestionIndex && this.isQuestionActive) {
+            if (tabIndex === this.activeQuestionIndex && this.isQuestionActive) {
                 this.updateTabProgress(tab);
             }
         });

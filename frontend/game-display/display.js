@@ -284,8 +284,15 @@ class GameDisplay {
         this.showQuestionState(data.question);
         this.totalTime = data.question.time_limit || 30;
         this.timeRemaining = this.totalTime;
+        
+        // Clear any previous timer state
+        this.clearTimer();
+        
+        // Update display and start fresh timer
         this.updateTimer(this.timeRemaining, this.totalTime);
         this.startTimer();
+        
+        console.log('Question started on display, timer:', this.totalTime);
     }
 
     handleQuestionEnded(data) {
@@ -448,31 +455,46 @@ class GameDisplay {
     }
 
     pauseTimer(data) {
-        // Clear the timer interval
+        // STOP the local timer interval immediately
         this.clearTimer();
         
-        // Calculate elapsed time based on pause data
+        // Calculate exact remaining time from backend data
         const elapsedMs = data.timeElapsed;
         const elapsedSeconds = elapsedMs / 1000;
         this.timeRemaining = Math.max(0, this.totalTime - elapsedSeconds);
         
-        // Update display with paused indicator
-        this.elements.timerText.textContent = `⏸️ ${Math.ceil(this.timeRemaining)}s`;
+        // Update display with paused indicator (keep showing seconds)
+        const displaySeconds = Math.ceil(this.timeRemaining);
+        this.elements.timerText.textContent = `⏸️ ${displaySeconds}s`;
         
-        // Update timer bar
-        this.updateTimer(this.timeRemaining, this.totalTime);
+        // Update timer bar to exact position
+        const percentage = this.totalTime > 0 ? Math.max(0, (this.timeRemaining / this.totalTime) * 100) : 0;
+        this.elements.timerProgress.style.width = `${percentage}%`;
+        
+        // Update points display if time-based scoring
+        if (this.currentGame && this.currentGame.time_based_scoring && this.currentQuestion) {
+            const points = this.calculateTimeBasedPoints(
+                this.currentQuestion.points,
+                this.timeRemaining,
+                this.totalTime
+            );
+            if (this.lastDisplayedPoints !== points) {
+                this.elements.questionPoints.textContent = `${points} points`;
+                this.lastDisplayedPoints = points;
+            }
+        }
         
         console.log('Timer paused on display, remaining:', this.timeRemaining);
     }
 
     resumeTimer(data) {
-        // Set the remaining time from server data
+        // Set exact remaining time from backend
         this.timeRemaining = Math.max(0, data.timeRemaining / 1000); // Convert ms to seconds
         
-        // Update display
+        // Update display immediately
         this.updateTimer(this.timeRemaining, this.totalTime);
         
-        // Restart the timer countdown
+        // Restart the local timer countdown from this exact point
         this.startTimer();
         
         console.log('Timer resumed on display, remaining:', this.timeRemaining);

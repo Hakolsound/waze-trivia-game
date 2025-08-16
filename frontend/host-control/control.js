@@ -307,15 +307,34 @@ class HostControl {
         // Timer pause/resume events
         this.socket.on('timer-paused', (data) => {
             console.log('Timer paused by backend:', data);
+            // Stop the local timer interval
+            this.stopTimer();
+            
+            // Calculate and display remaining time
+            const elapsedSeconds = Math.floor(data.timeElapsed / 1000);
+            const remaining = Math.max(0, this.questionTimeLimit - elapsedSeconds);
+            
             if (this.elements.progressTimeText) {
-                const elapsedSeconds = Math.floor(data.timeElapsed / 1000);
-                const remaining = Math.max(0, this.questionTimeLimit - elapsedSeconds);
                 this.elements.progressTimeText.textContent = `⏸️ ${remaining}s (paused)`;
+            }
+            
+            // Update progress bar to show current state
+            if (this.elements.progressBarFill) {
+                const remainingPercentage = Math.max(0, (remaining / this.questionTimeLimit) * 100);
+                this.elements.progressBarFill.style.transform = `scaleX(${remainingPercentage / 100})`;
             }
         });
 
         this.socket.on('timer-resumed', (data) => {
             console.log('Timer resumed by backend:', data);
+            // Update remaining time from backend
+            const remainingSeconds = Math.max(0, Math.floor(data.timeRemaining / 1000));
+            
+            // Adjust question start time to match backend remaining time
+            this.questionStartTime = Date.now() - (this.questionTimeLimit - remainingSeconds) * 1000;
+            
+            // Restart the local timer
+            this.startTimer();
         });
 
         // Virtual buzzer listeners

@@ -716,6 +716,10 @@ class GameDisplay {
 
         // Sort teams by score (descending)
         const sortedTeams = [...this.currentGame.groups].sort((a, b) => b.score - a.score);
+        const teamCount = sortedTeams.length;
+        
+        // Apply dynamic sizing based on team count
+        this.applyDynamicSizing(teamCount);
         
         // Update podium positions (top 3)
         this.updatePodiumPosition(this.elements.firstPlace, sortedTeams[0], 1);
@@ -728,7 +732,7 @@ class GameDisplay {
         // Show the leaderboard overlay
         this.elements.leaderboardOverlay.classList.remove('hidden');
         
-        console.log('Leaderboard shown');
+        console.log('Leaderboard shown with', teamCount, 'teams');
     }
 
     hideLeaderboard() {
@@ -780,6 +784,28 @@ class GameDisplay {
                 <div class="remaining-team-score">${team.score || 0}</div>
             </div>
         `).join('');
+    }
+
+    applyDynamicSizing(teamCount) {
+        // Calculate available space and optimal sizing
+        const remainingTeamsCount = Math.max(0, teamCount - 3); // Teams beyond top 3
+        const container = this.elements.leaderboardOverlay;
+        
+        // Size categories based on team count
+        let sizeCategory;
+        if (teamCount <= 3) sizeCategory = 'minimal'; // Only podium
+        else if (teamCount <= 6) sizeCategory = 'small';
+        else if (teamCount <= 9) sizeCategory = 'medium';
+        else if (teamCount <= 12) sizeCategory = 'large';
+        else sizeCategory = 'maximum'; // 13-15 teams
+        
+        // Remove existing size classes
+        container.classList.remove('size-minimal', 'size-small', 'size-medium', 'size-large', 'size-maximum');
+        
+        // Add appropriate size class
+        container.classList.add(`size-${sizeCategory}`);
+        
+        console.log(`Applied dynamic sizing: ${sizeCategory} for ${teamCount} teams`);
     }
 }
 

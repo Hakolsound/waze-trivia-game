@@ -1007,10 +1007,10 @@ class GameDisplay {
         this.elements.correctAnswerOverlay.classList.remove('hidden');
         this.answerWasShown = true;
         
-        // Auto-hide after 8 seconds
+        // Auto-hide after 15 seconds
         setTimeout(() => {
             this.hideCorrectAnswer();
-        }, 8000);
+        }, 15000);
     }
 
     hideCorrectAnswer() {

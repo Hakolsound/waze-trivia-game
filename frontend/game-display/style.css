@@ -806,15 +806,15 @@ h1.question-text,
 }
 
 .leaderboard-container {
-  width: 98vw;
-  max-width: 1600px;
-  height: 98vh;
+  width: 95vw;
+  max-width: 1200px;
+  height: 85vh;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 16px;
   border: 2px solid rgba(255, 255, 255, 0.15);
   display: flex;
   flex-direction: column;
-  padding: 40px 30px 20px;
+  padding: 20px 18px 12px;
   position: relative;
   overflow: hidden;
   box-shadow: 
@@ -827,7 +827,7 @@ h1.question-text,
 /* Leaderboard Header */
 .leaderboard-header {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
   flex-shrink: 0;
 }
 
@@ -840,13 +840,13 @@ h1.question-text,
 }
 
 .leaderboard-title h1 {
-  font: 700 3rem/1.1 'Google Sans';
+  font: 700 1.8rem/1.1 'Google Sans';
   color: #FFD700;
   text-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
 }
 
 .trophy-icon {
-  font-size: 2rem;
+  font-size: 1.2rem;
   color: #FFD700;
   text-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
 }
@@ -864,17 +864,17 @@ h1.question-text,
   display: flex;
   flex-direction: column;
   overflow: visible;
-  max-height: calc(98vh - 150px); /* Reduced header space */
+  max-height: calc(85vh - 120px); /* Further reduced for smaller container */
 }
 
 /* Ranked Teams List */
 .ranked-teams-list {
   flex: 1;
-  padding: 5px 20px 10px 20px; /* Minimal top padding to ensure first place is visible */
+  padding: 5px 15px 8px 15px; /* Reduced padding */
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  align-items: stretch; /* Changed from align-content: start */
+  gap: 6px; /* Reduced gap */
+  align-items: stretch;
   overflow-y: auto;
   overflow-x: hidden;
   max-height: 100%;
@@ -885,15 +885,15 @@ h1.question-text,
   display: flex;
   align-items: center;
   background: rgba(255, 255, 255, 0.04);
-  border-radius: 16px;
-  padding: 16px 20px;
+  border-radius: 12px;
+  padding: 12px 16px; /* Reduced padding */
   border: 1px solid rgba(99, 102, 241, 0.15);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   animation: slideInUp 0.6s ease-out forwards;
   opacity: 0;
   transform: translateY(30px);
   overflow: hidden;
-  flex-shrink: 0; /* Prevent shrinking that might affect visibility */
+  flex-shrink: 0;
 }
 
 @keyframes slideInUp {
@@ -925,22 +925,9 @@ h1.question-text,
   overflow: hidden;
 }
 
-.ranked-team-item.winner::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.1), transparent);
-  animation: shimmer 3s ease-in-out infinite;
-}
+/* Removed the heavy golden shimmer effect */
 
-@keyframes shimmer {
-  0% { left: -100%; }
-  50% { left: 100%; }
-  100% { left: 100%; }
-}
+/* Removed shimmer keyframes - replaced with subtle effects */
 
 /* Top 3 Special Styling */
 .ranked-team-item.rank-second {
@@ -1016,61 +1003,53 @@ h1.question-text,
   animation-duration: 0.1s !important; /* Quick animation to avoid delays */
 }
 
-/* Subtle shine effects for top 5 positions */
-@keyframes subtleShine {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+/* Subtle glow effects for top 3 positions - replacing golden shimmer */
+@keyframes subtleGlow {
+  0%, 100% { 
+    box-shadow: inherit;
+  }
+  50% { 
+    box-shadow: inherit, 0 0 8px rgba(255, 255, 255, 0.1);
+  }
 }
 
-.ranked-team-item.rank-first::after,
-.ranked-team-item.rank-second::after,
-.ranked-team-item.rank-third::after,
-.ranked-team-item.rank-top5::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.1),
-    transparent
-  );
-  animation: subtleShine 4s ease-in-out infinite;
-  border-radius: inherit;
-  pointer-events: none;
+/* Soft glow animation for first place */
+.ranked-team-item.rank-first {
+  animation: subtleGlow 4s ease-in-out infinite, breathingGlow 4s ease-in-out infinite;
 }
 
-.ranked-team-item.rank-first::after {
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 215, 0, 0.2),
-    transparent
-  );
-  animation-duration: 3s;
+/* Very subtle pulse for second place */
+@keyframes silverPulse {
+  0%, 100% { 
+    border-color: rgba(192, 192, 192, 0.3);
+  }
+  50% { 
+    border-color: rgba(192, 192, 192, 0.4);
+  }
 }
 
-.ranked-team-item.rank-second::after {
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(192, 192, 192, 0.15),
-    transparent
-  );
-  animation-duration: 3.5s;
+.ranked-team-item.rank-second {
+  animation: silverPulse 5s ease-in-out infinite;
 }
 
-.ranked-team-item.rank-third::after {
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(205, 127, 50, 0.15),
-    transparent
-  );
-  animation-duration: 4s;
+/* Gentle bronze shimmer for third place */
+@keyframes bronzeShimmer {
+  0%, 100% { 
+    background: linear-gradient(135deg, 
+      rgba(205, 127, 50, 0.12) 0%, 
+      rgba(184, 115, 51, 0.06) 50%, 
+      rgba(205, 127, 50, 0.04) 100%);
+  }
+  50% { 
+    background: linear-gradient(135deg, 
+      rgba(205, 127, 50, 0.15) 0%, 
+      rgba(184, 115, 51, 0.08) 50%, 
+      rgba(205, 127, 50, 0.06) 100%);
+  }
+}
+
+.ranked-team-item.rank-third {
+  animation: bronzeShimmer 6s ease-in-out infinite;
 }
 
 /* Team Sections */
@@ -1098,10 +1077,10 @@ h1.question-text,
 }
 
 .position-number {
-  font: 700 1.4rem/1 'Google Sans';
+  font: 700 1.2rem/1 'Google Sans';
   color: white;
-  width: 35px;
-  height: 35px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -1145,13 +1124,13 @@ h1.question-text,
 }
 
 .team-name {
-  font: 600 1.3rem/1.2 'Google Sans';
+  font: 600 1.1rem/1.2 'Google Sans';
   color: white;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .winner .team-name {
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   font-weight: 700;
   color: #FFD700;
   text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
@@ -1195,13 +1174,13 @@ h1.question-text,
 }
 
 .team-score {
-  font: 700 1.6rem/1 'Google Sans';
+  font: 700 1.4rem/1 'Google Sans';
   color: white;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .winner .team-score {
-  font-size: 2rem;
+  font-size: 1.7rem;
   font-weight: 800;
   color: #FFD700;
   text-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
@@ -1464,7 +1443,7 @@ h1.question-text,
 
 /* Top 3 Podium View Styles */
 .view-top3 .leaderboard-title h1 {
-  font-size: 2.5rem;
+  font-size: 2rem;
   background: linear-gradient(135deg, #FFD700, #FFA500, #FFD700);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -1475,16 +1454,16 @@ h1.question-text,
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  height: 50vh;
-  padding: 15px;
+  height: 40vh;
+  padding: 10px;
   width: 100%;
 }
 
 .podium-platforms {
   display: flex;
   align-items: flex-end;
-  gap: 20px;
-  width: 60%;
+  gap: 15px;
+  width: 50%;
   justify-content: center;
 }
 
@@ -1506,13 +1485,13 @@ h1.question-text,
 
 .podium-team-info {
   text-align: center;
-  margin-bottom: 15px;
-  padding: 20px 15px;
+  margin-bottom: 10px;
+  padding: 15px 12px;
   background: rgba(255, 255, 255, 0.1);
-  border-radius: 15px;
+  border-radius: 12px;
   border: 2px solid rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(10px);
-  min-width: 150px;
+  min-width: 120px;
 }
 
 .first-place .podium-team-info {

@@ -108,7 +108,10 @@ class GameService {
       startTime: Date.now(),
       buzzerOrder: [],
       timeLimit: currentQuestion.time_limit * 1000,
-      timeoutId: timeoutId
+      timeoutId: timeoutId,
+      isPaused: false,
+      pausedAt: null,
+      totalPausedDuration: 0
     });
 
     this.io.to(`game-${gameId}`).emit('question-start', {
@@ -125,6 +128,64 @@ class GameService {
     // Timeout is now handled above in the activeGames setup
 
     return currentQuestion;
+  }
+
+  pauseQuestion(gameId) {
+    const gameState = this.activeGames.get(gameId);
+    if (!gameState || gameState.isPaused) return;
+
+    // Clear the timeout
+    if (gameState.timeoutId) {
+      clearTimeout(gameState.timeoutId);
+      gameState.timeoutId = null;
+    }
+
+    gameState.isPaused = true;
+    gameState.pausedAt = Date.now();
+
+    // Emit pause event to all clients
+    this.io.to(`game-${gameId}`).emit('timer-paused', {
+      gameId,
+      pausedAt: gameState.pausedAt,
+      timeElapsed: gameState.pausedAt - gameState.startTime - gameState.totalPausedDuration
+    });
+
+    console.log(`Question timer paused for game ${gameId}`);
+  }
+
+  resumeQuestion(gameId) {
+    const gameState = this.activeGames.get(gameId);
+    if (!gameState || !gameState.isPaused) return;
+
+    // Calculate pause duration and add to total
+    const pauseDuration = Date.now() - gameState.pausedAt;
+    gameState.totalPausedDuration += pauseDuration;
+    gameState.isPaused = false;
+    gameState.pausedAt = null;
+
+    // Calculate remaining time and set new timeout
+    const effectiveElapsed = Date.now() - gameState.startTime - gameState.totalPausedDuration;
+    const remainingTime = Math.max(0, gameState.timeLimit - effectiveElapsed);
+
+    if (remainingTime > 0) {
+      gameState.timeoutId = setTimeout(() => {
+        this.endQuestion(gameId);
+      }, remainingTime);
+    } else {
+      // Time already expired, end question immediately
+      this.endQuestion(gameId);
+      return;
+    }
+
+    // Emit resume event to all clients
+    this.io.to(`game-${gameId}`).emit('timer-resumed', {
+      gameId,
+      resumedAt: Date.now(),
+      timeRemaining: remainingTime,
+      totalPausedDuration: gameState.totalPausedDuration
+    });
+
+    console.log(`Question timer resumed for game ${gameId}, ${remainingTime}ms remaining`);
   }
 
   async endQuestion(gameId) {
@@ -218,10 +279,21 @@ class GameService {
       questionComplete: isCorrect || gameState.buzzerOrder.slice(buzzerPosition + 1).filter(b => !b.evaluated).length === 0
     });
 
-    // If answer is correct, end current question and prepare next one
+    // Handle timer logic based on answer correctness
     if (isCorrect) {
+      // Correct answer - end question (this also clears the timer)
       await this.endQuestion(gameId);
       await this.prepareNextQuestion(gameId);
+    } else {
+      // Incorrect answer - check if there are more teams waiting
+      const remainingBuzzers = gameState.buzzerOrder.slice(buzzerPosition + 1).filter(b => !b.evaluated);
+      if (remainingBuzzers.length === 0) {
+        // No more teams waiting - resume timer for remaining time
+        if (gameState.isPaused) {
+          this.resumeQuestion(gameId);
+        }
+      }
+      // If there are more teams waiting, timer stays paused
     }
 
     return {
@@ -338,6 +410,11 @@ class GameService {
     };
 
     gameState.buzzerOrder.push(buzzerEntry);
+
+    // PAUSE TIMER when first team buzzes in
+    if (gameState.buzzerOrder.length === 1 && !gameState.isPaused) {
+      this.pauseQuestion(gameId);
+    }
 
     await this.db.run(
       'INSERT INTO buzzer_events (game_id, question_id, group_id, timestamp, delta_ms) VALUES (?, ?, ?, ?, ?)',

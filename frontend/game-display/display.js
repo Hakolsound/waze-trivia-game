@@ -148,6 +148,14 @@ class GameDisplay {
             this.updateTimer(data.timeRemaining, data.totalTime);
         });
 
+        this.socket.on('timer-paused', (data) => {
+            this.pauseTimer(data);
+        });
+
+        this.socket.on('timer-resumed', (data) => {
+            this.resumeTimer(data);
+        });
+
         // Buzzer events
         this.socket.on('buzzer-pressed', (data) => {
             this.handleBuzzerPressed(data);
@@ -437,6 +445,37 @@ class GameDisplay {
             clearInterval(this.questionTimer);
             this.questionTimer = null;
         }
+    }
+
+    pauseTimer(data) {
+        // Clear the timer interval
+        this.clearTimer();
+        
+        // Calculate elapsed time based on pause data
+        const elapsedMs = data.timeElapsed;
+        const elapsedSeconds = elapsedMs / 1000;
+        this.timeRemaining = Math.max(0, this.totalTime - elapsedSeconds);
+        
+        // Update display with paused indicator
+        this.elements.timerText.textContent = `⏸️ ${Math.ceil(this.timeRemaining)}s`;
+        
+        // Update timer bar
+        this.updateTimer(this.timeRemaining, this.totalTime);
+        
+        console.log('Timer paused on display, remaining:', this.timeRemaining);
+    }
+
+    resumeTimer(data) {
+        // Set the remaining time from server data
+        this.timeRemaining = Math.max(0, data.timeRemaining / 1000); // Convert ms to seconds
+        
+        // Update display
+        this.updateTimer(this.timeRemaining, this.totalTime);
+        
+        // Restart the timer countdown
+        this.startTimer();
+        
+        console.log('Timer resumed on display, remaining:', this.timeRemaining);
     }
 
     updateTimer(timeRemaining, totalTime) {

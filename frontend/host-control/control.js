@@ -2391,9 +2391,17 @@ class HostControl {
             buzzerElement.className = `buzzer-item ${isOnline ? 'online' : 'offline'}${armedClass}`;
             
             const teamName = this.getTeamNameByBuzzerId(device.device_id);
-            // Use last_online for display instead of last_seen
-            const timeSinceLastOnline = device.last_online ? Date.now() - device.last_online : null;
-            const lastSeenText = timeSinceLastOnline ? this.formatLastSeen(timeSinceLastOnline) : 'never';
+            // For online devices: show last_seen (live stream), for offline: show last_online (when last online)
+            let timeSinceDisplay, lastSeenText;
+            if (isOnline) {
+                // Online: show last server update (live stream effect)
+                timeSinceDisplay = device.last_seen ? Date.now() - device.last_seen : null;
+                lastSeenText = timeSinceDisplay ? this.formatLastSeen(timeSinceDisplay) : 'now';
+            } else {
+                // Offline: show when device was last online
+                timeSinceDisplay = device.last_online ? Date.now() - device.last_online : null;
+                lastSeenText = timeSinceDisplay ? this.formatLastSeen(timeSinceDisplay) : 'never';
+            }
             
             // Add armed class to status dot when buzzers are armed
             const dotArmedClass = (isOnline && this.isBuzzersArmed) ? ' armed' : '';

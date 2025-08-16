@@ -1412,20 +1412,23 @@ class HostControl {
             if (this.elements.dbStatus) {
                 this.elements.dbStatus.textContent = health.services.database ? 'Connected' : 'Disconnected';
             }
+            // Check if ESP32 is connected based on having any devices
+            const esp32Connected = Array.isArray(devices) && devices.length > 0;
+            
             if (this.elements.hardwareStatus) {
-                this.elements.hardwareStatus.textContent = buzzerStatus.connected ? 'Connected' : 'Disconnected';
+                this.elements.hardwareStatus.textContent = esp32Connected ? 'Connected' : 'Disconnected';
             }
             if (this.elements.firebaseStatus) {
                 this.elements.firebaseStatus.textContent = health.services.firebase ? 'Connected' : 'Disconnected';
             }
             if (this.elements.esp32Status) {
-                this.elements.esp32Status.textContent = buzzerStatus.connected ? 'Connected' : 'Disconnected';
+                this.elements.esp32Status.textContent = esp32Connected ? 'Connected' : 'Disconnected';
             }
 
             // Log status for debugging (can be removed later)
             console.log('System Status:', {
                 database: health.services.database ? 'Connected' : 'Disconnected',
-                esp32: buzzerStatus.connected ? 'Connected' : 'Disconnected',
+                esp32: esp32Connected ? 'Connected' : 'Disconnected',
                 firebase: health.services.firebase ? 'Connected' : 'Disconnected'
             });
 

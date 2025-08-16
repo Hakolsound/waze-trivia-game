@@ -200,57 +200,81 @@
                 <div class="game-controls">
                     <!-- Top Row - Main Navigation -->
                     <div class="controls-row top-row">
-                        <button id="prev-question-btn" class="control-btn btn-secondary" title="Previous Question [←]" disabled>
-                            <div class="control-icon">
-                                <span class="material-icons">skip_previous</span>
-                            </div>
-                            <span class="control-shortcut">←</span>
-                        </button>
+                        <div class="control-group">
+                            <button id="prev-question-btn" class="control-btn btn-secondary" title="Previous Question [←]" disabled>
+                                <div class="control-icon">
+                                    <span class="material-icons">skip_previous</span>
+                                </div>
+                                <span class="control-shortcut">←</span>
+                            </button>
+                            <span class="control-title">Previous</span>
+                        </div>
                         
-                        <button id="start-question-btn" class="control-btn control-btn-primary btn-primary" title="Start Question [Space]" disabled>
-                            <div class="control-icon control-icon-primary">
-                                <span class="material-icons">play_arrow</span>
-                            </div>
-                            <span class="control-shortcut">Space</span>
-                        </button>
+                        <div class="control-group">
+                            <button id="start-question-btn" class="control-btn control-btn-primary btn-primary" title="Start Question [Space]" disabled>
+                                <div class="control-icon control-icon-primary">
+                                    <span class="material-icons">play_arrow</span>
+                                </div>
+                                <span class="control-shortcut">Space</span>
+                            </button>
+                            <span class="control-title">GO</span>
+                        </div>
                         
-                        <button id="next-question-btn" class="control-btn btn-secondary" title="Next Question [→]" disabled>
-                            <div class="control-icon">
-                                <span class="material-icons">skip_next</span>
-                            </div>
-                            <span class="control-shortcut">→</span>
-                        </button>
+                        <div class="control-group">
+                            <button id="next-question-btn" class="control-btn btn-secondary" title="Next Question [→]" disabled>
+                                <div class="control-icon">
+                                    <span class="material-icons">skip_next</span>
+                                </div>
+                                <span class="control-shortcut">→</span>
+                            </button>
+                            <span class="control-title">Next</span>
+                        </div>
                     </div>
+                    
+                    <!-- Separator Line -->
+                    <div class="controls-separator"></div>
                     
                     <!-- Bottom Row - Secondary Actions -->
                     <div class="controls-row bottom-row">
-                        <button id="show-question-select-btn" class="control-btn btn-secondary" title="Jump to Question [J]" disabled>
-                            <div class="control-icon">
-                                <span class="material-icons">list</span>
-                            </div>
-                            <span class="control-shortcut">J</span>
-                        </button>
+                        <div class="control-group">
+                            <button id="show-question-select-btn" class="control-btn btn-secondary" title="Jump to Question [J]" disabled>
+                                <div class="control-icon">
+                                    <span class="material-icons">list</span>
+                                </div>
+                                <span class="control-shortcut">J</span>
+                            </button>
+                            <span class="control-title">Jump to Q</span>
+                        </div>
                         
-                        <button id="end-question-btn" class="control-btn btn-warning" title="Stop Question [S]" disabled>
-                            <div class="control-icon">
-                                <span class="material-icons">stop</span>
-                            </div>
-                            <span class="control-shortcut">S</span>
-                        </button>
+                        <div class="control-group">
+                            <button id="end-question-btn" class="control-btn btn-warning" title="Stop Question [S]" disabled>
+                                <div class="control-icon">
+                                    <span class="material-icons">stop</span>
+                                </div>
+                                <span class="control-shortcut">S</span>
+                            </button>
+                            <span class="control-title">Stop</span>
+                        </div>
                         
-                        <button id="show-leaderboard-btn" class="control-btn btn-special" title="Toggle Leaderboard [L]">
-                            <div class="control-icon">
-                                <span class="material-icons">emoji_events</span>
-                            </div>
-                            <span class="control-shortcut">L</span>
-                        </button>
+                        <div class="control-group">
+                            <button id="show-leaderboard-btn" class="control-btn btn-special" title="Toggle Leaderboard [L]">
+                                <div class="control-icon">
+                                    <span class="material-icons">emoji_events</span>
+                                </div>
+                                <span class="control-shortcut">L</span>
+                            </button>
+                            <span class="control-title">Leaderboard</span>
+                        </div>
                         
-                        <button id="show-answer-btn" class="control-btn btn-info" title="Show Correct Answer [A×3]" disabled>
-                            <div class="control-icon">
-                                <span class="material-icons">lightbulb</span>
-                            </div>
-                            <span class="control-shortcut">A×3</span>
-                        </button>
+                        <div class="control-group">
+                            <button id="show-answer-btn" class="control-btn btn-info" title="Show Correct Answer [A×3]" disabled>
+                                <div class="control-icon">
+                                    <span class="material-icons">lightbulb</span>
+                                </div>
+                                <span class="control-shortcut">A×3</span>
+                            </button>
+                            <span class="control-title">Show Answer</span>
+                        </div>
                     </div>
                     
                     <!-- Hidden select for question jumping -->

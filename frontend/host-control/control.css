@@ -1091,9 +1091,9 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 32px;
   margin: 16px 0;
-  padding: 20px;
+  padding: 24px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 12px;
   backdrop-filter: blur(10px);
@@ -1102,19 +1102,47 @@ body {
 
 .controls-row {
   display: flex;
-  gap: 16px;
+  gap: 24px;
   align-items: center;
   justify-content: center;
 }
 
-/* Round Control Buttons */
+/* Control Groups with Titles */
+.control-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Control Titles */
+.control-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  text-align: center;
+  opacity: 0.9;
+  font-family: 'Google Sans', sans-serif;
+  letter-spacing: 0.3px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Separator Line */
+.controls-separator {
+  width: 80%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  margin: 8px 0;
+}
+
+/* Round Control Buttons - 30% larger */
 .control-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  padding: 8px;
+  padding: 10px;
   border: none;
   border-radius: 50%;
   color: white;
@@ -1124,8 +1152,8 @@ body {
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(15px);
   border: 2px solid rgba(255, 255, 255, 0.2);
-  width: 70px;
-  height: 70px;
+  width: 91px;
+  height: 91px;
   font-family: 'Google Sans', sans-serif;
   position: relative;
 }
@@ -1148,19 +1176,19 @@ body {
   transform: none !important;
 }
 
-/* Primary GO Button */
+/* Primary GO Button - 30% larger */
 .control-btn-primary {
-  width: 80px;
-  height: 80px;
+  width: 104px;
+  height: 104px;
   border-radius: 50%;
   border-width: 2px;
   margin: 0 4px;
 }
 
-/* Control Icons */
+/* Control Icons - scaled up */
 .control-icon {
-  width: 24px;
-  height: 24px;
+  width: 31px;
+  height: 31px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -1170,18 +1198,18 @@ body {
 }
 
 .control-icon-primary {
-  width: 32px;
-  height: 32px;
+  width: 42px;
+  height: 42px;
   background: rgba(255, 255, 255, 0.3);
 }
 
 .control-icon .material-icons {
-  font-size: 16px;
+  font-size: 20px;
   color: currentColor;
 }
 
 .control-icon-primary .material-icons {
-  font-size: 20px;
+  font-size: 26px;
 }
 
 /* Control Content */
@@ -1210,13 +1238,13 @@ body {
 .control-shortcut {
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 3px;
-  padding: 1px 4px;
-  font-size: 8px;
+  border-radius: 4px;
+  padding: 2px 5px;
+  font-size: 10px;
   font-family: 'SF Mono', Monaco, monospace;
   font-weight: 600;
   color: #fff;
-  min-width: 14px;
+  min-width: 18px;
   text-align: center;
 }
 
@@ -3169,8 +3197,13 @@ kbd {
   }
   
   .control-shortcut {
-    font-size: 7px;
-    padding: 1px 3px;
+    font-size: 9px;
+    padding: 1px 4px;
+    min-width: 16px;
+  }
+  
+  .control-title {
+    font-size: 10px;
   }
 }
 

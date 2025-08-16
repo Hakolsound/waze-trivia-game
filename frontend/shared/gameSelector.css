@@ -116,6 +116,12 @@
     border-color: #00D4FF;
     background: rgba(0, 212, 255, 0.1);
     box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.2);
+    cursor: default;
+}
+
+.game-selector-item.selected:hover {
+    transform: none;
+    box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.2);
 }
 
 .game-selector-item-content h3 {

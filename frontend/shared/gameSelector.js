@@ -250,7 +250,7 @@ class GlobalGameSelector {
                         <div class="action-buttons">
                             ${this.currentGame?.id === game.id ? 
                                 '<span class="current-badge">Current</span>' : 
-                                '<button class="btn btn-primary btn-small select-game-btn">Select</button>'
+                                ''
                             }
                             <button class="btn btn-danger btn-small delete-game-btn" title="Delete Game">🗑️</button>
                         </div>
@@ -269,12 +269,20 @@ class GlobalGameSelector {
                 });
             }
 
-            // Add click handlers for select buttons
-            list.querySelectorAll('.select-game-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const item = btn.closest('.game-selector-item');
+            // Add click handlers for game items (entire item is clickable)
+            list.querySelectorAll('.game-selector-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    // Don't trigger if clicking on delete button
+                    if (e.target.closest('.delete-game-btn')) {
+                        return;
+                    }
+                    
                     const gameId = item.dataset.gameId;
+                    
+                    // Don't allow selecting the already current game
+                    if (this.currentGame?.id === gameId) {
+                        return;
+                    }
                     
                     if (this.currentGame) {
                         // Show confirmation if switching games
@@ -283,6 +291,11 @@ class GlobalGameSelector {
                         this.setCurrentGame(gameId);
                     }
                 });
+                
+                // Add cursor pointer style for clickable items (except current game)
+                if (this.currentGame?.id !== item.dataset.gameId) {
+                    item.style.cursor = 'pointer';
+                }
             });
 
             // Add click handlers for delete buttons

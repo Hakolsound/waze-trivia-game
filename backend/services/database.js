@@ -28,15 +28,19 @@ class Database {
   }
 
   async createTables() {
-    // Add played_questions column to existing games if it doesn't exist
+    // Safely add played_questions column to existing tables if it doesn't exist
     try {
-      await this.db.run('ALTER TABLE games ADD COLUMN played_questions TEXT DEFAULT "[]"');
-      console.log('Added played_questions column to games table');
-    } catch (e) {
-      // Column probably already exists, ignore the error
-      if (!e.message.includes('duplicate column name')) {
-        console.log('played_questions column already exists or other error:', e.message);
+      const tableInfo = await this.all("PRAGMA table_info(games)");
+      const hasPlayedQuestions = tableInfo.some(column => column.name === 'played_questions');
+      
+      if (!hasPlayedQuestions) {
+        await this.run('ALTER TABLE games ADD COLUMN played_questions TEXT DEFAULT "[]"');
+        console.log('Added played_questions column to existing games table');
+      } else {
+        console.log('played_questions column already exists, skipping migration');
       }
+    } catch (e) {
+      console.log('Migration check error (likely first run):', e.message);
     }
 
     const tables = [

@@ -8,6 +8,7 @@ class HostControl {
         this.buzzerOrder = [];
         this.isQuestionActive = false;
         this.isBuzzersArmed = false;
+        this.playedQuestions = new Set(); // Track which questions have been played
         this.buzzerDevices = new Map();
         this.virtualBuzzers = new Map(); // Track active virtual buzzers
         this.virtualBuzzersEnabled = false; // Track if virtual buzzers are enabled
@@ -725,7 +726,8 @@ class HostControl {
     updateQuestionControls() {
         const hasGame = this.currentGame !== null;
         const hasQuestions = this.questions.length > 0;
-        const canStart = hasGame && hasQuestions && !this.isQuestionActive;
+        const isCurrentQuestionPlayed = this.playedQuestions.has(this.currentQuestionIndex);
+        const canStart = hasGame && hasQuestions && !this.isQuestionActive && !isCurrentQuestionPlayed;
         const canEnd = this.isQuestionActive;
         
         // Add null checks to prevent errors
@@ -811,6 +813,12 @@ class HostControl {
 
     async startQuestion() {
         if (!this.currentGame) return;
+        
+        // Prevent replaying already played questions
+        if (this.playedQuestions.has(this.currentQuestionIndex)) {
+            this.showToast('Question already played', 'warning');
+            return;
+        }
 
         try {
             await fetch(`/api/games/${this.currentGame.id}/start-question/${this.currentQuestionIndex}`, {
@@ -818,6 +826,9 @@ class HostControl {
             });
             this.buzzerOrder = [];
             this.updateBuzzerResults();
+            
+            // Mark question as played
+            this.playedQuestions.add(this.currentQuestionIndex);
             
             // Update tab state for active question
             this.isQuestionActive = true;
@@ -1041,6 +1052,7 @@ class HostControl {
             this.evaluationHistory = [];
             this.buzzerOrder = [];
             this.currentBuzzerPosition = 0;
+            this.playedQuestions.clear(); // Clear played questions on reset
             
             // Clear UI elements
             this.updateBuzzerResults();
@@ -1124,6 +1136,7 @@ class HostControl {
             
             // Clear evaluation history
             this.evaluationHistory = [];
+            this.playedQuestions.clear(); // Clear played questions on reset
             
             // Clear buzzer results
             this.updateBuzzerResults();
@@ -2553,19 +2566,21 @@ class HostControl {
             // Reset classes
             tab.className = 'question-tab';
             
-            // Determine state
-            if (tabIndex < this.currentQuestionIndex) {
-                tab.classList.add('completed');
-                tab.querySelector('.tab-status').textContent = '✓';
+            // Determine state based on played status and current position
+            if (this.playedQuestions.has(tabIndex)) {
+                // Question has been played
+                tab.classList.add('played');
+                tab.querySelector('.tab-status').textContent = '✗';
+            } else if (tabIndex === this.currentQuestionIndex && this.isQuestionActive) {
+                // Currently active/on-air question
+                tab.classList.add('active');
+                tab.querySelector('.tab-status').textContent = '▶';
             } else if (tabIndex === this.currentQuestionIndex) {
-                tab.classList.add('current');
-                if (this.isQuestionActive) {
-                    tab.classList.add('active');
-                    tab.querySelector('.tab-status').textContent = '▶';
-                } else {
-                    tab.querySelector('.tab-status').textContent = '▶';
-                }
+                // Selected/current question (not playing)
+                tab.classList.add('selected');
+                tab.querySelector('.tab-status').textContent = '►';
             } else {
+                // Pending questions
                 tab.classList.add('pending');
                 tab.querySelector('.tab-status').textContent = '⏳';
             }

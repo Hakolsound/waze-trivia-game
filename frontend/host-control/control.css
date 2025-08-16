@@ -772,26 +772,62 @@ body {
 }
 
 .question-tab.active {
-  border-color: rgba(33, 150, 243, 0.5);
-  background: linear-gradient(135deg, rgba(33, 150, 243, 0.15), rgba(100, 181, 246, 0.1));
-  box-shadow: 0 0 20px rgba(33, 150, 243, 0.2);
+  border-color: rgba(255, 193, 7, 0.6);
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.2), rgba(255, 235, 59, 0.15));
+  box-shadow: 0 0 25px rgba(255, 193, 7, 0.3);
   animation: activePulse 2s ease-in-out infinite;
+  min-height: 55px;
+  padding: 8px 8px 6px;
+  transform: translateY(-3px);
 }
 
 .question-tab.active .tab-status {
-  background: var(--waze-primary);
-  color: white;
+  background: #FFC107;
+  color: #333;
   animation: playIcon 1s ease-in-out infinite;
 }
 
 .question-tab.active .tab-number {
-  color: #2196F3;
+  color: #FFC107;
+  font-weight: 800;
 }
 
 .question-tab.current {
   border-width: 2px;
   border-color: #FFD700;
   box-shadow: 0 0 25px rgba(255, 215, 0, 0.3);
+}
+
+.question-tab.played {
+  border-color: rgba(244, 67, 54, 0.3);
+  background: linear-gradient(135deg, rgba(244, 67, 54, 0.08), rgba(229, 115, 115, 0.05));
+  opacity: 0.6;
+}
+
+.question-tab.played .tab-status {
+  background: rgba(244, 67, 54, 0.7);
+  color: white;
+}
+
+.question-tab.played .tab-number {
+  color: rgba(244, 67, 54, 0.7);
+}
+
+.question-tab.selected {
+  border-color: rgba(76, 175, 80, 0.6);
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.15), rgba(129, 199, 132, 0.1));
+  box-shadow: 0 0 15px rgba(76, 175, 80, 0.2);
+  transform: translateY(-1px);
+}
+
+.question-tab.selected .tab-status {
+  background: #4CAF50;
+  color: white;
+}
+
+.question-tab.selected .tab-number {
+  color: #4CAF50;
+  font-weight: 700;
 }
 
 .question-tab.pending {
@@ -917,8 +953,18 @@ body {
   color: white;
 }
 
+.legend-status.played {
+  background: rgba(244, 67, 54, 0.7);
+  color: white;
+}
+
 .legend-status.active {
-  background: var(--waze-primary);
+  background: #FFC107;
+  color: #333;
+}
+
+.legend-status.selected {
+  background: #4CAF50;
   color: white;
 }
 

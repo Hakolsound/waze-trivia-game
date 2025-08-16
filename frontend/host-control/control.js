@@ -323,8 +323,19 @@ class HostControl {
             this.resetAnswerEvaluation(); // Clear previous evaluation state
             this.hideCurrentAnswererHighlight();
             
-            // Update tab states immediately (question is now on-air, not played)
-            this.updateQuestionTabsState();
+            // Refresh game state to get updated played_questions and update tabs
+            if (this.currentGame) {
+                try {
+                    const response = await fetch(`/api/games/${this.currentGame.id}`);
+                    if (response.ok) {
+                        const updatedGame = await response.json();
+                        this.currentGame = updatedGame;
+                        this.updateQuestionTabsState();
+                    }
+                } catch (error) {
+                    console.error('Failed to refresh game state:', error);
+                }
+            }
         });
 
         this.socket.on('question-end', async (data) => {
@@ -341,20 +352,7 @@ class HostControl {
             this.updateQuestionControls();
             this.updateBuzzerResults();
             this.hideCurrentAnswererHighlight();
-            
-            // Refresh game state to get updated played_questions after question ends
-            if (this.currentGame) {
-                try {
-                    const response = await fetch(`/api/games/${this.currentGame.id}`);
-                    if (response.ok) {
-                        const updatedGame = await response.json();
-                        this.currentGame = updatedGame;
-                        this.updateQuestionTabsState();
-                    }
-                } catch (error) {
-                    console.error('Failed to refresh game state after question end:', error);
-                }
-            }
+            this.updateQuestionTabsState();
             
             // Time up - host controls when to advance manually for entertainment purposes
         });

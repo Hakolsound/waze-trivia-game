@@ -80,10 +80,15 @@ class GameService {
       throw new Error('Question index out of bounds');
     }
 
-    // Don't mark as played yet - only update current question and status
+    // Mark as played immediately when started (like before)
+    let playedQuestions = [...game.played_questions];
+    if (!playedQuestions.includes(questionIndex)) {
+      playedQuestions.push(questionIndex);
+    }
+
     await this.db.run(
-      'UPDATE games SET current_question_index = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [questionIndex, 'question_active', gameId]
+      'UPDATE games SET current_question_index = ?, status = ?, played_questions = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [questionIndex, 'question_active', JSON.stringify(playedQuestions), gameId]
     );
 
     const currentQuestion = game.questions[questionIndex];
@@ -131,16 +136,10 @@ class GameService {
       clearTimeout(gameState.timeoutId);
     }
 
-    // Mark the current question as played when it ends
-    const game = await this.getGame(gameId);
-    let playedQuestions = [...game.played_questions];
-    if (!playedQuestions.includes(game.current_question_index)) {
-      playedQuestions.push(game.current_question_index);
-    }
-
+    // Don't modify played_questions here - they're already set when question starts
     await this.db.run(
-      'UPDATE games SET status = ?, played_questions = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      ['question_ended', JSON.stringify(playedQuestions), gameId]
+      'UPDATE games SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      ['question_ended', gameId]
     );
 
     this.io.to(`game-${gameId}`).emit('question-end', {

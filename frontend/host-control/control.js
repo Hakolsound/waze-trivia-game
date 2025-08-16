@@ -1402,11 +1402,11 @@ class HostControl {
         try {
             const [healthResponse, buzzerResponse] = await Promise.all([
                 fetch('/health'),
-                fetch('/api/buzzers/status')
+                fetch('/api/buzzers/devices')
             ]);
 
             const health = await healthResponse.json();
-            const buzzerStatus = await buzzerResponse.json();
+            const devices = await buzzerResponse.json();
 
             // Only update elements that exist (for backwards compatibility)
             if (this.elements.dbStatus) {

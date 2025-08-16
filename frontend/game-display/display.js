@@ -104,7 +104,14 @@ class GameDisplay {
             // Overlay elements
             messageOverlay: document.getElementById('message-overlay'),
             overlayTitle: document.getElementById('overlay-title'),
-            overlayMessage: document.getElementById('overlay-message')
+            overlayMessage: document.getElementById('overlay-message'),
+            
+            // Leaderboard elements
+            leaderboardOverlay: document.getElementById('leaderboard-overlay'),
+            firstPlace: document.getElementById('first-place'),
+            secondPlace: document.getElementById('second-place'),
+            thirdPlace: document.getElementById('third-place'),
+            remainingTeams: document.getElementById('remaining-teams')
         };
     }
 
@@ -163,6 +170,15 @@ class GameDisplay {
             this.handleGameReset();
         });
 
+        // Leaderboard events
+        this.socket.on('show-leaderboard', () => {
+            this.showLeaderboard();
+        });
+
+        this.socket.on('hide-leaderboard', () => {
+            this.hideLeaderboard();
+        });
+
         // Window resize listener for dynamic text sizing
         window.addEventListener('resize', () => {
             if (this.currentState === 'question' && this.elements.questionText.textContent) {
@@ -181,7 +197,14 @@ class GameDisplay {
                 this.enterFullscreen();
             } else if (e.key === 'Escape') {
                 e.preventDefault();
-                this.exitFullscreen();
+                if (!this.elements.leaderboardOverlay.classList.contains('hidden')) {
+                    this.hideLeaderboard();
+                } else {
+                    this.exitFullscreen();
+                }
+            } else if (e.key === 'l' || e.key === 'L') {
+                e.preventDefault();
+                this.toggleLeaderboard();
             }
         });
     }
@@ -682,6 +705,81 @@ class GameDisplay {
         } else if (document.msExitFullscreen) {
             document.msExitFullscreen();
         }
+    }
+
+    // Leaderboard Methods
+    showLeaderboard() {
+        if (!this.currentGame || !this.currentGame.groups) {
+            console.log('No game or teams available for leaderboard');
+            return;
+        }
+
+        // Sort teams by score (descending)
+        const sortedTeams = [...this.currentGame.groups].sort((a, b) => b.score - a.score);
+        
+        // Update podium positions (top 3)
+        this.updatePodiumPosition(this.elements.firstPlace, sortedTeams[0], 1);
+        this.updatePodiumPosition(this.elements.secondPlace, sortedTeams[1], 2);
+        this.updatePodiumPosition(this.elements.thirdPlace, sortedTeams[2], 3);
+        
+        // Update remaining teams
+        this.updateRemainingTeams(sortedTeams.slice(3));
+        
+        // Show the leaderboard overlay
+        this.elements.leaderboardOverlay.classList.remove('hidden');
+        
+        console.log('Leaderboard shown');
+    }
+
+    hideLeaderboard() {
+        this.elements.leaderboardOverlay.classList.add('hidden');
+        console.log('Leaderboard hidden');
+    }
+
+    toggleLeaderboard() {
+        if (this.elements.leaderboardOverlay.classList.contains('hidden')) {
+            this.showLeaderboard();
+        } else {
+            this.hideLeaderboard();
+        }
+    }
+
+    updatePodiumPosition(element, team, position) {
+        if (!element || !team) {
+            element.style.display = 'none';
+            return;
+        }
+
+        element.style.display = 'flex';
+        
+        // Update team name and score
+        const teamNameElement = element.querySelector('.podium-team');
+        const scoreElement = element.querySelector('.podium-score');
+        
+        if (teamNameElement) {
+            teamNameElement.textContent = team.name || `Team ${team.id}`;
+        }
+        
+        if (scoreElement) {
+            scoreElement.textContent = team.score || 0;
+        }
+    }
+
+    updateRemainingTeams(teams) {
+        const container = this.elements.remainingTeams;
+        
+        if (!teams || teams.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: rgba(255, 255, 255, 0.6); padding: 40px;">No additional teams</p>';
+            return;
+        }
+
+        container.innerHTML = teams.map((team, index) => `
+            <div class="remaining-team-item" style="animation-delay: ${1 + (index * 0.1)}s">
+                <div class="remaining-team-rank">${index + 4}</div>
+                <div class="remaining-team-name">${team.name || `Team ${team.id}`}</div>
+                <div class="remaining-team-score">${team.score || 0}</div>
+            </div>
+        `).join('');
     }
 }
 

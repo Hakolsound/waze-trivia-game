@@ -85,6 +85,57 @@
             <div class="feedback-message">Correct answer!</div>
         </div>
 
+        <!-- Leaderboard Fullscreen Overlay -->
+        <div id="leaderboard-overlay" class="leaderboard-overlay hidden">
+            <div class="leaderboard-container">
+                <div class="leaderboard-header">
+                    <div class="leaderboard-title">
+                        <div class="trophy-icon">🏆</div>
+                        <h1>LEADERBOARD</h1>
+                        <div class="trophy-icon">🏆</div>
+                    </div>
+                    <div class="leaderboard-subtitle">Current Rankings</div>
+                </div>
+                
+                <div class="leaderboard-content">
+                    <!-- Top 3 Podium -->
+                    <div class="podium-container">
+                        <div class="podium-position second-place" id="second-place">
+                            <div class="podium-rank">2</div>
+                            <div class="podium-team">Team Beta</div>
+                            <div class="podium-score">850</div>
+                            <div class="podium-base silver"></div>
+                        </div>
+                        
+                        <div class="podium-position first-place" id="first-place">
+                            <div class="podium-crown">👑</div>
+                            <div class="podium-rank">1</div>
+                            <div class="podium-team">Team Alpha</div>
+                            <div class="podium-score">1200</div>
+                            <div class="podium-base gold"></div>
+                        </div>
+                        
+                        <div class="podium-position third-place" id="third-place">
+                            <div class="podium-rank">3</div>
+                            <div class="podium-team">Team Gamma</div>
+                            <div class="podium-score">720</div>
+                            <div class="podium-base bronze"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Remaining Teams List -->
+                    <div class="remaining-teams" id="remaining-teams">
+                        <!-- Additional teams will be populated here -->
+                    </div>
+                </div>
+                
+                <div class="leaderboard-footer">
+                    <div class="sparkle-effect"></div>
+                    <p>Press ESC to close</p>
+                </div>
+            </div>
+        </div>
+
         <!-- Full Screen Message Overlay -->
         <div id="message-overlay" class="message-overlay hidden">
             <div class="message-content">

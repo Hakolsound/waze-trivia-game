@@ -157,6 +157,7 @@ class HostControl {
             buzzerResults: document.getElementById('buzzer-results'),
             resetScoresBtn: document.getElementById('reset-scores-btn'),
             resetGameBtn: document.getElementById('reset-game-btn'),
+            showLeaderboardBtn: document.getElementById('show-leaderboard-btn'),
             endGameBtn: document.getElementById('end-game-btn'),
             
             // Floating action buttons
@@ -351,6 +352,7 @@ class HostControl {
         if (this.elements.showQuestionSelectBtn) this.elements.showQuestionSelectBtn.addEventListener('click', () => this.showQuestionSelectModal());
         if (this.elements.resetScoresBtn) this.elements.resetScoresBtn.addEventListener('click', () => this.resetAllScores());
         if (this.elements.resetGameBtn) this.elements.resetGameBtn.addEventListener('click', () => this.resetGame());
+        if (this.elements.showLeaderboardBtn) this.elements.showLeaderboardBtn.addEventListener('click', () => this.toggleLeaderboard());
         if (this.elements.endGameBtn) this.elements.endGameBtn.addEventListener('click', () => this.endGame());
         
         // Buzzer controls
@@ -509,6 +511,12 @@ class HostControl {
                 case 'A': // A - Open Admin
                     e.preventDefault();
                     window.open('/admin', '_blank');
+                    break;
+                    
+                case 'l':
+                case 'L': // L - Toggle Leaderboard
+                    e.preventDefault();
+                    this.toggleLeaderboard();
                     break;
             }
         });
@@ -1044,6 +1052,12 @@ class HostControl {
         } catch (error) {
             this.showToast('Failed to end game', 'error');
         }
+    }
+
+    toggleLeaderboard() {
+        // Emit event to display to toggle leaderboard
+        this.socket.emit('toggle-leaderboard');
+        this.showToast('🏆 Leaderboard toggled on display', 'info');
     }
 
     async refreshSystemStatus() {

@@ -153,6 +153,12 @@ io.on('connection', (socket) => {
       });
     }
   });
+
+  socket.on('toggle-leaderboard', () => {
+    // Broadcast leaderboard toggle to all display clients
+    io.to('game-display').emit('show-leaderboard');
+    console.log('Leaderboard toggle broadcasted to display clients');
+  });
   
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);

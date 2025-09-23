@@ -757,6 +757,12 @@ class HostControl {
             // Add event listener for score changes
             scoreInput.addEventListener('change', (e) => this.updateTeamScore(team.id, parseInt(e.target.value) || 0));
             scoreInput.addEventListener('blur', (e) => e.target.style.outline = 'none');
+
+            // Prevent clicks on input from triggering virtual buzzer
+            scoreInput.addEventListener('click', (e) => {
+                e.stopPropagation();
+                console.log('[CLICK TEST] Click on score input stopped from propagating');
+            });
             
             // Add ranking number and team name
             const rankBadge = document.createElement('span');
@@ -813,6 +819,17 @@ class HostControl {
             // Add new handler
             this.boundHandleTeamClick = this.handleTeamClick.bind(this);
             teamItem.addEventListener('click', this.boundHandleTeamClick);
+
+            // Add a simple test to see if ANY clicks are detected
+            teamItem.addEventListener('click', function(e) {
+                console.log('[CLICK TEST] Any click detected on team item', index, 'with keys:', {
+                    ctrl: e.ctrlKey,
+                    meta: e.metaKey,
+                    alt: e.altKey,
+                    shift: e.shiftKey
+                });
+            });
+
             console.log('[VIRTUAL BUZZER DEBUG] Added click handler to team item', index);
         });
     }

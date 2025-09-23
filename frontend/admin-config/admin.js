@@ -1710,18 +1710,32 @@ class AdminConfig {
     
     async startBuzzerTest() {
         if (!this.currentGame) return;
-        
+
         this.buzzerTestState.isActive = true;
+        this.buzzerTestState.startTime = Date.now();
         this.elements.testStatusIndicator.textContent = 'Testing active - Press buzzers now!';
         this.elements.testStatusIndicator.className = 'status-indicator testing';
-        
+
         try {
+            // Check ESP32 connection status first
+            const statusResponse = await fetch('/api/buzzers/status');
+            const status = await statusResponse.json();
+
             // Arm all buzzers for testing
             await fetch(`/api/buzzers/arm/${this.currentGame.id}`, { method: 'POST' });
-            this.showToast('Buzzer test started - Press each buzzer!', 'info');
+
+            const protocolType = status.connected ? 'Binary Protocol' : 'Simulation Mode';
+            this.showToast(`✅ Buzzer test started (${protocolType}) - Press each buzzer!`, 'info');
+
+            console.log('Buzzer test started:', {
+                gameId: this.currentGame.id,
+                espConnected: status.connected,
+                protocol: protocolType,
+                timestamp: this.buzzerTestState.startTime
+            });
         } catch (error) {
             console.error('Failed to arm buzzers for test:', error);
-            this.showToast('Failed to start buzzer test', 'error');
+            this.showToast('Failed to start buzzer test - Check ESP32 connection', 'error');
         }
     }
     
@@ -1757,6 +1771,65 @@ class AdminConfig {
             this.startBuzzerTest();
         }
     }
+
+    // Enhanced diagnostic function for individual buzzer testing
+    async testIndividualBuzzer(buzzerId) {
+        try {
+            const response = await fetch(`/api/buzzers/test/${buzzerId}`, { method: 'POST' });
+            const result = await response.json();
+
+            console.log(`Individual buzzer test - ID: ${buzzerId}:`, result);
+            this.showToast(`🔔 Buzzer ${buzzerId} test signal sent`, 'info');
+
+            return result;
+        } catch (error) {
+            console.error(`Failed to test buzzer ${buzzerId}:`, error);
+            this.showToast(`❌ Failed to test buzzer ${buzzerId}`, 'error');
+            return null;
+        }
+    }
+
+    // Test all buzzers sequentially with detailed reporting
+    async testAllBuzzersSequentially() {
+        if (!this.currentGame) {
+            this.showToast('Please select a game first', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/groups/game/${this.currentGame.id}`);
+            const teams = await response.json();
+
+            this.showToast('🔄 Starting sequential buzzer test...', 'info');
+
+            const results = [];
+            for (const team of teams) {
+                const result = await this.testIndividualBuzzer(team.buzzer_id);
+                results.push({
+                    teamName: team.name,
+                    buzzerId: team.buzzer_id,
+                    success: result && result.success,
+                    hardwareConnected: result ? result.hardwareConnected : false
+                });
+
+                // Small delay between tests
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
+            // Report results
+            const successful = results.filter(r => r.success).length;
+            const withHardware = results.filter(r => r.hardwareConnected).length;
+
+            console.log('Sequential buzzer test results:', results);
+            this.showToast(`📊 Test complete: ${successful}/${results.length} buzzers responded (${withHardware} with hardware)`, successful === results.length ? 'success' : 'warning');
+
+            return results;
+        } catch (error) {
+            console.error('Sequential buzzer test failed:', error);
+            this.showToast('❌ Sequential buzzer test failed', 'error');
+            return null;
+        }
+    }
     
     updateTestProgress() {
         const totalTeams = this.elements.buzzerTestGrid.querySelectorAll('.buzzer-test-card').length;
@@ -1775,31 +1848,46 @@ class AdminConfig {
     
     handleBuzzerTestPress(data) {
         if (!this.buzzerTestState.isActive) return;
-        
-        const { buzzerId, groupId } = data;
-        
+
+        const { buzzerId, groupId, buzzer_id, deltaMs, position, timestamp } = data;
+        const actualBuzzerId = buzzerId || buzzer_id;
+
         // Find the card for this buzzer
-        const card = this.elements.buzzerTestGrid.querySelector(`[data-buzzer-id="${buzzerId}"]`) ||
+        const card = this.elements.buzzerTestGrid.querySelector(`[data-buzzer-id="${actualBuzzerId}"]`) ||
                     this.elements.buzzerTestGrid.querySelector(`[data-team-id="${groupId}"]`);
-        
-        if (card && !this.buzzerTestState.testedBuzzers.has(buzzerId)) {
+
+        if (card && !this.buzzerTestState.testedBuzzers.has(actualBuzzerId)) {
             // Mark as tested
-            this.buzzerTestState.testedBuzzers.add(buzzerId);
-            
+            this.buzzerTestState.testedBuzzers.add(actualBuzzerId);
+
             // Update card appearance
             card.classList.add('tested');
             const status = card.querySelector('.buzzer-test-status');
             status.className = 'buzzer-test-status tested';
+
+            // Show detailed binary protocol information
+            const protocolInfo = [];
+            if (deltaMs !== undefined) protocolInfo.push(`${deltaMs}ms`);
+            if (position !== undefined) protocolInfo.push(`#${position}`);
+            if (timestamp !== undefined) protocolInfo.push(`t:${timestamp}`);
+
+            const protocolText = protocolInfo.length > 0 ?
+                `<div class="protocol-info">${protocolInfo.join(' • ')}</div>` : '';
+
             status.innerHTML = `
                 <span class="material-icons">check_circle</span>
-                <span>Buzzer working!</span>
+                <div>
+                    <span>Buzzer working!</span>
+                    ${protocolText}
+                </div>
             `;
-            
+
             this.updateTestProgress();
-            
-            // Show success toast
+
+            // Show success toast with protocol details
             const teamName = card.querySelector('.buzzer-test-team-name').textContent;
-            this.showToast(`✅ ${teamName} buzzer tested successfully!`, 'success');
+            const protocolDetails = protocolInfo.length > 0 ? ` (${protocolInfo.join(', ')})` : '';
+            this.showToast(`✅ ${teamName} buzzer tested successfully!${protocolDetails}`, 'success');
         }
     }
     

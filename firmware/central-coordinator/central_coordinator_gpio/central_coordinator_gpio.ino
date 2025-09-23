@@ -530,7 +530,6 @@ void updateDeviceHeartbeat(const uint8_t *mac, uint8_t deviceId) {
     Serial.println(macStr);
     
     // Try to add as peer (but don't fail if it doesn't work)
-    esp_now_peer_info_t peerInfo;
     memset(&peerInfo, 0, sizeof(peerInfo));
     memcpy(peerInfo.peer_addr, mac, 6);
     peerInfo.channel = 0;

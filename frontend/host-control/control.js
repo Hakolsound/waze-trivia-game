@@ -2162,6 +2162,7 @@ class HostControl {
 
     // Modal Management Methods
     showAnswerEvaluationModal() {
+        console.log(`[FRONTEND] showAnswerEvaluationModal called - currentBuzzerPosition: ${this.currentBuzzerPosition}, buzzerOrder length: ${this.buzzerOrder.length}`);
         this.elements.answerEvaluationModal.classList.remove('hidden');
         this.updateAnswerEvaluationModal();
     }
@@ -2659,7 +2660,10 @@ class HostControl {
                     const nextBuzzer = this.buzzerOrder.find(b => !b.evaluated);
                     if (nextBuzzer) {
                         // Update currentBuzzerPosition to point to the next unevaluated buzzer
-                        this.currentBuzzerPosition = this.buzzerOrder.indexOf(nextBuzzer);
+                        const newPosition = this.buzzerOrder.indexOf(nextBuzzer);
+                        console.log(`[FRONTEND] Transitioning from buzzerPosition ${this.currentBuzzerPosition} to ${newPosition}`);
+                        console.log(`[FRONTEND] Next buzzer to evaluate:`, nextBuzzer);
+                        this.currentBuzzerPosition = newPosition;
                         this.showCurrentAnswererHighlight(nextBuzzer);
                         // Update the modal to show the correct team
                         this.updateAnswerEvaluationModal();

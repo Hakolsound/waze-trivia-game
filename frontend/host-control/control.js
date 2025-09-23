@@ -1895,8 +1895,9 @@ class HostControl {
         this.elements.currentTeamName.textContent = teamName;
         this.elements.currentBuzzerTime.textContent = `Buzzed in at ${deltaTime}s`;
 
-        // Update points
-        this.elements.questionPoints.textContent = `+${currentQuestion?.points || 100}`;
+        // Update points - show actual time-based points if applicable
+        const actualPoints = this.getActualPointsForBuzzer(buzzer);
+        this.elements.questionPoints.textContent = `+${actualPoints}`;
 
         // Store current buzzer position for evaluation
         this.currentBuzzerPosition = this.buzzerOrder.indexOf(buzzer);
@@ -2063,8 +2064,9 @@ class HostControl {
         this.elements.currentTeamName.textContent = teamName;
         this.elements.currentBuzzerTime.textContent = `Buzzed in at ${deltaTime}s`;
 
-        // Update points
-        this.elements.questionPoints.textContent = `+${currentQuestion?.points || 100}`;
+        // Update points - show actual time-based points if applicable
+        const actualPoints = this.getActualPointsForBuzzer(buzzer);
+        this.elements.questionPoints.textContent = `+${actualPoints}`;
 
         // Store current buzzer position for evaluation
         this.currentBuzzerPosition = this.buzzerOrder.indexOf(buzzer);
@@ -2274,6 +2276,35 @@ class HostControl {
             this.elements.progressBarFill.classList.remove('warning', 'critical');
             this.elements.progressBarFill.style.width = '100%'; // Reset to full width
         }
+    }
+
+    // Calculate time-based points (same logic as backend)
+    calculateTimeBasedPoints(originalPoints, timeRemaining, totalTime) {
+        if (timeRemaining <= 0) return 0;
+        if (timeRemaining >= totalTime) return originalPoints;
+
+        // Linear decrease from original points to 0
+        const ratio = timeRemaining / totalTime;
+        return Math.ceil(originalPoints * ratio);
+    }
+
+    // Get actual points for current buzzer (considering time-based scoring)
+    getActualPointsForBuzzer(buzzer) {
+        if (!this.currentGame || !buzzer) return 0;
+
+        const currentQuestion = this.currentGame.questions[this.currentGame.current_question_index];
+        if (!currentQuestion) return 0;
+
+        // If time-based scoring is enabled, calculate based on timing
+        if (this.currentGame.time_based_scoring) {
+            const timeElapsed = buzzer.deltaMs;
+            const totalTime = (currentQuestion.time_limit || 30) * 1000; // Convert to ms
+            const timeRemaining = Math.max(0, totalTime - timeElapsed);
+            return this.calculateTimeBasedPoints(currentQuestion.points, timeRemaining, totalTime);
+        }
+
+        // Otherwise return full points
+        return currentQuestion.points;
     }
 
     // Current Answerer Highlight Methods

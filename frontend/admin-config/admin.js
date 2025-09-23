@@ -1725,6 +1725,7 @@ class AdminConfig {
         
         this.buzzerTestState = {
             testedBuzzers: new Set(),
+            pressOrder: [], // Track the order of button presses for proper ranking
             isActive: false
         };
 
@@ -1851,6 +1852,7 @@ class AdminConfig {
 
             // Reset all card states
             this.buzzerTestState.testedBuzzers.clear();
+            this.buzzerTestState.pressOrder = [];
             const cards = this.elements.buzzerTestGrid.querySelectorAll('.buzzer-test-card');
             cards.forEach(card => {
                 card.classList.remove('tested', 'testing', 'physical-buzzer', 'virtual-buzzer');
@@ -1883,6 +1885,7 @@ class AdminConfig {
             console.error('Error during buzzer test reset:', error);
             // Continue with UI reset even if API calls fail
             this.buzzerTestState.testedBuzzers.clear();
+            this.buzzerTestState.pressOrder = [];
             const cards = this.elements.buzzerTestGrid.querySelectorAll('.buzzer-test-card');
             cards.forEach(card => {
                 card.classList.remove('tested', 'testing', 'physical-buzzer', 'virtual-buzzer');
@@ -2008,6 +2011,13 @@ class AdminConfig {
         console.log('Found card for buzzer test:', !!card);
 
         if (card && !this.buzzerTestState.testedBuzzers.has(actualBuzzerId)) {
+            // Add to press order FIRST to get correct ranking
+            this.buzzerTestState.pressOrder.push({
+                buzzerId: actualBuzzerId,
+                timestamp: timestamp || Date.now(),
+                isVirtual: isVirtualBuzzer
+            });
+
             // Mark as tested
             this.buzzerTestState.testedBuzzers.add(actualBuzzerId);
 
@@ -2030,19 +2040,20 @@ class AdminConfig {
             const status = card.querySelector('.buzzer-test-status');
             status.className = 'buzzer-test-status tested';
 
-            // Calculate position and deltaMs for virtual buzzers if missing
+            // Calculate position and deltaMs using press order
             let calculatedPosition = position;
             let calculatedDeltaMs = deltaMs;
 
-            if (isVirtualBuzzer) {
-                if (calculatedPosition === undefined) {
-                    // Calculate position based on number of tested buzzers
-                    calculatedPosition = this.buzzerTestState.testedBuzzers.size;
-                }
-                if (calculatedDeltaMs === undefined && this.buzzerTestState.startTime) {
-                    // Calculate delta time from test start
-                    calculatedDeltaMs = Date.now() - this.buzzerTestState.startTime;
-                }
+            // Get correct ranking from press order
+            if (calculatedPosition === undefined) {
+                calculatedPosition = this.buzzerTestState.pressOrder.length; // Current position in order
+            }
+
+            // Calculate delta time from the first press for proper relative timing
+            if (calculatedDeltaMs === undefined && this.buzzerTestState.pressOrder.length > 1) {
+                const firstPressTime = this.buzzerTestState.pressOrder[0].timestamp;
+                const currentPressTime = this.buzzerTestState.pressOrder[this.buzzerTestState.pressOrder.length - 1].timestamp;
+                calculatedDeltaMs = currentPressTime - firstPressTime;
             }
 
             // Show detailed binary protocol information with formatted timestamp

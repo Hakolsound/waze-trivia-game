@@ -40,6 +40,19 @@ class AdminConfig {
         }, 5000); // Check every 5 seconds
     }
 
+    // Helper function to format timestamp as HH:MM:SS.mmm
+    formatTimestamp(timestamp) {
+        if (!timestamp) return '';
+
+        const date = new Date(timestamp);
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        const milliseconds = String(date.getMilliseconds()).padStart(3, '0');
+
+        return `${hours}:${minutes}:${seconds}.${milliseconds}`;
+    }
+
     initializeGameSelector() {
         this.gameSelector = new GlobalGameSelector({
             socket: this.socket,
@@ -1903,11 +1916,14 @@ class AdminConfig {
             const status = card.querySelector('.buzzer-test-status');
             status.className = 'buzzer-test-status tested';
 
-            // Show detailed binary protocol information
+            // Show detailed binary protocol information with formatted timestamp
             const protocolInfo = [];
-            if (deltaMs !== undefined) protocolInfo.push(`${deltaMs}ms`);
-            if (position !== undefined) protocolInfo.push(`#${position}`);
-            if (timestamp !== undefined) protocolInfo.push(`t:${timestamp}`);
+            if (timestamp !== undefined) {
+                const formattedTime = this.formatTimestamp(Date.now()); // Current time when pressed
+                protocolInfo.push(`⏰ ${formattedTime}`);
+            }
+            if (position !== undefined) protocolInfo.push(`🏆 Rank #${position}`);
+            if (deltaMs !== undefined) protocolInfo.push(`⚡ Δt: ${deltaMs}ms`);
 
             const protocolText = protocolInfo.length > 0 ?
                 `<div class="protocol-info">${protocolInfo.join(' • ')}</div>` : '';
@@ -2067,12 +2083,14 @@ class AdminConfig {
             // Re-render to show test result
             this.renderVirtualBuzzerGrid();
 
-            // Show protocol information
+            // Show protocol information with formatted timestamp
             const protocolInfo = [];
-            if (deltaMs !== undefined) protocolInfo.push(`${deltaMs}ms`);
-            if (position !== undefined) protocolInfo.push(`#${position}`);
+            const formattedTime = this.formatTimestamp(Date.now());
+            protocolInfo.push(`⏰ ${formattedTime}`);
+            if (position !== undefined) protocolInfo.push(`🏆 Rank #${position}`);
+            if (deltaMs !== undefined) protocolInfo.push(`⚡ Δt: ${deltaMs}ms`);
 
-            const protocolDetails = protocolInfo.length > 0 ? ` (${protocolInfo.join(', ')})` : '';
+            const protocolDetails = protocolInfo.length > 0 ? ` (${protocolInfo.join(' • ')})` : '';
             this.showToast(`✅ Virtual buzzer ${actualBuzzerId} tested!${protocolDetails}`, 'success');
         }
     }

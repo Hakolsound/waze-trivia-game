@@ -116,11 +116,17 @@ io.on('connection', (socket) => {
     socket.join('game-display');
   });
   
-  socket.on('buzzer-press', (data) => {
+  socket.on('buzzer-press', async (data) => {
     console.log('Buzzer press received:', data);
 
     // Handle the buzzer press through game service
-    gameService.handleBuzzerPress(data);
+    console.log('Calling gameService.handleBuzzerPress...');
+    try {
+      await gameService.handleBuzzerPress(data);
+      console.log('gameService.handleBuzzerPress completed successfully');
+    } catch (error) {
+      console.error('Error in gameService.handleBuzzerPress:', error);
+    }
 
     // If this is a virtual buzzer press, also emit it to admin interfaces for testing
     if (data.buzzerId && data.buzzerId.startsWith('virtual_')) {

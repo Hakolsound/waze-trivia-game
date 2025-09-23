@@ -328,11 +328,9 @@ class ESP32Service extends EventEmitter {
   }
 
   getGroupIdByBuzzerId(buzzerId) {
-    for (const [groupId, state] of this.buzzerStates) {
-      if (state.buzzer_id === buzzerId) {
-        return groupId;
-      }
-    }
+    // ESP32Service doesn't have database access, so we return the buzzerId
+    // GameService will handle the mapping from buzzer_id to actual group.id
+    console.log(`[DEBUG] ESP32Service.getGroupIdByBuzzerId called with buzzerId: "${buzzerId}"`);
     return buzzerId;
   }
 

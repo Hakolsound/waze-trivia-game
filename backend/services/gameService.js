@@ -425,21 +425,41 @@ class GameService {
   }
 
   async handleBuzzerPress(data) {
-    const { gameId, groupId, timestamp, buzzer_id, buzzerId } = data;
+    const { gameId, groupId, timestamp, buzzer_id, buzzerId, deltaMs: providedDeltaMs } = data;
     const gameState = this.activeGames.get(gameId);
-    
+
     if (!gameState) return;
 
+    // Map buzzer_id to actual database group.id
+    // The groupId from ESP32Service is actually the buzzer_id, need to find real group.id
+    let actualGroupId = groupId;
+    if (buzzer_id || buzzerId) {
+      const buzzerIdToLookup = buzzer_id || buzzerId;
+      console.log(`[DEBUG] Looking up group for buzzer_id: "${buzzerIdToLookup}"`);
+
+      const groupRecord = await this.db.get(
+        'SELECT id FROM groups WHERE game_id = ? AND buzzer_id = ?',
+        [gameId, buzzerIdToLookup]
+      );
+
+      if (groupRecord) {
+        actualGroupId = groupRecord.id;
+        console.log(`[DEBUG] Found group.id: "${actualGroupId}" for buzzer_id: "${buzzerIdToLookup}"`);
+      } else {
+        console.warn(`[WARNING] No group found for buzzer_id: "${buzzerIdToLookup}" in game: "${gameId}"`);
+      }
+    }
+
     // Track buzzer activity for virtual buzzer availability
-    const actualBuzzerId = buzzerId || buzzer_id || `physical_${groupId}`;
-    this.updateBuzzerActivity(actualBuzzerId, groupId);
+    const actualBuzzerId = buzzerId || buzzer_id || `physical_${actualGroupId}`;
+    this.updateBuzzerActivity(actualBuzzerId, actualGroupId);
 
     // Use provided deltaMs if available (from ESP32), otherwise calculate from timestamp
     const deltaMs = (data.deltaMs !== undefined && data.deltaMs !== null)
       ? data.deltaMs
       : timestamp - gameState.startTime;
     const buzzerEntry = {
-      groupId,
+      groupId: actualGroupId, // Use the mapped group ID from database
       buzzer_id,
       timestamp,
       deltaMs,

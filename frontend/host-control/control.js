@@ -1752,20 +1752,24 @@ class HostControl {
         if (this.buzzerOrder.length === 0 && this.isBuzzersArmed) {
             this.clearArmedIndicators();
         }
-        
+
         this.buzzerOrder.push(data);
         this.updateBuzzerResults();
         this.updateAnswerEvaluation();
-        
-        // Show current answerer highlight if this is the first buzzer
-        if (this.buzzerOrder.length === 1) {
+
+        // Show current answerer highlight and evaluation modal for first buzzer OR
+        // when modal is hidden but there are unevaluated buzzers
+        const modalIsHidden = this.elements.answerEvaluationModal.classList.contains('hidden');
+        const hasUnevaluatedBuzzers = this.buzzerOrder.find(b => !b.evaluated);
+
+        if (this.buzzerOrder.length === 1 || (modalIsHidden && hasUnevaluatedBuzzers)) {
             this.showCurrentAnswererHighlight(data);
-            // Auto-show answer evaluation modal when first team buzzes
+            // Auto-show answer evaluation modal when team buzzes and modal is not visible
             this.showAnswerEvaluationModal();
-            
+
             // Timer pause logic is now handled by backend
         }
-        
+
         // If additional teams buzz while timer is already paused, keep it paused
         // This handles the case where multiple teams buzz in quick succession
     }

@@ -1756,15 +1756,11 @@ class AdminConfig {
             
             teams.forEach(team => {
                 const card = document.createElement('div');
-                card.className = 'buzzer-test-card physical-buzzer';
+                card.className = 'buzzer-test-card';
                 card.dataset.teamId = team.id;
                 card.dataset.buzzerId = team.buzzer_id;
 
                 card.innerHTML = `
-                    <div class="buzzer-type-indicator physical">
-                        <span class="material-icons">hardware</span>
-                        <span class="type-label">Physical</span>
-                    </div>
                     <div class="buzzer-test-team-name">${team.name}</div>
                     <div class="buzzer-test-buzzer-id">Buzzer ID: ${team.buzzer_id}</div>
                     <div class="buzzer-test-status waiting">
@@ -1779,15 +1775,11 @@ class AdminConfig {
             // Add virtual buzzers to the test grid
             this.virtualBuzzerTestState.connectedBuzzers.forEach((buzzer, buzzerId) => {
                 const card = document.createElement('div');
-                card.className = 'buzzer-test-card virtual-buzzer';
+                card.className = 'buzzer-test-card';
                 card.dataset.buzzerId = buzzerId;
                 card.dataset.teamId = buzzer.groupId || buzzerId;
 
                 card.innerHTML = `
-                    <div class="buzzer-type-indicator virtual">
-                        <span class="material-icons">smartphone</span>
-                        <span class="type-label">Virtual</span>
-                    </div>
                     <div class="buzzer-test-team-name">${buzzer.teamName || 'Virtual Buzzer'}</div>
                     <div class="buzzer-test-buzzer-id">Device: ${buzzerId.split('_')[1] || 'Mobile'}</div>
                     <div class="buzzer-test-status waiting">
@@ -1863,6 +1855,13 @@ class AdminConfig {
             cards.forEach(card => {
                 card.classList.remove('tested', 'testing', 'physical-buzzer', 'virtual-buzzer');
                 card.classList.add('buzzer-test-card');
+
+                // Remove virtual badge if it exists
+                const virtualBadge = card.querySelector('.buzzer-type-indicator');
+                if (virtualBadge) {
+                    virtualBadge.remove();
+                }
+
                 const status = card.querySelector('.buzzer-test-status');
                 if (status) {
                     status.className = 'buzzer-test-status waiting';
@@ -1888,6 +1887,13 @@ class AdminConfig {
             cards.forEach(card => {
                 card.classList.remove('tested', 'testing', 'physical-buzzer', 'virtual-buzzer');
                 card.classList.add('buzzer-test-card');
+
+                // Remove virtual badge if it exists
+                const virtualBadge = card.querySelector('.buzzer-type-indicator');
+                if (virtualBadge) {
+                    virtualBadge.remove();
+                }
+
                 const status = card.querySelector('.buzzer-test-status');
                 if (status) {
                     status.className = 'buzzer-test-status waiting';
@@ -2004,6 +2010,20 @@ class AdminConfig {
         if (card && !this.buzzerTestState.testedBuzzers.has(actualBuzzerId)) {
             // Mark as tested
             this.buzzerTestState.testedBuzzers.add(actualBuzzerId);
+
+            // Add virtual badge if this is a virtual buzzer press
+            if (isVirtualBuzzer) {
+                // Check if virtual badge doesn't already exist
+                if (!card.querySelector('.buzzer-type-indicator')) {
+                    const virtualBadge = document.createElement('div');
+                    virtualBadge.className = 'buzzer-type-indicator virtual';
+                    virtualBadge.innerHTML = `
+                        <span class="material-icons">smartphone</span>
+                        <span class="type-label">Virtual</span>
+                    `;
+                    card.insertBefore(virtualBadge, card.firstChild);
+                }
+            }
 
             // Update card appearance
             card.classList.add('tested');

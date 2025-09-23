@@ -431,9 +431,15 @@ class GameService {
 
   async handleBuzzerPress(data) {
     const { gameId, groupId, timestamp, buzzer_id, buzzerId, deltaMs: providedDeltaMs } = data;
+    console.log(`[DEBUG] handleBuzzerPress called with gameId: "${gameId}"`);
+    console.log(`[DEBUG] Active games:`, Array.from(this.activeGames.keys()));
     const gameState = this.activeGames.get(gameId);
+    console.log(`[DEBUG] gameState found:`, !!gameState);
 
-    if (!gameState) return;
+    if (!gameState) {
+      console.log(`[DEBUG] No gameState found for gameId: "${gameId}", returning early`);
+      return;
+    }
 
     // Map buzzer_id to actual database group.id
     // The groupId from ESP32Service is actually the buzzer_id, need to find real group.id

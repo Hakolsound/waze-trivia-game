@@ -231,7 +231,13 @@ class AdminConfig {
             testStatusIndicator: document.getElementById('test-status-indicator'),
             resetBuzzerTestBtn: document.getElementById('reset-buzzer-test-btn'),
             testProgressText: document.getElementById('test-progress-text'),
-            
+
+            // Virtual buzzer test elements
+            virtualBuzzerGrid: document.getElementById('virtual-buzzer-grid'),
+            testVirtualBuzzersBtn: document.getElementById('test-virtual-buzzers-btn'),
+            refreshVirtualBuzzersBtn: document.getElementById('refresh-virtual-buzzers-btn'),
+            virtualTestProgressText: document.getElementById('virtual-test-progress-text'),
+
             // CSV import/export elements
             downloadCsvTemplateBtn: document.getElementById('download-csv-template-btn'),
             exportQuestionsCsvBtn: document.getElementById('export-questions-csv-btn'),
@@ -417,7 +423,20 @@ class AdminConfig {
                 this.resetBuzzerTest();
             });
         }
-        
+
+        // Virtual buzzer test event listeners
+        if (this.elements.testVirtualBuzzersBtn) {
+            this.elements.testVirtualBuzzersBtn.addEventListener('click', () => {
+                this.startVirtualBuzzerTest();
+            });
+        }
+
+        if (this.elements.refreshVirtualBuzzersBtn) {
+            this.elements.refreshVirtualBuzzersBtn.addEventListener('click', () => {
+                this.refreshVirtualBuzzers();
+            });
+        }
+
         // CSV import/export functionality
         if (this.elements.downloadCsvTemplateBtn) {
             this.elements.downloadCsvTemplateBtn.addEventListener('click', () => {
@@ -529,6 +548,18 @@ class AdminConfig {
             if (this.buzzerTestState && this.buzzerTestState.isActive) {
                 this.handleBuzzerTestPress(data);
             }
+            if (this.virtualBuzzerTestState && this.virtualBuzzerTestState.isActive) {
+                this.handleVirtualBuzzerTestPress(data);
+            }
+        });
+
+        // Virtual buzzer connection tracking
+        this.socket.on('virtual-buzzer-register', (data) => {
+            this.handleVirtualBuzzerConnect(data);
+        });
+
+        this.socket.on('virtual-buzzer-disconnect', (data) => {
+            this.handleVirtualBuzzerDisconnect(data);
         });
 
         // Test if socket is working at all
@@ -1663,8 +1694,15 @@ class AdminConfig {
             testedBuzzers: new Set(),
             isActive: false
         };
+
+        this.virtualBuzzerTestState = {
+            connectedBuzzers: new Map(), // buzzerId -> {teamName, socketId, lastSeen}
+            testedBuzzers: new Set(),
+            isActive: false
+        };
         
         this.renderBuzzerTestGrid();
+        this.refreshVirtualBuzzers();
         this.elements.buzzerTestModal.classList.remove('hidden');
         this.startBuzzerTest();
     }
@@ -1890,7 +1928,180 @@ class AdminConfig {
             this.showToast(`✅ ${teamName} buzzer tested successfully!${protocolDetails}`, 'success');
         }
     }
-    
+
+    // Virtual Buzzer Test Management
+    async refreshVirtualBuzzers() {
+        if (!this.elements.virtualBuzzerGrid) return;
+
+        try {
+            // Clear current state
+            this.virtualBuzzerTestState.connectedBuzzers.clear();
+            this.virtualBuzzerTestState.testedBuzzers.clear();
+
+            this.elements.virtualBuzzerGrid.innerHTML = `
+                <div class="virtual-buzzer-loading">
+                    <div class="loading-spinner"></div>
+                    <p>Scanning for virtual buzzers...</p>
+                </div>
+            `;
+
+            // Wait a moment for socket events to populate
+            setTimeout(() => {
+                this.renderVirtualBuzzerGrid();
+            }, 1000);
+
+        } catch (error) {
+            console.error('Failed to refresh virtual buzzers:', error);
+            this.showToast('❌ Failed to refresh virtual buzzers', 'error');
+        }
+    }
+
+    renderVirtualBuzzerGrid() {
+        if (!this.elements.virtualBuzzerGrid) return;
+
+        const connectedCount = this.virtualBuzzerTestState.connectedBuzzers.size;
+
+        if (connectedCount === 0) {
+            this.elements.virtualBuzzerGrid.innerHTML = `
+                <div class="virtual-buzzer-loading">
+                    <div style="font-size: 2em; margin-bottom: 16px;">📱</div>
+                    <p>No virtual buzzers detected</p>
+                    <p style="font-size: 0.8em; color: rgba(255,255,255,0.6);">
+                        Connect devices to http://localhost:3000/virtual-buzzer
+                    </p>
+                </div>
+            `;
+
+            this.elements.virtualTestProgressText.textContent = 'No virtual buzzers detected';
+            return;
+        }
+
+        const cards = Array.from(this.virtualBuzzerTestState.connectedBuzzers.entries()).map(([buzzerId, buzzer]) => {
+            const isTested = this.virtualBuzzerTestState.testedBuzzers.has(buzzerId);
+            const cardClass = isTested ? 'virtual-buzzer-card tested' : 'virtual-buzzer-card connected';
+            const timeSinceLastSeen = Date.now() - (buzzer.lastSeen || 0);
+            const isRecentlyActive = timeSinceLastSeen < 30000; // 30 seconds
+
+            return `
+                <div class="${cardClass}" data-buzzer-id="${buzzerId}">
+                    <div class="virtual-buzzer-header">
+                        <div class="virtual-buzzer-team">${buzzer.teamName || `Virtual Buzzer ${buzzerId}`}</div>
+                        <div class="virtual-connection-status">
+                            <div class="connection-dot ${isRecentlyActive ? 'connected' : ''}"></div>
+                            <span>${isRecentlyActive ? 'Connected' : 'Stale'}</span>
+                        </div>
+                    </div>
+                    <div class="virtual-buzzer-info">
+                        <div>Buzzer ID: ${buzzerId}</div>
+                        <div>Socket: ${buzzer.socketId || 'unknown'}</div>
+                        ${buzzer.lastSeen ? `<div>Last seen: ${Math.round(timeSinceLastSeen / 1000)}s ago</div>` : ''}
+                    </div>
+                    <div class="virtual-buzzer-status ${isTested ? 'tested' : 'waiting'}">
+                        ${isTested ?
+                            `<span class="material-icons">check_circle</span><span>Tested ✅</span>` :
+                            `<span class="material-icons">radio_button_unchecked</span><span>Waiting for press...</span>`
+                        }
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        this.elements.virtualBuzzerGrid.innerHTML = cards;
+        this.updateVirtualTestProgress();
+    }
+
+    updateVirtualTestProgress() {
+        const connectedCount = this.virtualBuzzerTestState.connectedBuzzers.size;
+        const testedCount = this.virtualBuzzerTestState.testedBuzzers.size;
+
+        if (connectedCount === 0) {
+            this.elements.virtualTestProgressText.textContent = 'No virtual buzzers detected';
+        } else {
+            this.elements.virtualTestProgressText.textContent =
+                `Virtual buzzers: ${testedCount}/${connectedCount} tested`;
+        }
+    }
+
+    handleVirtualBuzzerConnect(data) {
+        console.log('Virtual buzzer connected:', data);
+
+        if (data.buzzerId) {
+            this.virtualBuzzerTestState.connectedBuzzers.set(data.buzzerId, {
+                teamName: data.teamName,
+                socketId: data.socketId,
+                lastSeen: Date.now()
+            });
+
+            this.renderVirtualBuzzerGrid();
+            this.showToast(`📱 Virtual buzzer connected: ${data.teamName || data.buzzerId}`, 'info');
+        }
+    }
+
+    handleVirtualBuzzerDisconnect(data) {
+        console.log('Virtual buzzer disconnected:', data);
+
+        if (data.buzzerId) {
+            this.virtualBuzzerTestState.connectedBuzzers.delete(data.buzzerId);
+            this.virtualBuzzerTestState.testedBuzzers.delete(data.buzzerId);
+
+            this.renderVirtualBuzzerGrid();
+            this.showToast(`📱 Virtual buzzer disconnected: ${data.teamName || data.buzzerId}`, 'warning');
+        }
+    }
+
+    handleVirtualBuzzerTestPress(data) {
+        if (!this.virtualBuzzerTestState.isActive) return;
+
+        const { buzzerId, buzzer_id, groupId, deltaMs, position, timestamp } = data;
+        const actualBuzzerId = buzzerId || buzzer_id;
+
+        // Check if this is a virtual buzzer we're tracking
+        if (actualBuzzerId && this.virtualBuzzerTestState.connectedBuzzers.has(actualBuzzerId)) {
+            // Mark as tested
+            this.virtualBuzzerTestState.testedBuzzers.add(actualBuzzerId);
+
+            // Update the buzzer info with last activity
+            const buzzer = this.virtualBuzzerTestState.connectedBuzzers.get(actualBuzzerId);
+            buzzer.lastSeen = Date.now();
+
+            // Re-render to show test result
+            this.renderVirtualBuzzerGrid();
+
+            // Show protocol information
+            const protocolInfo = [];
+            if (deltaMs !== undefined) protocolInfo.push(`${deltaMs}ms`);
+            if (position !== undefined) protocolInfo.push(`#${position}`);
+
+            const protocolDetails = protocolInfo.length > 0 ? ` (${protocolInfo.join(', ')})` : '';
+            this.showToast(`✅ Virtual buzzer ${actualBuzzerId} tested!${protocolDetails}`, 'success');
+        }
+    }
+
+    async startVirtualBuzzerTest() {
+        if (!this.currentGame) {
+            this.showToast('Please select a game first', 'error');
+            return;
+        }
+
+        this.virtualBuzzerTestState.isActive = true;
+        this.virtualBuzzerTestState.testedBuzzers.clear();
+
+        try {
+            // Arm buzzers for testing
+            await fetch(`/api/buzzers/arm/${this.currentGame.id}`, { method: 'POST' });
+
+            this.elements.virtualTestProgressText.textContent = 'Virtual buzzer test active - Press virtual buzzers!';
+            this.showToast('📱 Virtual buzzer test started - Press virtual buzzers on connected devices!', 'info');
+
+            // Re-render to clear any previous test results
+            this.renderVirtualBuzzerGrid();
+
+        } catch (error) {
+            console.error('Failed to start virtual buzzer test:', error);
+            this.showToast('❌ Failed to start virtual buzzer test', 'error');
+        }
+    }
+
     // Unsaved Changes Management
     checkForUnsavedChanges() {
         if (!this.currentQuestion || !this.originalQuestionData) {

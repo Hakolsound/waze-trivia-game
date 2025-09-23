@@ -557,6 +557,8 @@ void checkDeviceTimeouts(unsigned long currentTime) {
   for (int i = 0; i < registeredDeviceCount; i++) {
     if (devices[i].isOnline && (currentTime - devices[i].lastHeartbeat > HEARTBEAT_TIMEOUT)) {
       devices[i].isOnline = false;
+      devices[i].isArmed = false;   // Clear armed state when device times out
+      devices[i].isPressed = false; // Clear pressed state when device times out
       Serial.print("TIMEOUT:");
       Serial.println(devices[i].deviceId);
       Serial.print("Device timeout: ");

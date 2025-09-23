@@ -53,6 +53,9 @@ const esp32Service = new ESP32Service(io);
 const gameService = new GameService(db, io, esp32Service);
 const firebaseService = new FirebaseService();
 
+// Set gameService reference in ESP32Service to enable direct calls
+esp32Service.gameService = gameService;
+
 app.use('/api/games', gameRoutes(gameService));
 app.use('/api/groups', groupRoutes(gameService));
 app.use('/api/questions', questionRoutes(gameService));

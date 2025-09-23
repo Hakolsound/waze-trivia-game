@@ -11,9 +11,10 @@ try {
 const { EventEmitter } = require('events');
 
 class ESP32Service extends EventEmitter {
-  constructor(io) {
+  constructor(io, gameService = null) {
     super();
     this.io = io;
+    this.gameService = gameService;
     this.serialPort = null;
     this.parser = null;
     this.isConnectedFlag = false;
@@ -306,7 +307,17 @@ class ESP32Service extends EventEmitter {
       groupId: this.getGroupIdByBuzzerId(buzzerId)
     };
 
-    console.log('Buzzer press detected:', buzzerData);
+    console.log('Physical buzzer press detected:', buzzerData);
+
+    // Call gameService directly instead of emitting Socket.IO event
+    if (this.gameService) {
+      console.log('Calling gameService.handleBuzzerPress() directly for physical buzzer');
+      this.gameService.handleBuzzerPress(buzzerData);
+    } else {
+      console.warn('GameService not available, cannot handle physical buzzer press');
+    }
+
+    // Still emit for admin interface and other listeners
     this.io.emit('buzzer-press', buzzerData);
   }
 

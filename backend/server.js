@@ -122,7 +122,9 @@ io.on('connection', (socket) => {
     // If this is a virtual buzzer press, also emit it to admin interfaces for testing
     if (data.buzzerId && data.buzzerId.startsWith('virtual_')) {
       console.log('Virtual buzzer press - broadcasting to control panel');
+      console.log('Control panel room size:', io.sockets.adapter.rooms.get('control-panel')?.size || 0);
       io.to('control-panel').emit('buzzer-press', data);
+      console.log('Virtual buzzer press broadcast sent');
     }
   });
 

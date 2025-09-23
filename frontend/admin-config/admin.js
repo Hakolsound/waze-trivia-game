@@ -572,10 +572,16 @@ class AdminConfig {
         
         // Buzzer press listener for test mode
         this.socket.on('buzzer-press', (data) => {
+            console.log('Admin received buzzer-press event:', data);
+            console.log('Virtual buzzer test active:', this.virtualBuzzerTestState?.isActive);
+            console.log('Hardware buzzer test active:', this.buzzerTestState?.isActive);
+
             if (this.buzzerTestState && this.buzzerTestState.isActive) {
+                console.log('Routing to hardware buzzer test handler');
                 this.handleBuzzerTestPress(data);
             }
             if (this.virtualBuzzerTestState && this.virtualBuzzerTestState.isActive) {
+                console.log('Routing to virtual buzzer test handler');
                 this.handleVirtualBuzzerTestPress(data);
             }
         });

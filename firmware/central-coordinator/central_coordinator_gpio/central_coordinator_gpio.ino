@@ -52,6 +52,7 @@ struct BuzzerMessage {
   uint32_t timestamp;
   uint16_t deltaMs;
   uint8_t position;
+  uint8_t reserved;            // Padding byte to match Pi expectation
   uint8_t checksum;
 } __attribute__((packed));
 
@@ -117,6 +118,7 @@ void sendBinaryBuzzerPress(uint8_t deviceId, uint32_t timestamp, uint16_t deltaM
   buzzerMsg.timestamp = timestamp;
   buzzerMsg.deltaMs = deltaMs;
   buzzerMsg.position = position;
+  buzzerMsg.reserved = 0; // Clear reserved byte
   buzzerMsg.checksum = calculateChecksum((uint8_t*)&buzzerMsg, sizeof(buzzerMsg) - 1);
 
   Serial.write((uint8_t*)&buzzerMsg, sizeof(buzzerMsg));

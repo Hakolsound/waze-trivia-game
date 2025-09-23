@@ -219,6 +219,8 @@ class ESP32Service extends EventEmitter {
     const timestamp = buffer.readUInt32LE(3);
     const deltaMs = buffer.readUInt16LE(7);
     const position = buffer[9];
+    // buffer[10] is reserved byte
+    // buffer[11] is checksum
 
     console.log(`Binary: Buzzer ${deviceId} pressed at ${deltaMs}ms (position ${position})`);
 

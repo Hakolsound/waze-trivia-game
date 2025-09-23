@@ -15,6 +15,10 @@
 #define SERIAL_BAUD 115200
 #define HEARTBEAT_TIMEOUT 10000  // 10 seconds
 
+// Binary Protocol Configuration
+#define BINARY_PROTOCOL_ENABLED true
+#define TEXT_DEBUG_ENABLED false  // Set to true for debugging
+
 // Device state tracking
 typedef struct {
   uint8_t macAddress[6];
@@ -40,6 +44,36 @@ typedef struct {
   uint32_t timestamp;
 } Command;
 
+// Binary Protocol Structures for Pi Communication
+struct BuzzerMessage {
+  uint8_t header = 0xAA;
+  uint8_t messageType = 0x01;  // 0x01 = buzzer press
+  uint8_t deviceId;
+  uint32_t timestamp;
+  uint16_t deltaMs;
+  uint8_t position;
+  uint8_t checksum;
+} __attribute__((packed));
+
+struct StatusMessage {
+  uint8_t header = 0xAA;
+  uint8_t messageType = 0x02;  // 0x02 = status
+  uint16_t deviceMask;         // Bitmask of online devices (bits 0-14)
+  uint16_t armedMask;          // Bitmask of armed devices
+  uint16_t pressedMask;        // Bitmask of pressed devices
+  uint32_t timestamp;
+  uint32_t gameId;
+  uint8_t checksum;
+} __attribute__((packed));
+
+struct CommandMessage {
+  uint8_t header = 0xBB;       // Command marker
+  uint8_t command;             // 1=arm, 2=disarm, 3=test, 4=status_req
+  uint8_t targetDevice;        // 0=all, 1-15=specific device
+  uint32_t gameId;
+  uint8_t checksum;
+} __attribute__((packed));
+
 // Global state
 DeviceState devices[MAX_GROUPS];
 int registeredDeviceCount = 0;
@@ -58,6 +92,129 @@ typedef struct {
 
 BuzzerPress buzzerOrder[MAX_GROUPS];
 int buzzerPressCount = 0;
+
+// Binary protocol buffer for incoming commands
+static uint8_t commandBuffer[32];
+static int commandBufferPos = 0;
+
+// Binary Protocol Helper Functions
+uint8_t calculateChecksum(uint8_t* data, int len) {
+  uint8_t checksum = 0;
+  for (int i = 0; i < len; i++) {
+    checksum ^= data[i];
+  }
+  return checksum;
+}
+
+bool verifyChecksum(uint8_t* data, int len) {
+  uint8_t calculated = calculateChecksum(data, len - 1);
+  return calculated == data[len - 1];
+}
+
+void sendBinaryBuzzerPress(uint8_t deviceId, uint32_t timestamp, uint16_t deltaMs, uint8_t position) {
+  BuzzerMessage buzzerMsg;
+  buzzerMsg.deviceId = deviceId;
+  buzzerMsg.timestamp = timestamp;
+  buzzerMsg.deltaMs = deltaMs;
+  buzzerMsg.position = position;
+  buzzerMsg.checksum = calculateChecksum((uint8_t*)&buzzerMsg, sizeof(buzzerMsg) - 1);
+
+  Serial.write((uint8_t*)&buzzerMsg, sizeof(buzzerMsg));
+  Serial.flush(); // Ensure immediate transmission
+}
+
+void sendBinaryStatus() {
+  StatusMessage statusMsg;
+
+  // Build device masks
+  statusMsg.deviceMask = 0;
+  statusMsg.armedMask = 0;
+  statusMsg.pressedMask = 0;
+
+  for (int i = 0; i < registeredDeviceCount; i++) {
+    uint8_t deviceBit = devices[i].deviceId - 1; // Convert to 0-based bit position
+    if (deviceBit < 16) { // Safety check
+      if (devices[i].isOnline) {
+        statusMsg.deviceMask |= (1 << deviceBit);
+      }
+      if (devices[i].isArmed) {
+        statusMsg.armedMask |= (1 << deviceBit);
+      }
+      if (devices[i].isPressed) {
+        statusMsg.pressedMask |= (1 << deviceBit);
+      }
+    }
+  }
+
+  statusMsg.timestamp = millis();
+  statusMsg.gameId = gameActive ? currentGameId.toInt() : 0;
+  statusMsg.checksum = calculateChecksum((uint8_t*)&statusMsg, sizeof(statusMsg) - 1);
+
+  Serial.write((uint8_t*)&statusMsg, sizeof(statusMsg));
+  Serial.flush();
+}
+
+void processBinaryCommands() {
+  while (Serial.available()) {
+    uint8_t byte = Serial.read();
+
+    // Wait for command header
+    if (commandBufferPos == 0 && byte != 0xBB) {
+      continue;
+    }
+
+    commandBuffer[commandBufferPos++] = byte;
+
+    // Process complete command message
+    if (commandBufferPos >= sizeof(CommandMessage)) {
+      CommandMessage* cmd = (CommandMessage*)commandBuffer;
+
+      // Verify checksum
+      if (verifyChecksum((uint8_t*)cmd, sizeof(CommandMessage))) {
+        handleBinaryCommand(*cmd);
+      } else {
+        if (TEXT_DEBUG_ENABLED) {
+          Serial.println("ERROR:Invalid command checksum");
+        }
+      }
+
+      commandBufferPos = 0;
+    }
+
+    // Reset buffer if overflow
+    if (commandBufferPos >= sizeof(commandBuffer)) {
+      commandBufferPos = 0;
+    }
+  }
+}
+
+void handleBinaryCommand(CommandMessage cmd) {
+  switch (cmd.command) {
+    case 1: // ARM
+      currentGameId = String(cmd.gameId);
+      armAllBuzzers();
+      break;
+    case 2: // DISARM
+      disarmAllBuzzers();
+      break;
+    case 3: // TEST
+      testBuzzer(cmd.targetDevice);
+      break;
+    case 4: // STATUS_REQUEST
+      if (BINARY_PROTOCOL_ENABLED) {
+        sendBinaryStatus();
+      } else {
+        sendStatusToSerial();
+      }
+      break;
+    default:
+      if (TEXT_DEBUG_ENABLED) {
+        Serial.print("ERROR:Unknown binary command ");
+        Serial.println(cmd.command);
+      }
+      break;
+  }
+}
 
 // ESP-NOW callbacks
 void OnDataSent(const wifi_tx_info_t *tx_info, esp_now_send_status_t status) {
@@ -164,10 +321,14 @@ void setup() {
 
 void loop() {
   unsigned long currentTime = millis();
-  
+
   // Check for serial commands from Raspberry Pi
   if (Serial.available()) {
-    handleSerialCommand();
+    if (BINARY_PROTOCOL_ENABLED) {
+      processBinaryCommands();
+    } else {
+      handleSerialCommand();
+    }
   }
   
   // Check device timeouts
@@ -176,7 +337,11 @@ void loop() {
   // Send periodic status updates
   static unsigned long lastStatusUpdate = 0;
   if (currentTime - lastStatusUpdate > 5000) {
-    sendStatusToSerial();
+    if (BINARY_PROTOCOL_ENABLED) {
+      sendBinaryStatus();
+    } else {
+      sendStatusToSerial();
+    }
     lastStatusUpdate = currentTime;
   }
   
@@ -258,21 +423,29 @@ void handleBuzzerPress(Message msg) {
     }
   }
   
-  // Send to Pi (simple format for now)
-  Serial.print("BUZZER:");
-  Serial.print(msg.deviceId);
-  Serial.print(",");
-  Serial.print(msg.timestamp);
-  Serial.print(",");
-  Serial.print(deltaMs);
-  Serial.print(",");
-  Serial.println(buzzerPressCount);
-  
-  Serial.print("BUZZER PRESS: Device ");
-  Serial.print(msg.deviceId);
-  Serial.print(" at ");
-  Serial.print(deltaMs);
-  Serial.println("ms");
+  // Send to Pi using binary or text protocol
+  if (BINARY_PROTOCOL_ENABLED) {
+    sendBinaryBuzzerPress(msg.deviceId, msg.timestamp, deltaMs, buzzerPressCount);
+  } else {
+    // Fallback text format
+    Serial.print("BUZZER:");
+    Serial.print(msg.deviceId);
+    Serial.print(",");
+    Serial.print(msg.timestamp);
+    Serial.print(",");
+    Serial.print(deltaMs);
+    Serial.print(",");
+    Serial.println(buzzerPressCount);
+  }
+
+  // Debug output (optional)
+  if (TEXT_DEBUG_ENABLED) {
+    Serial.print("BUZZER PRESS: Device ");
+    Serial.print(msg.deviceId);
+    Serial.print(" at ");
+    Serial.print(deltaMs);
+    Serial.println("ms");
+  }
 }
 
 void handleHeartbeat(Message msg) {

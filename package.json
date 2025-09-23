@@ -14,6 +14,7 @@
     "build:admin-config": "cd frontend/admin-config && npm run build"
   },
   "dependencies": {
+    "@serialport/parser-byte-length": "^13.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",

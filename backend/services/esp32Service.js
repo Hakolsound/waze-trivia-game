@@ -1,8 +1,9 @@
-let SerialPort, ReadlineParser;
+let SerialPort, ReadlineParser, ByteLengthParser;
 try {
   const serialportModule = require('serialport');
   SerialPort = serialportModule.SerialPort;
   ReadlineParser = require('@serialport/parser-readline').ReadlineParser;
+  ByteLengthParser = require('@serialport/parser-byte-length').ByteLengthParser;
 } catch (error) {
   console.warn('SerialPort module not available, ESP32 will run in simulation mode');
 }
@@ -18,9 +19,32 @@ class ESP32Service extends EventEmitter {
     this.isConnectedFlag = false;
     this.buzzerStates = new Map();
     this.currentGameId = null;
-    
+
     this.serialPortPath = process.env.ESP32_SERIAL_PORT || '/dev/ttyUSB0';
     this.baudRate = parseInt(process.env.ESP32_BAUD_RATE) || 115200;
+
+    // Binary protocol configuration
+    this.binaryProtocolEnabled = process.env.BINARY_PROTOCOL_ENABLED !== 'false'; // Default to true
+    this.binaryBuffer = Buffer.alloc(0);
+
+    // Protocol constants
+    this.MESSAGE_TYPES = {
+      BUZZER_PRESS: 0x01,
+      STATUS: 0x02
+    };
+
+    this.COMMAND_TYPES = {
+      ARM: 0x01,
+      DISARM: 0x02,
+      TEST: 0x03,
+      STATUS_REQUEST: 0x04
+    };
+
+    this.MESSAGE_SIZES = {
+      BUZZER_MESSAGE: 12,
+      STATUS_MESSAGE: 16,
+      COMMAND_MESSAGE: 8
+    };
   }
 
   async initialize() {
@@ -39,7 +63,14 @@ class ESP32Service extends EventEmitter {
         autoOpen: false
       });
 
-      this.parser = this.serialPort.pipe(new ReadlineParser({ delimiter: '\n' }));
+      // Setup parser based on protocol mode
+      if (this.binaryProtocolEnabled) {
+        // For binary protocol, read raw bytes
+        this.parser = this.serialPort;
+      } else {
+        // For text protocol, use line parser
+        this.parser = this.serialPort.pipe(new ReadlineParser({ delimiter: '\n' }));
+      }
 
       this.serialPort.on('open', () => {
         console.log('ESP32 Serial connection established');
@@ -58,7 +89,11 @@ class ESP32Service extends EventEmitter {
       });
 
       this.parser.on('data', (data) => {
-        this.handleSerialData(data.trim());
+        if (this.binaryProtocolEnabled) {
+          this.handleBinaryData(data);
+        } else {
+          this.handleSerialData(data.trim());
+        }
       });
 
       try {
@@ -89,8 +124,8 @@ class ESP32Service extends EventEmitter {
       
       if (data.startsWith('BUZZER:')) {
         const buzzerData = data.substring(7);
-        const [buzzerId, timestamp] = buzzerData.split(',');
-        this.handleBuzzerPress(buzzerId, parseInt(timestamp));
+        const [buzzerId, timestamp, deltaMs, position] = buzzerData.split(',');
+        this.handleBuzzerPress(buzzerId, parseInt(timestamp), parseInt(deltaMs) || 0, parseInt(position) || 0);
       } else if (data.startsWith('STATUS:')) {
         // Parse STATUS:timestamp,armed=0,game=0,devices=1,presses=0 format
         const statusStr = data.substring(7);
@@ -131,7 +166,121 @@ class ESP32Service extends EventEmitter {
     }
   }
 
-  handleBuzzerPress(buzzerId, timestamp) {
+  // Binary Protocol Handlers
+  handleBinaryData(data) {
+    try {
+      // Accumulate bytes in buffer
+      this.binaryBuffer = Buffer.concat([this.binaryBuffer, data]);
+
+      // Process complete messages
+      while (this.binaryBuffer.length > 0) {
+        const header = this.binaryBuffer[0];
+
+        if (header === 0xAA) { // ESP32 → Pi message
+          const messageType = this.binaryBuffer.length > 1 ? this.binaryBuffer[1] : null;
+
+          if (messageType === this.MESSAGE_TYPES.BUZZER_PRESS) {
+            if (this.binaryBuffer.length >= this.MESSAGE_SIZES.BUZZER_MESSAGE) {
+              this.processBuzzerMessage(this.binaryBuffer.slice(0, this.MESSAGE_SIZES.BUZZER_MESSAGE));
+              this.binaryBuffer = this.binaryBuffer.slice(this.MESSAGE_SIZES.BUZZER_MESSAGE);
+            } else {
+              break; // Wait for complete message
+            }
+          } else if (messageType === this.MESSAGE_TYPES.STATUS) {
+            if (this.binaryBuffer.length >= this.MESSAGE_SIZES.STATUS_MESSAGE) {
+              this.processStatusMessage(this.binaryBuffer.slice(0, this.MESSAGE_SIZES.STATUS_MESSAGE));
+              this.binaryBuffer = this.binaryBuffer.slice(this.MESSAGE_SIZES.STATUS_MESSAGE);
+            } else {
+              break;
+            }
+          } else {
+            // Unknown message type, skip this byte
+            this.binaryBuffer = this.binaryBuffer.slice(1);
+          }
+        } else {
+          // Invalid header, skip this byte
+          this.binaryBuffer = this.binaryBuffer.slice(1);
+        }
+      }
+    } catch (error) {
+      console.error('Error processing binary data:', error);
+      this.binaryBuffer = Buffer.alloc(0); // Reset buffer on error
+    }
+  }
+
+  processBuzzerMessage(buffer) {
+    // Verify checksum
+    if (!this.verifyChecksum(buffer)) {
+      console.warn('Invalid buzzer message checksum');
+      return;
+    }
+
+    const deviceId = buffer[2];
+    const timestamp = buffer.readUInt32LE(3);
+    const deltaMs = buffer.readUInt16LE(7);
+    const position = buffer[9];
+
+    console.log(`Binary: Buzzer ${deviceId} pressed at ${deltaMs}ms (position ${position})`);
+
+    this.handleBuzzerPress(deviceId.toString(), timestamp, deltaMs, position);
+  }
+
+  processStatusMessage(buffer) {
+    if (!this.verifyChecksum(buffer)) {
+      console.warn('Invalid status message checksum');
+      return;
+    }
+
+    const deviceMask = buffer.readUInt16LE(2);
+    const armedMask = buffer.readUInt16LE(4);
+    const pressedMask = buffer.readUInt16LE(6);
+    const timestamp = buffer.readUInt32LE(8);
+    const gameId = buffer.readUInt32LE(12);
+
+    console.log(`Binary Status: devices=0x${deviceMask.toString(16)}, armed=0x${armedMask.toString(16)}, pressed=0x${pressedMask.toString(16)}`);
+
+    // Update device states from bitmasks
+    this.updateDeviceStatesFromMasks(deviceMask, armedMask, pressedMask);
+  }
+
+  verifyChecksum(buffer) {
+    let checksum = 0;
+    for (let i = 0; i < buffer.length - 1; i++) {
+      checksum ^= buffer[i];
+    }
+    return checksum === buffer[buffer.length - 1];
+  }
+
+  updateDeviceStatesFromMasks(deviceMask, armedMask, pressedMask) {
+    // Update device states based on bitmasks
+    for (let i = 0; i < 16; i++) {
+      const deviceId = (i + 1).toString();
+      const bitMask = 1 << i;
+
+      if (deviceMask & bitMask) {
+        // Device is online
+        const existingState = this.buzzerStates.get(deviceId) || {};
+        this.buzzerStates.set(deviceId, {
+          ...existingState,
+          online: true,
+          armed: (armedMask & bitMask) !== 0,
+          pressed: (pressedMask & bitMask) !== 0,
+          last_seen: Date.now(),
+          last_online: Date.now()
+        });
+      }
+    }
+
+    // Emit status update
+    this.io.emit('esp32-status', {
+      connected: true,
+      deviceMask,
+      armedMask,
+      pressedMask
+    });
+  }
+
+  handleBuzzerPress(buzzerId, timestamp, deltaMs, position) {
     if (!this.currentGameId) {
       console.warn('Buzzer pressed but no active game');
       return;
@@ -141,6 +290,8 @@ class ESP32Service extends EventEmitter {
       gameId: this.currentGameId,
       buzzer_id: buzzerId,
       timestamp: timestamp,
+      deltaMs: deltaMs || 0,
+      position: position || 0,
       groupId: this.getGroupIdByBuzzerId(buzzerId)
     };
 
@@ -158,15 +309,62 @@ class ESP32Service extends EventEmitter {
   }
 
   sendCommand(command) {
-    if (this.isConnectedFlag && this.serialPort) {
-      console.log('Sending ESP32 command:', command);
-      this.serialPort.write(command + '\n');
-      return true;
+    if (this.binaryProtocolEnabled) {
+      // Parse text command and convert to binary
+      return this.sendBinaryCommandFromText(command);
     } else {
-      console.log('ESP32 not connected, simulating command:', command);
-      this.simulateCommand(command);
+      // Send text command
+      if (this.isConnectedFlag && this.serialPort) {
+        console.log('Sending ESP32 command:', command);
+        this.serialPort.write(command + '\n');
+        return true;
+      } else {
+        console.log('ESP32 not connected, simulating command:', command);
+        this.simulateCommand(command);
+        return false;
+      }
+    }
+  }
+
+  sendBinaryCommandFromText(command) {
+    // Convert text commands to binary protocol
+    if (command === 'ARM') {
+      return this.sendBinaryCommand(this.COMMAND_TYPES.ARM, 0, parseInt(this.currentGameId) || 0);
+    } else if (command === 'DISARM') {
+      return this.sendBinaryCommand(this.COMMAND_TYPES.DISARM, 0, 0);
+    } else if (command === 'STATUS') {
+      return this.sendBinaryCommand(this.COMMAND_TYPES.STATUS_REQUEST, 0, 0);
+    } else if (command.startsWith('TEST:')) {
+      const deviceId = parseInt(command.substring(5)) || 0;
+      return this.sendBinaryCommand(this.COMMAND_TYPES.TEST, deviceId, 0);
+    } else {
+      console.warn('Unknown command for binary protocol:', command);
       return false;
     }
+  }
+
+  sendBinaryCommand(command, targetDevice = 0, gameId = 0) {
+    if (!this.isConnectedFlag || !this.serialPort) {
+      console.log('ESP32 not connected, simulating binary command');
+      return false;
+    }
+
+    const buffer = Buffer.alloc(this.MESSAGE_SIZES.COMMAND_MESSAGE);
+    buffer[0] = 0xBB; // Command header
+    buffer[1] = command;
+    buffer[2] = targetDevice;
+    buffer.writeUInt32LE(gameId, 3);
+
+    // Calculate checksum
+    let checksum = 0;
+    for (let i = 0; i < 7; i++) {
+      checksum ^= buffer[i];
+    }
+    buffer[7] = checksum;
+
+    console.log(`Sending binary command: type=${command}, target=${targetDevice}, gameId=${gameId}`);
+    this.serialPort.write(buffer);
+    return true;
   }
 
   simulateCommand(command) {

@@ -248,10 +248,11 @@ class GlobalGameSelector {
                     </div>
                     <div class="game-selector-item-actions">
                         <div class="action-buttons">
-                            ${this.currentGame?.id === game.id ? 
-                                '<span class="current-badge">Current</span>' : 
+                            ${this.currentGame?.id === game.id ?
+                                '<span class="current-badge">Current</span>' :
                                 ''
                             }
+                            <button class="btn btn-secondary btn-small edit-game-btn" title="Edit Game Name">✏️</button>
                             <button class="btn btn-danger btn-small delete-game-btn" title="Delete Game">🗑️</button>
                         </div>
                     </div>
@@ -298,6 +299,20 @@ class GlobalGameSelector {
                 }
             });
 
+            // Add click handlers for edit buttons
+            list.querySelectorAll('.edit-game-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const item = btn.closest('.game-selector-item');
+                    const gameId = item.dataset.gameId;
+                    const game = this.games.find(g => g.id === gameId);
+
+                    if (game) {
+                        this.showEditGameModal(game);
+                    }
+                });
+            });
+
             // Add click handlers for delete buttons
             list.querySelectorAll('.delete-game-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
@@ -305,7 +320,7 @@ class GlobalGameSelector {
                     const item = btn.closest('.game-selector-item');
                     const gameId = item.dataset.gameId;
                     const gameName = this.games.find(g => g.id === gameId)?.name || 'Unknown Game';
-                    
+
                     this.confirmGameDelete(gameId, gameName);
                 });
             });
@@ -556,6 +571,147 @@ class GlobalGameSelector {
         } catch (error) {
             console.error('Failed to create game:', error);
             this.showToast('Failed to create game', 'error');
+            return false;
+        }
+    }
+
+    showEditGameModal(game) {
+        // Create modal HTML
+        const modalHTML = `
+            <div id="edit-game-modal" class="game-selector-modal">
+                <div class="game-selector-content create-game-content">
+                    <div class="game-selector-header">
+                        <h2>✏️ Edit Game Name</h2>
+                        <p>Update the name for "${game.name}"</p>
+                        <button id="close-edit-game-modal" class="game-selector-close" title="Close (Esc)">×</button>
+                    </div>
+                    <div class="game-selector-body">
+                        <form id="edit-game-form" class="create-game-form">
+                            <div class="form-group">
+                                <label for="edit-game-name">Game Name:</label>
+                                <input type="text" id="edit-game-name" class="form-input" value="${game.name}" required>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="game-selector-actions">
+                        <button id="save-game-name" class="btn btn-primary">Save Changes</button>
+                        <button id="cancel-edit-game" class="btn btn-secondary">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Add modal to page
+        const existingModal = document.getElementById('edit-game-modal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+        // Set up event listeners
+        const modal = document.getElementById('edit-game-modal');
+        const form = document.getElementById('edit-game-form');
+        const nameInput = document.getElementById('edit-game-name');
+        const saveBtn = document.getElementById('save-game-name');
+        const cancelBtn = document.getElementById('cancel-edit-game');
+        const closeBtn = document.getElementById('close-edit-game-modal');
+
+        const closeModal = () => {
+            modal.remove();
+        };
+
+        // Focus on name input and select all text
+        nameInput.focus();
+        nameInput.select();
+
+        // Event listeners
+        closeBtn.addEventListener('click', closeModal);
+        cancelBtn.addEventListener('click', closeModal);
+
+        // Form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const newName = nameInput.value.trim();
+
+            if (!newName) {
+                this.showToast('Please enter a game name', 'error');
+                return;
+            }
+
+            if (newName === game.name) {
+                closeModal();
+                return;
+            }
+
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+
+            try {
+                const success = await this.updateGameName(game.id, newName);
+                if (success) {
+                    closeModal();
+                }
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save Changes';
+            }
+        });
+
+        // Click save button directly
+        saveBtn.addEventListener('click', () => {
+            form.dispatchEvent(new Event('submit'));
+        });
+
+        // ESC key
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
+
+        // Click outside to close
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+    }
+
+    async updateGameName(gameId, newName) {
+        try {
+            const response = await fetch(`/api/games/${gameId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: newName
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to update game name');
+            }
+
+            // Refresh games list
+            await this.loadAvailableGames();
+
+            // If this was the current game, update the current game display
+            if (this.currentGame?.id === gameId) {
+                this.currentGame.name = newName;
+                this.updateGameSelectorUI();
+            }
+
+            this.showToast(`Game name updated to "${newName}"`, 'success');
+            return true;
+
+        } catch (error) {
+            console.error('Failed to update game name:', error);
+            this.showToast('Failed to update game name', 'error');
             return false;
         }
     }

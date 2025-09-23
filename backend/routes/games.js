@@ -133,6 +133,15 @@ module.exports = (gameService) => {
     }
   });
 
+  router.patch('/:id', async (req, res) => {
+    try {
+      const game = await gameService.updateGame(req.params.id, req.body);
+      res.json(game);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   router.put('/:id/status', async (req, res) => {
     try {
       const { status } = req.body;

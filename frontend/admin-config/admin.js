@@ -92,25 +92,31 @@ class AdminConfig {
     onGameChanged(game) {
         console.log('Game changed:', game);
         const indicator = document.getElementById('current-game-indicator');
-        
+
         if (game) {
             indicator.textContent = `Current Game: ${game.name}`;
             indicator.style.display = 'block';
-            
+
             // Show admin configuration interface
             console.log('Showing admin interface');
             this.showAdminInterface();
-            
+
             // Load game-specific data
             this.loadGameData(game);
         } else {
             indicator.textContent = 'No Game Selected';
             indicator.style.display = 'block';
-            
+
             // Hide admin configuration interface
             console.log('Hiding admin interface');
             this.hideAdminInterface();
         }
+
+        // Make the indicator clickable to show game selector
+        indicator.style.cursor = 'pointer';
+        indicator.onclick = () => {
+            this.gameSelector.showGameSelector();
+        };
     }
 
     onGamesLoaded(games) {

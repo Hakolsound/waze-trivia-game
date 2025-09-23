@@ -43,6 +43,34 @@ class GameService {
     return this.getGame(gameId);
   }
 
+  async updateGame(gameId, updateData) {
+    const game = await this.db.get('SELECT * FROM games WHERE id = ?', [gameId]);
+    if (!game) throw new Error('Game not found');
+
+    const allowedFields = ['name', 'description'];
+    const updates = [];
+    const values = [];
+
+    for (const [field, value] of Object.entries(updateData)) {
+      if (allowedFields.includes(field)) {
+        updates.push(`${field} = ?`);
+        values.push(value);
+      }
+    }
+
+    if (updates.length === 0) {
+      throw new Error('No valid fields to update');
+    }
+
+    values.push(gameId);
+    await this.db.run(
+      `UPDATE games SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      values
+    );
+
+    return this.getGame(gameId);
+  }
+
   async getGame(gameId) {
     const game = await this.db.get('SELECT * FROM games WHERE id = ?', [gameId]);
     if (!game) throw new Error('Game not found');

@@ -196,20 +196,8 @@ void loop() {
 void checkBuzzerButton() {
   bool currentButtonState = digitalRead(BUZZER_BUTTON_PIN);
 
-  // Debug output every few seconds
-  static unsigned long lastDebug = 0;
-  if (millis() - lastDebug > 3000) {
-    Serial.printf("Button state: current=%s, last=%s, isArmed=%s, buzzerPressed=%s\n",
-                  currentButtonState ? "HIGH" : "LOW",
-                  lastButtonState ? "HIGH" : "LOW",
-                  isArmed ? "true" : "false",
-                  buzzerPressed ? "true" : "false");
-    lastDebug = millis();
-  }
-
   // Button pressed (active LOW) and buzzer is armed and not already pressed
   if (currentButtonState == LOW && lastButtonState == HIGH && isArmed && !buzzerPressed) {
-    Serial.println("Button press conditions met - calling handleBuzzerPress()");
     handleBuzzerPress();
   }
 
@@ -229,8 +217,13 @@ void handleBuzzerPress() {
   msg.messageType = 1; // buzzer_press
   msg.deviceId = DEVICE_ID;
   msg.timestamp = buzzerPressTime;
-  
-  esp_now_send(coordinatorMAC, (uint8_t*)&msg, sizeof(msg));
+  memset(msg.data, 0, sizeof(msg.data)); // Clear data array
+
+  esp_err_t result = esp_now_send(coordinatorMAC, (uint8_t*)&msg, sizeof(msg));
+  Serial.printf("Buzzer press message send result: %s\n", result == ESP_OK ? "SUCCESS" : "FAILED");
+
+  // Give coordinator time to process the message
+  delay(50);
   
   Serial.print("BUZZER PRESSED! Device: ");
   Serial.print(DEVICE_ID);

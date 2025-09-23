@@ -387,9 +387,14 @@ class GlobalGameSelector {
 
     // Method to force show the game selector (used by admin interface)
     showGameSelector() {
+        console.log('showGameSelector called');
         const modal = document.getElementById('game-selector-modal');
+        console.log('Modal element:', modal);
         if (modal) {
             modal.classList.remove('hidden');
+            console.log('Modal shown, classes:', modal.className);
+        } else {
+            console.warn('Game selector modal not found');
         }
     }
 

@@ -273,8 +273,13 @@ class GameService {
       if (game.time_based_scoring) {
         // Calculate time remaining when buzzer was pressed
         const timeElapsed = buzzerEntry.deltaMs;
-        const timeRemaining = Math.max(0, currentQuestion.time_limit * 1000 - timeElapsed);
-        pointsToAward = this.calculateTimeBasedPoints(currentQuestion.points, timeRemaining, currentQuestion.time_limit * 1000);
+        const questionTimeLimit = currentQuestion.time_limit || 30; // Default to 30s if not set
+        const totalTime = questionTimeLimit * 1000;
+        const timeRemaining = Math.max(0, totalTime - timeElapsed);
+
+        console.log(`[DEBUG] Time calculation - Elapsed: ${timeElapsed}ms, Time Limit: ${questionTimeLimit}s, Total: ${totalTime}ms, Remaining: ${timeRemaining}ms`);
+
+        pointsToAward = this.calculateTimeBasedPoints(currentQuestion.points, timeRemaining, totalTime);
       } else {
         pointsToAward = currentQuestion.points;
       }
@@ -484,12 +489,22 @@ class GameService {
 
   // Calculate time-based points (decreases linearly from max to 0)
   calculateTimeBasedPoints(originalPoints, timeRemaining, totalTime) {
-    if (timeRemaining <= 0) return 0;
-    if (timeRemaining >= totalTime) return originalPoints;
-    
+    console.log(`[DEBUG] calculateTimeBasedPoints - Original: ${originalPoints}, Remaining: ${timeRemaining}, Total: ${totalTime}`);
+
+    if (timeRemaining <= 0) {
+      console.log(`[DEBUG] Time remaining <= 0, returning 0 points`);
+      return 0;
+    }
+    if (timeRemaining >= totalTime) {
+      console.log(`[DEBUG] Time remaining >= total, returning full points: ${originalPoints}`);
+      return originalPoints;
+    }
+
     // Linear decrease from original points to 0
     const ratio = timeRemaining / totalTime;
-    return Math.ceil(originalPoints * ratio);
+    const calculatedPoints = Math.ceil(originalPoints * ratio);
+    console.log(`[DEBUG] Ratio: ${ratio}, Calculated points: ${calculatedPoints}`);
+    return calculatedPoints;
   }
 
   async awardPoints(gameId, groupId, points) {

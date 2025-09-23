@@ -1996,7 +1996,9 @@ class AdminConfig {
             groupId,
             isVirtualBuzzer,
             deltaMs,
-            position
+            position,
+            timestamp,
+            currentTime: Date.now()
         });
 
         // Find the card for this buzzer - try multiple selectors
@@ -2012,9 +2014,11 @@ class AdminConfig {
 
         if (card && !this.buzzerTestState.testedBuzzers.has(actualBuzzerId)) {
             // Add to press order FIRST to get correct ranking
+            // Always use Date.now() for consistent timestamp format
+            const pressTime = Date.now();
             this.buzzerTestState.pressOrder.push({
                 buzzerId: actualBuzzerId,
-                timestamp: timestamp || Date.now(),
+                timestamp: pressTime,
                 isVirtual: isVirtualBuzzer
             });
 
@@ -2054,6 +2058,13 @@ class AdminConfig {
                 const firstPressTime = this.buzzerTestState.pressOrder[0].timestamp;
                 const currentPressTime = this.buzzerTestState.pressOrder[this.buzzerTestState.pressOrder.length - 1].timestamp;
                 calculatedDeltaMs = currentPressTime - firstPressTime;
+
+                console.log('Delta time calculation:', {
+                    firstPressTime,
+                    currentPressTime,
+                    calculatedDeltaMs,
+                    pressOrder: this.buzzerTestState.pressOrder.length
+                });
             }
 
             // Show detailed binary protocol information with formatted timestamp

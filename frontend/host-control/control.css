@@ -3535,18 +3535,18 @@ kbd {
 }
 
 /* Hover effect for team scores when virtual buzzer is enabled */
-.teams-list.virtual-buzzer-enabled .team-item {
+.teams-list.virtual-buzzer-enabled .team-score-item {
   transition: all 0.2s ease;
   cursor: pointer;
 }
 
-.teams-list.virtual-buzzer-enabled .team-item:hover {
+.teams-list.virtual-buzzer-enabled .team-score-item:hover {
   background: rgba(74, 158, 191, 0.1);
   border-left: 3px solid var(--waze-primary);
   transform: translateX(2px);
 }
 
-.teams-list.virtual-buzzer-enabled .team-item:hover .team-name {
+.teams-list.virtual-buzzer-enabled .team-score-item:hover .team-name {
   color: var(--waze-primary);
   font-weight: 600;
 }

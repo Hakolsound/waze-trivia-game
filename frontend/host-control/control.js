@@ -721,6 +721,7 @@ class HostControl {
     }
 
     updateTeamDisplay(preserveUserInput = false) {
+        console.log('[VIRTUAL BUZZER DEBUG] updateTeamDisplay called with', this.teams.length, 'teams');
         if (this.teams.length === 0) {
             this.elements.teamsScoring.innerHTML = '<div class="no-teams">No teams loaded</div>';
             this.elements.teamSelect.innerHTML = '<option value="">No teams available</option>';
@@ -791,7 +792,9 @@ class HostControl {
         });
 
         // Re-setup virtual buzzer click handlers if enabled
+        console.log('[VIRTUAL BUZZER DEBUG] Teams updated - checking toggle state:', this.elements.virtualBuzzerEnabled ? this.elements.virtualBuzzerEnabled.checked : 'toggle not found');
         if (this.elements.virtualBuzzerEnabled && this.elements.virtualBuzzerEnabled.checked) {
+            console.log('[VIRTUAL BUZZER DEBUG] Toggle is enabled, setting up handlers after team update');
             this.setupTeamClickHandlers();
         }
     }
@@ -810,7 +813,7 @@ class HostControl {
     }
 
     setupTeamClickHandlers() {
-        const teamItems = this.elements.teamsScoring.querySelectorAll('.team-item');
+        const teamItems = this.elements.teamsScoring.querySelectorAll('.team-score-item');
         console.log('[VIRTUAL BUZZER DEBUG] Setting up click handlers for', teamItems.length, 'team items');
         teamItems.forEach((teamItem, index) => {
             // Remove existing handlers first
@@ -835,7 +838,7 @@ class HostControl {
     }
 
     removeTeamClickHandlers() {
-        const teamItems = this.elements.teamsScoring.querySelectorAll('.team-item');
+        const teamItems = this.elements.teamsScoring.querySelectorAll('.team-score-item');
         console.log('[VIRTUAL BUZZER DEBUG] Removing click handlers from', teamItems.length, 'team items');
         teamItems.forEach(teamItem => {
             if (this.boundHandleTeamClick) {

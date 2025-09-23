@@ -2600,6 +2600,9 @@ class HostControl {
             // Show immediate feedback
             this.showAnswerFeedback(isCorrect);
 
+            console.log(`[FRONTEND] About to evaluate - currentBuzzerPosition: ${this.currentBuzzerPosition}, buzzerOrder length: ${this.buzzerOrder.length}`);
+            console.log(`[FRONTEND] Current buzzer being evaluated:`, this.buzzerOrder[this.currentBuzzerPosition]);
+
             const response = await fetch(`/api/games/${this.currentGame.id}/evaluate-answer`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

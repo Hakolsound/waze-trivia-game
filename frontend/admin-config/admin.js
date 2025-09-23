@@ -573,16 +573,12 @@ class AdminConfig {
         // Buzzer press listener for test mode
         this.socket.on('buzzer-press', (data) => {
             console.log('Admin received buzzer-press event:', data);
-            console.log('Virtual buzzer test active:', this.virtualBuzzerTestState?.isActive);
             console.log('Hardware buzzer test active:', this.buzzerTestState?.isActive);
 
+            // All buzzer presses (hardware + virtual) go to the unified test handler
             if (this.buzzerTestState && this.buzzerTestState.isActive) {
-                console.log('Routing to hardware buzzer test handler');
+                console.log('Routing to unified buzzer test handler');
                 this.handleBuzzerTestPress(data);
-            }
-            if (this.virtualBuzzerTestState && this.virtualBuzzerTestState.isActive) {
-                console.log('Routing to virtual buzzer test handler');
-                this.handleVirtualBuzzerTestPress(data);
             }
         });
 
@@ -1926,10 +1922,26 @@ class AdminConfig {
 
         const { buzzerId, groupId, buzzer_id, deltaMs, position, timestamp } = data;
         const actualBuzzerId = buzzerId || buzzer_id;
+        const isVirtualBuzzer = buzzerId && buzzerId.startsWith('virtual_');
 
-        // Find the card for this buzzer
-        const card = this.elements.buzzerTestGrid.querySelector(`[data-buzzer-id="${actualBuzzerId}"]`) ||
-                    this.elements.buzzerTestGrid.querySelector(`[data-team-id="${groupId}"]`);
+        console.log('Processing buzzer test press:', {
+            actualBuzzerId,
+            groupId,
+            isVirtualBuzzer,
+            deltaMs,
+            position
+        });
+
+        // Find the card for this buzzer - try multiple selectors
+        let card = this.elements.buzzerTestGrid.querySelector(`[data-buzzer-id="${actualBuzzerId}"]`) ||
+                   this.elements.buzzerTestGrid.querySelector(`[data-team-id="${groupId}"]`);
+
+        // For virtual buzzers, also try to match by group ID as buzzer ID
+        if (!card && isVirtualBuzzer && groupId) {
+            card = this.elements.buzzerTestGrid.querySelector(`[data-buzzer-id="${groupId}"]`);
+        }
+
+        console.log('Found card for buzzer test:', !!card);
 
         if (card && !this.buzzerTestState.testedBuzzers.has(actualBuzzerId)) {
             // Mark as tested
@@ -1940,15 +1952,30 @@ class AdminConfig {
             const status = card.querySelector('.buzzer-test-status');
             status.className = 'buzzer-test-status tested';
 
+            // Calculate position and deltaMs for virtual buzzers if missing
+            let calculatedPosition = position;
+            let calculatedDeltaMs = deltaMs;
+
+            if (isVirtualBuzzer) {
+                if (calculatedPosition === undefined) {
+                    // Calculate position based on number of tested buzzers
+                    calculatedPosition = this.buzzerTestState.testedBuzzers.size;
+                }
+                if (calculatedDeltaMs === undefined && this.buzzerTestState.startTime) {
+                    // Calculate delta time from test start
+                    calculatedDeltaMs = Date.now() - this.buzzerTestState.startTime;
+                }
+            }
+
             // Show detailed binary protocol information with formatted timestamp
             const protocolInfo = [];
             if (timestamp !== undefined) {
                 const formattedTime = this.formatTimestamp(Date.now()); // Current time when pressed
                 protocolInfo.push(formattedTime);
             }
-            if (position !== undefined) protocolInfo.push(`Rank #${position}`);
+            if (calculatedPosition !== undefined) protocolInfo.push(`Rank #${calculatedPosition}`);
             // Only show delta time for ranks > 1 (first place has Δt=0)
-            if (deltaMs !== undefined && position > 1) protocolInfo.push(`Δt: ${this.formatDeltaTime(deltaMs)}`);
+            if (calculatedDeltaMs !== undefined && calculatedPosition > 1) protocolInfo.push(`Δt: ${this.formatDeltaTime(calculatedDeltaMs)}`);
 
             const protocolText = protocolInfo.length > 0 ?
                 `<div class="protocol-info">${protocolInfo.join(' • ')}</div>` : '';

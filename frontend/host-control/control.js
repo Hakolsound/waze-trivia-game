@@ -2292,10 +2292,17 @@ class HostControl {
 
     // Get actual points for current buzzer (considering time-based scoring)
     getActualPointsForBuzzer(buzzer) {
-        if (!this.currentGame || !buzzer) return 0;
+        if (!this.currentGame || !buzzer) {
+            console.log(`[FRONTEND DEBUG] Missing game or buzzer data`);
+            return 0;
+        }
 
-        const currentQuestion = this.currentGame.questions[this.currentGame.current_question_index];
-        if (!currentQuestion) return 0;
+        // Use this.questions array which is populated from game state
+        const currentQuestion = this.questions[this.currentQuestionIndex];
+        if (!currentQuestion) {
+            console.log(`[FRONTEND DEBUG] No current question found at index ${this.currentQuestionIndex}`);
+            return 0;
+        }
 
         // If time-based scoring is enabled, calculate based on timing
         if (this.currentGame.time_based_scoring) {
@@ -2306,12 +2313,13 @@ class HostControl {
             const totalTime = (currentQuestion.time_limit || 30) * 1000; // Convert to ms
             const timeRemaining = Math.max(0, totalTime - timeElapsed);
 
-            console.log(`[FRONTEND DEBUG] Time calculation - Elapsed: ${timeElapsed}ms, Total: ${totalTime}ms, Remaining: ${timeRemaining}ms`);
+            console.log(`[FRONTEND DEBUG] Time calculation - Question: "${currentQuestion.question}", Points: ${currentQuestion.points}, Elapsed: ${timeElapsed}ms, Total: ${totalTime}ms, Remaining: ${timeRemaining}ms, Time-based scoring: ${this.currentGame.time_based_scoring}`);
 
             return this.calculateTimeBasedPoints(currentQuestion.points, timeRemaining, totalTime);
         }
 
         // Otherwise return full points
+        console.log(`[FRONTEND DEBUG] Time-based scoring disabled, returning full points: ${currentQuestion.points}`);
         return currentQuestion.points;
     }
 

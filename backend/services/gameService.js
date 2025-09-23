@@ -453,16 +453,20 @@ class GameService {
       } else {
         console.warn(`[WARNING] No group found for buzzer_id: "${buzzerIdToLookup}" in game: "${gameId}"`);
       }
+
+      // Debug timing comparison
+      if (data.deltaMs !== undefined) {
+        console.log(`[DEBUG] Timing comparison - ESP32 deltaMs: ${data.deltaMs}ms, JavaScript deltaMs: ${timestamp - gameState.startTime}ms`);
+      }
     }
 
     // Track buzzer activity for virtual buzzer availability
     const actualBuzzerId = buzzerId || buzzer_id || `physical_${actualGroupId}`;
     this.updateBuzzerActivity(actualBuzzerId, actualGroupId);
 
-    // Use provided deltaMs if available (from ESP32), otherwise calculate from timestamp
-    const deltaMs = (data.deltaMs !== undefined && data.deltaMs !== null)
-      ? data.deltaMs
-      : timestamp - gameState.startTime;
+    // Always use JavaScript timing for physical buzzers (ESP32 deltaMs is unreliable)
+    // Calculate actual elapsed time from when question started
+    const deltaMs = timestamp - gameState.startTime;
     const buzzerEntry = {
       groupId: actualGroupId, // Use the mapped group ID from database
       buzzer_id,

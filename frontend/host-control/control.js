@@ -903,13 +903,14 @@ class HostControl {
 
         console.log(`[VIRTUAL BUZZER] ${teamName} buzzed in via Ctrl+Click at ${virtualBuzzerData.deltaMs}ms`);
 
-        // Process the virtual buzzer press through the same system as physical buzzers
-        this.handleBuzzerPress(virtualBuzzerData);
+        // Send virtual buzzer press through socket to backend (same as physical buzzers)
+        this.socket.emit('buzzer-press', virtualBuzzerData);
 
         // Visual feedback
-        event.currentTarget.style.backgroundColor = 'rgba(74, 158, 191, 0.2)';
+        const clickedElement = event.currentTarget;
+        clickedElement.style.backgroundColor = 'rgba(74, 158, 191, 0.2)';
         setTimeout(() => {
-            event.currentTarget.style.backgroundColor = '';
+            clickedElement.style.backgroundColor = '';
         }, 1000);
 
         this.showToast(`Virtual buzzer: ${teamName}`, 'info');

@@ -578,6 +578,10 @@ class AdminConfig {
         // Test if socket is working at all
         this.socket.on('connect', () => {
             console.log('Socket connected successfully!', this.socket.id);
+
+            // Join control-panel room to receive virtual buzzer events
+            this.socket.emit('join-control');
+            console.log('Admin interface joined control-panel room for virtual buzzer tracking');
         });
         
         this.socket.on('disconnect', (reason) => {

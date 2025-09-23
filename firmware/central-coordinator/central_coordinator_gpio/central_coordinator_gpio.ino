@@ -463,6 +463,11 @@ void handleHeartbeat(Message msg) {
       digitalWrite(COMM_LED_PIN, HIGH);
       delay(10);
       digitalWrite(COMM_LED_PIN, LOW);
+
+      // Send status update to Pi when heartbeat is received
+      if (BINARY_PROTOCOL_ENABLED) {
+        sendBinaryStatus();
+      }
       break;
     }
   }

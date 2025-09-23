@@ -702,7 +702,6 @@ class AdminConfig {
                     <div>Score: ${team.score || 0}</div>
                 </div>
                 <div class="team-actions">
-                    <button class="btn btn-small btn-secondary test-buzzer-btn" onclick="admin.testIndividualTeamBuzzer('${team.id}', '${team.buzzer_id}')" title="Test this buzzer">🔔</button>
                     <button class="btn btn-small btn-info" onclick="admin.editTeam('${team.id}')">Edit</button>
                     <button class="btn btn-small btn-danger" onclick="admin.deleteTeam('${team.id}')">Delete</button>
                 </div>
@@ -3085,27 +3084,6 @@ class AdminConfig {
         }
     }
 
-    async testIndividualTeamBuzzer(teamId, buzzerId) {
-        this.updateTeamBuzzerStatus(teamId, 'testing');
-
-        try {
-            const response = await fetch(`/api/buzzers/test/${buzzerId}`, { method: 'POST' });
-            const result = await response.json();
-
-            if (response.ok) {
-                this.updateTeamBuzzerStatus(teamId, 'tested');
-                this.showToast(`🔔 Buzzer test signal sent to ${buzzerId}`, 'success');
-                // Result persists until test is reset or ended
-            } else {
-                throw new Error(result.error || 'Test failed');
-            }
-        } catch (error) {
-            console.error(`Failed to test buzzer ${buzzerId}:`, error);
-            this.updateTeamBuzzerStatus(teamId, 'failed');
-            this.showToast(`❌ Failed to test buzzer ${buzzerId}`, 'error');
-            // Result persists until test is reset or ended
-        }
-    }
 
     // Override the existing buzzer press handler to work with team cards
     handleTeamBuzzerPress(data) {

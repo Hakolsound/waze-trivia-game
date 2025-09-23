@@ -53,6 +53,20 @@ class AdminConfig {
         return `${hours}:${minutes}:${seconds}.${milliseconds}`;
     }
 
+    // Helper function to format delta time for better readability
+    formatDeltaTime(deltaMs) {
+        if (!deltaMs) return '';
+
+        if (deltaMs >= 1000) {
+            // Convert to seconds with 2 decimal places for values >= 1000ms
+            const seconds = (deltaMs / 1000).toFixed(2);
+            return `${seconds}s`;
+        } else {
+            // Keep in milliseconds for values < 1000ms
+            return `${deltaMs}ms`;
+        }
+    }
+
     initializeGameSelector() {
         this.gameSelector = new GlobalGameSelector({
             socket: this.socket,
@@ -1924,11 +1938,11 @@ class AdminConfig {
             const protocolInfo = [];
             if (timestamp !== undefined) {
                 const formattedTime = this.formatTimestamp(Date.now()); // Current time when pressed
-                protocolInfo.push(`⏰ ${formattedTime}`);
+                protocolInfo.push(formattedTime);
             }
-            if (position !== undefined) protocolInfo.push(`🏆 Rank #${position}`);
+            if (position !== undefined) protocolInfo.push(`Rank #${position}`);
             // Only show delta time for ranks > 1 (first place has Δt=0)
-            if (deltaMs !== undefined && position > 1) protocolInfo.push(`⚡ Δt: ${deltaMs}ms`);
+            if (deltaMs !== undefined && position > 1) protocolInfo.push(`Δt: ${this.formatDeltaTime(deltaMs)}`);
 
             const protocolText = protocolInfo.length > 0 ?
                 `<div class="protocol-info">${protocolInfo.join(' • ')}</div>` : '';
@@ -2091,10 +2105,10 @@ class AdminConfig {
             // Show protocol information with formatted timestamp
             const protocolInfo = [];
             const formattedTime = this.formatTimestamp(Date.now());
-            protocolInfo.push(`⏰ ${formattedTime}`);
-            if (position !== undefined) protocolInfo.push(`🏆 Rank #${position}`);
+            protocolInfo.push(formattedTime);
+            if (position !== undefined) protocolInfo.push(`Rank #${position}`);
             // Only show delta time for ranks > 1 (first place has Δt=0)
-            if (deltaMs !== undefined && position > 1) protocolInfo.push(`⚡ Δt: ${deltaMs}ms`);
+            if (deltaMs !== undefined && position > 1) protocolInfo.push(`Δt: ${this.formatDeltaTime(deltaMs)}`);
 
             const protocolDetails = protocolInfo.length > 0 ? ` (${protocolInfo.join(' • ')})` : '';
             this.showToast(`✅ Virtual buzzer ${actualBuzzerId} tested!${protocolDetails}`, 'success');

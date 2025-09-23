@@ -892,6 +892,7 @@ class HostControl {
 
         // Create virtual buzzer press data
         const virtualBuzzerData = {
+            gameId: this.currentGame.id,
             buzzerId: `virtual_${teamId}`,
             groupId: teamId,
             teamName: teamName,

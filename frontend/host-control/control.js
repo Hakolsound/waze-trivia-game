@@ -902,6 +902,8 @@ class HostControl {
         };
 
         console.log(`[VIRTUAL BUZZER] ${teamName} buzzed in via Ctrl+Click at ${virtualBuzzerData.deltaMs}ms`);
+        console.log('[VIRTUAL BUZZER] Emitting buzzer-press with data:', virtualBuzzerData);
+        console.log('[VIRTUAL BUZZER] Socket connected:', this.socket.connected);
 
         // Send virtual buzzer press through socket to backend (same as physical buzzers)
         this.socket.emit('buzzer-press', virtualBuzzerData);

@@ -324,23 +324,22 @@ class GameService {
       await this.endQuestion(gameId);
       await this.prepareNextQuestion(gameId);
     } else {
-      // Incorrect answer - check if there are more teams waiting
-      const remainingBuzzers = gameState.buzzerOrder.slice(buzzerPosition + 1).filter(b => !b.evaluated);
-      if (remainingBuzzers.length === 0) {
-        // No more teams waiting - resume timer for remaining time
-        if (gameState.isPaused) {
-          this.resumeQuestion(gameId);
-        }
+      // Wrong answer - clear buzzer order and resume timer for fresh attempts
+      console.log(`[EVAL] Wrong answer - clearing buzzer order and resuming timer`);
+      gameState.buzzerOrder = [];
+
+      // Resume timer for remaining time
+      if (gameState.isPaused) {
+        this.resumeQuestion(gameId);
       }
-      // If there are more teams waiting, timer stays paused
     }
 
     return {
       success: true,
       isCorrect,
       pointsAwarded: pointsToAward,
-      nextInLine: gameState.buzzerOrder.length > buzzerPosition + 1 && !isCorrect,
-      questionComplete: isCorrect || gameState.buzzerOrder.slice(buzzerPosition + 1).filter(b => !b.evaluated).length === 0
+      nextInLine: false, // No queue system - buzzers re-arm after wrong answers
+      questionComplete: isCorrect // Question only complete when answered correctly
     };
   }
 

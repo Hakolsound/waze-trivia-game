@@ -408,14 +408,15 @@ class ESP32Service extends EventEmitter {
   async armBuzzers(gameId) {
     this.currentGameId = gameId;
     const success = this.sendCommand('ARM');
-    
+
     this.io.emit('buzzers-armed', { gameId });
-    
+
     return {
       success: true,
       gameId,
       timestamp: Date.now(),
-      hardwareConnected: success
+      hardwareConnected: success,
+      message: success ? 'Buzzers armed successfully' : 'Buzzers armed (no hardware connected)'
     };
   }
 

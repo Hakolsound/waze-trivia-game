@@ -2975,17 +2975,24 @@ class AdminConfig {
 
         // Start listening for buzzer presses
         try {
-            const response = await fetch('/api/buzzers/arm');
+            const response = await fetch('/api/buzzers/arm', { method: 'POST' });
+
             if (response.ok) {
-                this.showToast('🔔 Team buzzer test started - Press each team\'s buzzer!', 'info');
+                const result = await response.json();
+                const message = result.hardwareConnected
+                    ? '🔔 Team buzzer test started - Press each team\'s buzzer!'
+                    : '🔔 Test started (no hardware) - Virtual buzzers only';
+
+                this.showToast(message, result.hardwareConnected ? 'info' : 'warning');
                 this.elements.testTeamBuzzersBtn.textContent = '🛑 Stop Test';
                 this.elements.testTeamBuzzersBtn.onclick = () => this.stopTeamBuzzerTest();
             } else {
-                throw new Error('Failed to arm buzzers');
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to arm buzzers');
             }
         } catch (error) {
             console.error('Failed to start team buzzer test:', error);
-            this.showToast('Failed to start buzzer test - Check ESP32 connection', 'error');
+            this.showToast(`Failed to start buzzer test: ${error.message}`, 'error');
             this.teamBuzzerTestActive = false;
         }
     }
@@ -2994,7 +3001,7 @@ class AdminConfig {
         this.teamBuzzerTestActive = false;
 
         try {
-            await fetch('/api/buzzers/disarm');
+            await fetch('/api/buzzers/disarm', { method: 'POST' });
         } catch (error) {
             console.error('Failed to disarm buzzers:', error);
         }

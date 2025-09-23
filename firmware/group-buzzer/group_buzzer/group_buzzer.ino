@@ -51,8 +51,13 @@ void OnDataSent(const wifi_tx_info_t *tx_info, esp_now_send_status_t status) {
 
 // ESP-NOW callback for receiving data (ESP-IDF v5.x signature)
 void OnDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *incomingData, int len) {
+  Serial.printf("ESP-NOW received %d bytes\n", len);
+
   Command cmd;
   memcpy(&cmd, incomingData, sizeof(cmd));
+
+  Serial.printf("Command data: cmd=%d, target=%d, timestamp=%lu\n",
+                cmd.command, cmd.targetDevice, cmd.timestamp);
   
   char macStr[18];
   snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",

@@ -752,27 +752,36 @@ class GameDisplay {
         const message = feedback.querySelector('.feedback-message');
         
         if (data.correct) {
-            icon.textContent = '✓';
+            icon.textContent = '🎉';
             icon.className = 'feedback-icon correct';
             points.className = 'feedback-points positive';
             points.textContent = `+${data.points || 100}`;
-            message.textContent = 'Correct answer!';
+            message.textContent = 'CORRECT!';
             feedback.className = 'answer-feedback correct show';
         } else {
-            icon.textContent = '✗';
+            icon.textContent = '❌';
             icon.className = 'feedback-icon incorrect';
             points.className = 'feedback-points negative';
             points.textContent = `-${data.points || 100}`;
-            message.textContent = 'Incorrect answer!';
+            message.textContent = 'WRONG!';
             feedback.className = 'answer-feedback incorrect show';
         }
         
         team.textContent = teamName;
         
-        // Hide after delay
+        // Add some celebration effects for correct answers
+        if (data.correct) {
+            // Add confetti or celebration animation here if desired
+            document.body.style.animation = 'celebrate 0.5s ease-in-out';
+            setTimeout(() => {
+                document.body.style.animation = '';
+            }, 500);
+        }
+
+        // Hide after longer delay to let people appreciate the enhanced display
         setTimeout(() => {
             feedback.classList.remove('show');
-        }, 2500);
+        }, 4000);
     }
 
     // Utility Methods

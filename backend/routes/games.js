@@ -220,23 +220,11 @@ module.exports = (gameService) => {
 
   router.post('/:id/evaluate-answer', async (req, res) => {
     try {
-      console.log('=== EVALUATE ANSWER DEBUG ===');
-      console.log('Game ID:', req.params.id);
-      console.log('Request body:', JSON.stringify(req.body, null, 2));
-      console.log('Raw buzzerPosition:', req.body.buzzerPosition);
-      console.log('Parsed buzzerPosition type:', typeof req.body.buzzerPosition);
-
       const { isCorrect, buzzerPosition = 0 } = req.body;
-      console.log('Final buzzerPosition:', buzzerPosition, 'type:', typeof buzzerPosition);
-      console.log('================================');
-
       const result = await gameService.evaluateAnswer(req.params.id, isCorrect, buzzerPosition);
       res.json(result);
     } catch (error) {
-      console.error('=== EVALUATE ANSWER ERROR ===');
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
-      console.error('==============================');
+      console.error('Failed to evaluate answer:', error.message);
       res.status(400).json({ error: error.message });
     }
   });

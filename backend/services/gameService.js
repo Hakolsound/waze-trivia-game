@@ -238,17 +238,8 @@ class GameService {
   }
 
   async evaluateAnswer(gameId, isCorrect, buzzerPosition = 0) {
-    console.log('=== GAMESERVICE EVALUATE ANSWER ===');
-    console.log('gameId:', gameId);
-    console.log('isCorrect:', isCorrect);
-    console.log('buzzerPosition:', buzzerPosition, 'type:', typeof buzzerPosition);
 
     const gameState = this.activeGames.get(gameId);
-    console.log('gameState exists:', !!gameState);
-    console.log('buzzerOrder length:', gameState?.buzzerOrder?.length || 0);
-    if (gameState?.buzzerOrder) {
-      console.log('buzzerOrder contents:', JSON.stringify(gameState.buzzerOrder, null, 2));
-    }
 
     if (!gameState || !gameState.buzzerOrder.length) {
       throw new Error('No active question or buzzer presses found');
@@ -277,7 +268,6 @@ class GameService {
         const totalTime = questionTimeLimit * 1000;
         const timeRemaining = Math.max(0, totalTime - timeElapsed);
 
-        console.log(`[DEBUG] Time calculation - Elapsed: ${timeElapsed}ms, Time Limit: ${questionTimeLimit}s, Total: ${totalTime}ms, Remaining: ${timeRemaining}ms`);
 
         pointsToAward = this.calculateTimeBasedPoints(currentQuestion.points, timeRemaining, totalTime);
       } else {
@@ -288,7 +278,6 @@ class GameService {
       pointsToAward = -Math.floor(currentQuestion.points * 0.5);
     }
     
-    console.log(`[DEBUG] Evaluate Answer - Correct: ${isCorrect}, Question Points: ${currentQuestion.points}, Points to Award: ${pointsToAward}`);
     
     // Award or deduct points
     await this.awardPoints(gameId, buzzerEntry.groupId, pointsToAward);
@@ -431,13 +420,9 @@ class GameService {
 
   async handleBuzzerPress(data) {
     const { gameId, groupId, timestamp, buzzer_id, buzzerId, deltaMs: providedDeltaMs } = data;
-    console.log(`[DEBUG] handleBuzzerPress called with gameId: "${gameId}"`);
-    console.log(`[DEBUG] Active games:`, Array.from(this.activeGames.keys()));
     const gameState = this.activeGames.get(gameId);
-    console.log(`[DEBUG] gameState found:`, !!gameState);
 
     if (!gameState) {
-      console.log(`[DEBUG] No gameState found for gameId: "${gameId}", returning early`);
       return;
     }
 
@@ -446,7 +431,6 @@ class GameService {
     let actualGroupId = groupId;
     if (buzzer_id || buzzerId) {
       const buzzerIdToLookup = buzzer_id || buzzerId;
-      console.log(`[DEBUG] Looking up group for buzzer_id: "${buzzerIdToLookup}"`);
 
       // For virtual buzzers, the buzzer lookup will fail since they're not in the database
       // In that case, the groupId sent is already the correct database group ID
@@ -457,16 +441,13 @@ class GameService {
 
       if (groupRecord) {
         actualGroupId = groupRecord.id;
-        console.log(`[DEBUG] Found group.id: "${actualGroupId}" for buzzer_id: "${buzzerIdToLookup}"`);
       } else {
         // For virtual buzzers or if lookup fails, use the provided groupId directly
-        console.log(`[DEBUG] No group found for buzzer_id: "${buzzerIdToLookup}", using provided groupId: "${groupId}"`);
         actualGroupId = groupId;
       }
 
       // Debug timing comparison
       if (data.deltaMs !== undefined) {
-        console.log(`[DEBUG] Timing comparison - ESP32 deltaMs: ${data.deltaMs}ms, JavaScript deltaMs: ${timestamp - gameState.startTime}ms`);
       }
     }
 
@@ -503,21 +484,17 @@ class GameService {
 
   // Calculate time-based points (decreases linearly from max to 0)
   calculateTimeBasedPoints(originalPoints, timeRemaining, totalTime) {
-    console.log(`[DEBUG] calculateTimeBasedPoints - Original: ${originalPoints}, Remaining: ${timeRemaining}, Total: ${totalTime}`);
 
     if (timeRemaining <= 0) {
-      console.log(`[DEBUG] Time remaining <= 0, returning 0 points`);
       return 0;
     }
     if (timeRemaining >= totalTime) {
-      console.log(`[DEBUG] Time remaining >= total, returning full points: ${originalPoints}`);
       return originalPoints;
     }
 
     // Linear decrease from original points to 0
     const ratio = timeRemaining / totalTime;
     const calculatedPoints = Math.ceil(originalPoints * ratio);
-    console.log(`[DEBUG] Ratio: ${ratio}, Calculated points: ${calculatedPoints}`);
     return calculatedPoints;
   }
 
@@ -527,24 +504,18 @@ class GameService {
 
     // Debug: Check what groups exist for this game
     const allGroups = await this.db.all('SELECT * FROM groups WHERE game_id = ?', [gameId]);
-    console.log(`[DEBUG] All groups for game ${gameId}:`, JSON.stringify(allGroups, null, 2));
-    console.log(`[DEBUG] Looking for groupId: "${groupId}" (type: ${typeof groupId})`);
 
     // Get current score before update
     const currentGroup = await this.db.get('SELECT * FROM groups WHERE id = ?', [groupId]);
-    console.log(`[DEBUG] Found currentGroup:`, JSON.stringify(currentGroup, null, 2));
     const currentScore = currentGroup ? currentGroup.score : 0;
     const newScore = currentScore + points;
     
     // Debug logging for negative scores
-    console.log(`[DEBUG] Award Points - Game: ${gameId}, Group: ${groupId}, Points: ${points}`);
-    console.log(`[DEBUG] Current Score: ${currentScore}, New Score: ${newScore}, Allow Negative: ${allowNegativeScores}`);
     
     // If negative scores are not allowed, clamp at 0
     const finalScore = allowNegativeScores ? newScore : Math.max(0, newScore);
     const actualPointsAwarded = finalScore - currentScore;
     
-    console.log(`[DEBUG] Final Score: ${finalScore}, Actual Points Awarded: ${actualPointsAwarded}`);
     
     await this.db.run(
       'UPDATE groups SET score = ? WHERE id = ? AND game_id = ?',
@@ -552,7 +523,6 @@ class GameService {
     );
 
     const updatedGroup = await this.db.get('SELECT * FROM groups WHERE id = ?', [groupId]);
-    console.log(`[DEBUG] Final updatedGroup query result:`, JSON.stringify(updatedGroup, null, 2));
 
     if (!updatedGroup) {
       throw new Error(`Group with id "${groupId}" not found after score update`);

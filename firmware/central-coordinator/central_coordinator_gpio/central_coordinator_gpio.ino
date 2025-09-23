@@ -171,11 +171,12 @@ void processBinaryCommands() {
 
       // Verify checksum
       if (verifyChecksum((uint8_t*)cmd, sizeof(CommandMessage))) {
+        Serial.printf("Command received: type=%d, target=%d, gameId=%d\n", cmd->command, cmd->targetDevice, cmd->gameId);
         handleBinaryCommand(*cmd);
       } else {
-        if (TEXT_DEBUG_ENABLED) {
-          Serial.println("ERROR:Invalid command checksum");
-        }
+        Serial.println("ERROR:Invalid command checksum");
+        Serial.printf("Received command: header=0x%02X, cmd=%d, target=%d, gameId=%d\n",
+                     cmd->header, cmd->command, cmd->targetDevice, cmd->gameId);
       }
 
       commandBufferPos = 0;

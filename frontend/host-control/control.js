@@ -2186,6 +2186,9 @@ class HostControl {
             return;
         }
 
+        // Update currentBuzzerPosition to point to the first unevaluated buzzer
+        this.currentBuzzerPosition = this.buzzerOrder.indexOf(currentBuzzer);
+
         this.showCurrentAnswererInModal(currentBuzzer);
         this.showNextInLineInModal();
         

@@ -822,6 +822,13 @@ textarea {
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.modal-content.buzzer-test {
+    max-width: 1200px;
+    width: 95%;
+    max-height: 95vh;
+    padding: 24px;
+}
+
 .modal-content.large {
     max-width: 800px;
 }
@@ -966,21 +973,27 @@ textarea {
 
 .buzzer-test-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 16px;
-    margin-bottom: 24px;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+    max-height: calc(95vh - 200px);
+    overflow-y: hidden;
 }
 
 .buzzer-test-card {
     background: rgba(25, 25, 40, 0.8);
     border: 2px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 20px;
+    border-radius: 8px;
+    padding: 12px;
     text-align: center;
     transition: all var(--md-sys-motion-duration-medium) var(--md-sys-motion-easing-standard);
     backdrop-filter: blur(10px);
     position: relative;
     overflow: hidden;
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }
 
 .buzzer-test-card.tested {
@@ -1012,24 +1025,26 @@ textarea {
 }
 
 .buzzer-test-team-name {
-    font-size: 1.1rem;
+    font-size: 0.95rem;
     font-weight: 600;
     color: #ffffff;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
+    line-height: 1.2;
 }
 
 .buzzer-test-buzzer-id {
-    font-size: 0.9rem;
+    font-size: 0.75rem;
     color: rgba(255, 255, 255, 0.7);
-    margin-bottom: 12px;
+    margin-bottom: 6px;
 }
 
 .buzzer-test-status {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    font-size: 0.85rem;
+    gap: 6px;
+    font-size: 0.75rem;
+    flex-grow: 1;
     font-weight: 500;
 }
 
@@ -1938,4 +1953,49 @@ input:checked + .slider:before {
 .media-preview-error-text {
     text-align: center;
     font-size: 0.875rem;
+}
+/* Responsive grid for buzzer test to ensure 15 cards fit without scrolling */
+@media (min-width: 1200px) {
+    .buzzer-test-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
+
+@media (max-width: 1199px) {
+    .buzzer-test-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (max-width: 900px) {
+    .buzzer-test-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .modal-content.buzzer-test {
+        width: 98%;
+        padding: 16px;
+        max-height: 98vh;
+    }
+    
+    .buzzer-test-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        max-height: calc(98vh - 180px);
+    }
+    
+    .buzzer-test-card {
+        min-height: 90px;
+        padding: 6px;
+    }
+    
+    .buzzer-test-team-name {
+        font-size: 0.85rem;
+    }
+    
+    .buzzer-test-buzzer-id {
+        font-size: 0.7rem;
+    }
 }

@@ -3465,3 +3465,89 @@ kbd {
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1) !important;
 }
 
+/* Virtual Buzzer Toggle */
+.virtual-buzzer-toggle {
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(74, 158, 191, 0.08);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(74, 158, 191, 0.2);
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: 0.4s;
+  border-radius: 24px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.4s;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background-color: var(--waze-primary);
+}
+
+.toggle-switch input:focus + .toggle-slider {
+  box-shadow: 0 0 1px var(--waze-primary);
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+  transform: translateX(20px);
+}
+
+.toggle-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface);
+  user-select: none;
+}
+
+/* Hover effect for team scores when virtual buzzer is enabled */
+.teams-list.virtual-buzzer-enabled .team-item {
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.teams-list.virtual-buzzer-enabled .team-item:hover {
+  background: rgba(74, 158, 191, 0.1);
+  border-left: 3px solid var(--waze-primary);
+  transform: translateX(2px);
+}
+
+.teams-list.virtual-buzzer-enabled .team-item:hover .team-name {
+  color: var(--waze-primary);
+  font-weight: 600;
+}
+

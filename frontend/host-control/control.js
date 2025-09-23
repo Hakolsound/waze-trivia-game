@@ -250,6 +250,9 @@ class HostControl {
             pointsInput: document.getElementById('points-input'),
             teamSelect: document.getElementById('team-select'),
             awardPointsSubmitBtn: document.getElementById('award-points-submit-btn'),
+
+            // Virtual buzzer toggle
+            virtualBuzzerEnabled: document.getElementById('virtual-buzzer-enabled'),
             
             // Game actions modal
             showGameActionsBtn: document.getElementById('show-game-actions-btn'),
@@ -670,6 +673,13 @@ class HostControl {
                     break;
             }
         });
+
+        // Virtual buzzer toggle event listener
+        if (this.elements.virtualBuzzerEnabled) {
+            this.elements.virtualBuzzerEnabled.addEventListener('change', (e) => {
+                this.handleVirtualBuzzerToggle(e.target.checked);
+            });
+        }
     }
 
     // Game loading is now handled by the global game selector
@@ -767,12 +777,101 @@ class HostControl {
             teamItem.appendChild(scoreInput);
             
             this.elements.teamsScoring.appendChild(teamItem);
-            
+
             const option = document.createElement('option');
             option.value = team.id;
             option.textContent = team.name;
             this.elements.teamSelect.appendChild(option);
         });
+
+        // Re-setup virtual buzzer click handlers if enabled
+        if (this.elements.virtualBuzzerEnabled && this.elements.virtualBuzzerEnabled.checked) {
+            this.setupTeamClickHandlers();
+        }
+    }
+
+    // Virtual Buzzer Methods
+    handleVirtualBuzzerToggle(enabled) {
+        const teamsListElement = this.elements.teamsScoring;
+        if (enabled) {
+            teamsListElement.classList.add('virtual-buzzer-enabled');
+            this.setupTeamClickHandlers();
+        } else {
+            teamsListElement.classList.remove('virtual-buzzer-enabled');
+            this.removeTeamClickHandlers();
+        }
+    }
+
+    setupTeamClickHandlers() {
+        const teamItems = this.elements.teamsScoring.querySelectorAll('.team-item');
+        teamItems.forEach(teamItem => {
+            teamItem.addEventListener('click', this.handleTeamClick.bind(this));
+        });
+    }
+
+    removeTeamClickHandlers() {
+        const teamItems = this.elements.teamsScoring.querySelectorAll('.team-item');
+        teamItems.forEach(teamItem => {
+            teamItem.removeEventListener('click', this.handleTeamClick.bind(this));
+        });
+    }
+
+    handleTeamClick(event) {
+        // Only proceed if Ctrl/Cmd is pressed and virtual buzzer is enabled
+        if (!(event.ctrlKey || event.metaKey) || !this.elements.virtualBuzzerEnabled.checked) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        // Check if buzzers are armed (same rules as physical buzzers)
+        if (!this.isQuestionActive) {
+            this.showToast('No active question - buzzers are not armed', 'warning');
+            return;
+        }
+
+        if (!this.isBuzzersArmed) {
+            this.showToast('Buzzers are not armed for this question', 'warning');
+            return;
+        }
+
+        // Get team information
+        const teamScoreInput = event.currentTarget.querySelector('.team-score');
+        if (!teamScoreInput) return;
+
+        const teamId = teamScoreInput.getAttribute('data-team-id');
+        const teamName = event.currentTarget.querySelector('.team-name').textContent.replace(' 👑', '');
+
+        // Check if this team already buzzed in
+        if (this.buzzerOrder.some(buzzer => buzzer.groupId === teamId)) {
+            this.showToast(`${teamName} has already buzzed in`, 'warning');
+            return;
+        }
+
+        // Create virtual buzzer press data
+        const virtualBuzzerData = {
+            buzzerId: `virtual_${teamId}`,
+            groupId: teamId,
+            teamName: teamName,
+            timestamp: Date.now(),
+            deltaMs: Date.now() - this.questionStartTime, // Calculate from question start
+            position: this.buzzerOrder.length + 1,
+            isVirtual: true
+        };
+
+        console.log(`[VIRTUAL BUZZER] ${teamName} buzzed in via Ctrl+Click at ${virtualBuzzerData.deltaMs}ms`);
+
+        // Process the virtual buzzer press through the same system as physical buzzers
+        this.handleBuzzerPress(virtualBuzzerData);
+
+        // Visual feedback
+        event.currentTarget.style.backgroundColor = 'rgba(74, 158, 191, 0.2)';
+        setTimeout(() => {
+            event.currentTarget.style.backgroundColor = '';
+        }, 1000);
+
+        this.showToast(`Virtual buzzer: ${teamName}`, 'info');
     }
 
     updateQuestionSelector() {

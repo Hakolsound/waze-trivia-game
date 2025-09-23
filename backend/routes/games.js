@@ -221,6 +221,7 @@ module.exports = (gameService) => {
   router.post('/:id/evaluate-answer', async (req, res) => {
     try {
       const { isCorrect, buzzerPosition = 0 } = req.body;
+      console.log(`[EVAL] Game ${req.params.id}: Evaluating buzzerPosition ${buzzerPosition}, isCorrect: ${isCorrect}`);
       const result = await gameService.evaluateAnswer(req.params.id, isCorrect, buzzerPosition);
       res.json(result);
     } catch (error) {

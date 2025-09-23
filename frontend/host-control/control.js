@@ -2652,13 +2652,14 @@ class HostControl {
             } else {
                 // Update the evaluation interface for next buzzer if answer is wrong
                 setTimeout(() => {
-                    this.updateAnswerEvaluation();
                     // Show next answerer if available
                     const nextBuzzer = this.buzzerOrder.find(b => !b.evaluated);
                     if (nextBuzzer) {
                         // Update currentBuzzerPosition to point to the next unevaluated buzzer
                         this.currentBuzzerPosition = this.buzzerOrder.indexOf(nextBuzzer);
                         this.showCurrentAnswererHighlight(nextBuzzer);
+                        // Update the modal to show the correct team
+                        this.updateAnswerEvaluationModal();
                     } else {
                         // No more teams to answer - hide modal
                         this.hideAnswerEvaluationModal();

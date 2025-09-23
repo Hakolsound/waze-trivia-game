@@ -238,6 +238,7 @@ class GameService {
   }
 
   async evaluateAnswer(gameId, isCorrect, buzzerPosition = 0) {
+    console.log(`[EVAL] Starting evaluation - gameId: ${gameId}, buzzerPosition: ${buzzerPosition}, isCorrect: ${isCorrect}`);
 
     const gameState = this.activeGames.get(gameId);
 
@@ -245,9 +246,11 @@ class GameService {
       throw new Error('No active question or buzzer presses found');
     }
 
+    console.log(`[EVAL] BuzzerOrder: ${JSON.stringify(gameState.buzzerOrder.map(b => ({groupId: b.groupId, position: b.position, evaluated: b.evaluated})))}`);
+
     const game = await this.getGame(gameId);
     const currentQuestion = game.questions[game.current_question_index];
-    
+
     if (!currentQuestion) {
       throw new Error('Current question not found');
     }
@@ -257,6 +260,13 @@ class GameService {
     if (!buzzerEntry) {
       throw new Error('Buzzer entry not found at position ' + buzzerPosition);
     }
+
+    console.log(`[EVAL] Found buzzer entry at position ${buzzerPosition}: groupId=${buzzerEntry.groupId}, deltaMs=${buzzerEntry.deltaMs}`);
+
+    // Get team name for logging
+    const teams = await this.db.all('SELECT id, name FROM groups WHERE game_id = ?', [gameId]);
+    const currentTeam = teams.find(t => t.id === buzzerEntry.groupId);
+    console.log(`[EVAL] Evaluating team: ${currentTeam?.name || 'Unknown'} (${buzzerEntry.groupId})`);
 
     // Calculate points based on time-based scoring setting
     let pointsToAward;
@@ -277,9 +287,10 @@ class GameService {
       // Incorrect answers still lose half points regardless of time-based scoring
       pointsToAward = -Math.floor(currentQuestion.points * 0.5);
     }
-    
-    
+    console.log(`[EVAL] Calculated points: ${pointsToAward} for team ${currentTeam?.name} (${buzzerEntry.groupId})`);
+
     // Award or deduct points
+    console.log(`[EVAL] About to award ${pointsToAward} points to groupId: ${buzzerEntry.groupId}`);
     await this.awardPoints(gameId, buzzerEntry.groupId, pointsToAward);
     
     // Mark this buzzer entry as evaluated
@@ -420,6 +431,8 @@ class GameService {
 
   async handleBuzzerPress(data) {
     const { gameId, groupId, timestamp, buzzer_id, buzzerId, deltaMs: providedDeltaMs } = data;
+    console.log(`[BUZZ] Buzzer press - gameId: ${gameId}, groupId: ${groupId}, buzzer_id: ${buzzer_id || buzzerId}`);
+
     const gameState = this.activeGames.get(gameId);
 
     if (!gameState) {
@@ -458,6 +471,11 @@ class GameService {
     // Always use JavaScript timing for physical buzzers (ESP32 deltaMs is unreliable)
     // Calculate actual elapsed time from when question started
     const deltaMs = timestamp - gameState.startTime;
+
+    // Get team name for logging
+    const teams = await this.db.all('SELECT id, name FROM groups WHERE game_id = ?', [gameId]);
+    const team = teams.find(t => t.id === actualGroupId);
+
     const buzzerEntry = {
       groupId: actualGroupId, // Use the mapped group ID from database
       buzzer_id,
@@ -465,6 +483,8 @@ class GameService {
       deltaMs,
       position: gameState.buzzerOrder.length + 1
     };
+
+    console.log(`[BUZZ] Adding to buzzer order: ${team?.name || 'Unknown'} (${actualGroupId}) at position ${buzzerEntry.position}, deltaMs: ${deltaMs}`);
 
     gameState.buzzerOrder.push(buzzerEntry);
 
@@ -499,6 +519,8 @@ class GameService {
   }
 
   async awardPoints(gameId, groupId, points) {
+    console.log(`[SCORE] awardPoints called - groupId: ${groupId}, points: ${points}`);
+
     const game = await this.getGame(gameId);
     const allowNegativeScores = Boolean(game.allow_negative_scores);
 
@@ -507,22 +529,26 @@ class GameService {
 
     // Get current score before update
     const currentGroup = await this.db.get('SELECT * FROM groups WHERE id = ?', [groupId]);
+    console.log(`[SCORE] Current group found: ${currentGroup?.name} (${groupId}) with score: ${currentGroup?.score}`);
+
     const currentScore = currentGroup ? currentGroup.score : 0;
     const newScore = currentScore + points;
-    
+
     // Debug logging for negative scores
-    
+
     // If negative scores are not allowed, clamp at 0
     const finalScore = allowNegativeScores ? newScore : Math.max(0, newScore);
     const actualPointsAwarded = finalScore - currentScore;
-    
-    
+
+    console.log(`[SCORE] Updating ${currentGroup?.name}: ${currentScore} + ${points} = ${finalScore}`);
+
     await this.db.run(
       'UPDATE groups SET score = ? WHERE id = ? AND game_id = ?',
       [finalScore, groupId, gameId]
     );
 
     const updatedGroup = await this.db.get('SELECT * FROM groups WHERE id = ?', [groupId]);
+    console.log(`[SCORE] Final result: ${updatedGroup?.name} now has score: ${updatedGroup?.score}`);
 
     if (!updatedGroup) {
       throw new Error(`Group with id "${groupId}" not found after score update`);

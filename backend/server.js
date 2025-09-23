@@ -49,8 +49,8 @@ app.get('/admin.js', (req, res) => {
 });
 
 const db = new Database();
-const gameService = new GameService(db, io);
 const esp32Service = new ESP32Service(io);
+const gameService = new GameService(db, io, esp32Service);
 const firebaseService = new FirebaseService();
 
 app.use('/api/games', gameRoutes(gameService));

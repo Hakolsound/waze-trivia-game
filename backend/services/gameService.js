@@ -1,9 +1,10 @@
 const { v4: uuidv4 } = require('uuid');
 
 class GameService {
-  constructor(database, io) {
+  constructor(database, io, esp32Service = null) {
     this.db = database;
     this.io = io;
+    this.esp32Service = esp32Service;
     this.activeGames = new Map();
     this.currentGlobalGame = null; // Global current game for all frontend apps
     this.buzzerActivity = new Map(); // Track last activity for each buzzer
@@ -121,6 +122,16 @@ class GameService {
       startTime: Date.now()
     });
 
+    // Arm physical buzzers through ESP32 service
+    if (this.esp32Service) {
+      try {
+        await this.esp32Service.armBuzzers(gameId);
+        console.log(`Physical buzzers armed for game ${gameId}, question ${currentQuestion.id}`);
+      } catch (error) {
+        console.error('Failed to arm physical buzzers:', error);
+      }
+    }
+
     // Arm buzzers for both host control and all game clients (including virtual buzzers)
     this.io.to('control-panel').emit('buzzers-armed', { gameId, questionId: currentQuestion.id });
     this.io.to(`game-${gameId}`).emit('buzzers-armed', { gameId, questionId: currentQuestion.id });
@@ -207,6 +218,16 @@ class GameService {
       gameId,
       buzzerOrder: gameState.buzzerOrder
     });
+
+    // Disarm physical buzzers through ESP32 service
+    if (this.esp32Service) {
+      try {
+        await this.esp32Service.disarmBuzzers();
+        console.log(`Physical buzzers disarmed for game ${gameId}`);
+      } catch (error) {
+        console.error('Failed to disarm physical buzzers:', error);
+      }
+    }
 
     // Disarm buzzers for both host control and all game clients (including virtual buzzers)
     this.io.to('control-panel').emit('buzzers-disarmed', { gameId });

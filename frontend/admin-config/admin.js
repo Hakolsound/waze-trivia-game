@@ -3120,27 +3120,43 @@ class AdminConfig {
 
     // Override the existing buzzer press handler to work with team cards
     handleTeamBuzzerPress(data) {
-        if (!this.teamBuzzerTestActive) return;
+        console.log('handleTeamBuzzerPress called with:', data);
+        console.log('teamBuzzerTestActive:', this.teamBuzzerTestActive);
+
+        if (!this.teamBuzzerTestActive) {
+            console.log('Team buzzer test not active, ignoring press');
+            return;
+        }
 
         const buzzerId = data.buzzer_id || data.groupId;
-        if (!buzzerId) return;
+        console.log('Extracted buzzerId:', buzzerId);
+        if (!buzzerId) {
+            console.log('No buzzerId found, ignoring press');
+            return;
+        }
 
         let team = null;
         let isVirtual = false;
 
         // Check if it's a hardware buzzer press (match by buzzer_id)
         team = this.currentGame.groups.find(g => g.buzzer_id === buzzerId);
+        console.log('Hardware team search result:', team);
 
         // If no team found by buzzer ID, check if it's a virtual buzzer press (match by team groupId)
         if (!team && data.groupId) {
+            console.log('Searching for virtual team with groupId:', data.groupId);
             team = this.currentGame.groups.find(g => g.id === data.groupId);
+            console.log('Virtual team search result:', team);
             isVirtual = true;
         }
 
         if (!team) {
             console.log('No team found for buzzer press:', data);
+            console.log('Available teams:', this.currentGame.groups);
             return;
         }
+
+        console.log('Found team:', team, 'isVirtual:', isVirtual);
 
         // Use team's buzzer_id as the key for tracking (consistent for both hardware and virtual)
         const testKey = team.buzzer_id;

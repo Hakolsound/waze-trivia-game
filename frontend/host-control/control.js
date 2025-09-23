@@ -2066,6 +2066,7 @@ class HostControl {
 
         // Update points - show actual time-based points if applicable
         const actualPoints = this.getActualPointsForBuzzer(buzzer);
+        console.log(`[MODAL DEBUG] Updating modal points for ${teamName}: ${actualPoints} (questionStartTime: ${this.questionStartTime}, buzzer.timestamp: ${buzzer.timestamp})`);
         this.elements.questionPoints.textContent = `+${actualPoints}`;
 
         // Store current buzzer position for evaluation
@@ -2146,6 +2147,7 @@ class HostControl {
     updateAnswerEvaluation() {
         // Update the modal content when buzzer order changes
         if (!this.elements.answerEvaluationModal.classList.contains('hidden')) {
+            console.log('[MODAL DEBUG] Updating answer evaluation modal due to buzzer order change');
             this.updateAnswerEvaluationModal();
         }
     }
@@ -2297,9 +2299,15 @@ class HostControl {
 
         // If time-based scoring is enabled, calculate based on timing
         if (this.currentGame.time_based_scoring) {
-            const timeElapsed = buzzer.deltaMs;
+            // Use JavaScript timing calculation (same as backend now uses)
+            // Calculate elapsed time from when question started
+            const questionStartTime = this.questionStartTime || Date.now(); // Fallback if not set
+            const timeElapsed = buzzer.timestamp - questionStartTime;
             const totalTime = (currentQuestion.time_limit || 30) * 1000; // Convert to ms
             const timeRemaining = Math.max(0, totalTime - timeElapsed);
+
+            console.log(`[FRONTEND DEBUG] Time calculation - Elapsed: ${timeElapsed}ms, Total: ${totalTime}ms, Remaining: ${timeRemaining}ms`);
+
             return this.calculateTimeBasedPoints(currentQuestion.points, timeRemaining, totalTime);
         }
 

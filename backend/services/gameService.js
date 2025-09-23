@@ -442,6 +442,8 @@ class GameService {
       const buzzerIdToLookup = buzzer_id || buzzerId;
       console.log(`[DEBUG] Looking up group for buzzer_id: "${buzzerIdToLookup}"`);
 
+      // For virtual buzzers, the buzzer lookup will fail since they're not in the database
+      // In that case, the groupId sent is already the correct database group ID
       const groupRecord = await this.db.get(
         'SELECT id FROM groups WHERE game_id = ? AND buzzer_id = ?',
         [gameId, buzzerIdToLookup]
@@ -451,7 +453,9 @@ class GameService {
         actualGroupId = groupRecord.id;
         console.log(`[DEBUG] Found group.id: "${actualGroupId}" for buzzer_id: "${buzzerIdToLookup}"`);
       } else {
-        console.warn(`[WARNING] No group found for buzzer_id: "${buzzerIdToLookup}" in game: "${gameId}"`);
+        // For virtual buzzers or if lookup fails, use the provided groupId directly
+        console.log(`[DEBUG] No group found for buzzer_id: "${buzzerIdToLookup}", using provided groupId: "${groupId}"`);
+        actualGroupId = groupId;
       }
 
       // Debug timing comparison
@@ -484,7 +488,7 @@ class GameService {
 
     await this.db.run(
       'INSERT INTO buzzer_events (game_id, question_id, group_id, timestamp, delta_ms) VALUES (?, ?, ?, ?, ?)',
-      [gameId, gameState.questionId, groupId, timestamp, deltaMs]
+      [gameId, gameState.questionId, actualGroupId, timestamp, deltaMs]
     );
 
     this.io.to(`game-${gameId}`).emit('buzzer-pressed', buzzerEntry);

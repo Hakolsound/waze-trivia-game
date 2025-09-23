@@ -423,7 +423,10 @@ class GameService {
     const actualBuzzerId = buzzerId || buzzer_id || `physical_${groupId}`;
     this.updateBuzzerActivity(actualBuzzerId, groupId);
 
-    const deltaMs = timestamp - gameState.startTime;
+    // Use provided deltaMs if available (from ESP32), otherwise calculate from timestamp
+    const deltaMs = (data.deltaMs !== undefined && data.deltaMs !== null)
+      ? data.deltaMs
+      : timestamp - gameState.startTime;
     const buzzerEntry = {
       groupId,
       buzzer_id,

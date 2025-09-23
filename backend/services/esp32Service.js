@@ -298,13 +298,18 @@ class ESP32Service extends EventEmitter {
       return;
     }
 
+    // Convert ESP32 timestamp to JavaScript timestamp for gameService compatibility
+    // GameService expects timestamp to be JavaScript Date.now() format
+    const jsTimestamp = Date.now();
+
     const buzzerData = {
       gameId: this.currentGameId,
       buzzer_id: buzzerId,
-      timestamp: timestamp,
+      timestamp: jsTimestamp,
       deltaMs: deltaMs || 0,
       position: position || 0,
-      groupId: this.getGroupIdByBuzzerId(buzzerId)
+      groupId: this.getGroupIdByBuzzerId(buzzerId),
+      esp32Timestamp: timestamp // Keep original ESP32 timestamp for reference
     };
 
     console.log('Physical buzzer press detected:', buzzerData);

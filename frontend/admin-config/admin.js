@@ -1927,7 +1927,8 @@ class AdminConfig {
                 protocolInfo.push(`⏰ ${formattedTime}`);
             }
             if (position !== undefined) protocolInfo.push(`🏆 Rank #${position}`);
-            if (deltaMs !== undefined) protocolInfo.push(`⚡ Δt: ${deltaMs}ms`);
+            // Only show delta time for ranks > 1 (first place has Δt=0)
+            if (deltaMs !== undefined && position > 1) protocolInfo.push(`⚡ Δt: ${deltaMs}ms`);
 
             const protocolText = protocolInfo.length > 0 ?
                 `<div class="protocol-info">${protocolInfo.join(' • ')}</div>` : '';
@@ -2092,7 +2093,8 @@ class AdminConfig {
             const formattedTime = this.formatTimestamp(Date.now());
             protocolInfo.push(`⏰ ${formattedTime}`);
             if (position !== undefined) protocolInfo.push(`🏆 Rank #${position}`);
-            if (deltaMs !== undefined) protocolInfo.push(`⚡ Δt: ${deltaMs}ms`);
+            // Only show delta time for ranks > 1 (first place has Δt=0)
+            if (deltaMs !== undefined && position > 1) protocolInfo.push(`⚡ Δt: ${deltaMs}ms`);
 
             const protocolDetails = protocolInfo.length > 0 ? ` (${protocolInfo.join(' • ')})` : '';
             this.showToast(`✅ Virtual buzzer ${actualBuzzerId} tested!${protocolDetails}`, 'success');

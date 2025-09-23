@@ -149,6 +149,11 @@ class VirtualBuzzer {
                 this.handleBuzzerAcknowledged(data);
             }
         });
+
+        // Listen for buzzer state response
+        this.socket.on('buzzer-state-response', (data) => {
+            this.handleBuzzerStateResponse(data);
+        });
     }
 
     setupEventListeners() {
@@ -308,6 +313,9 @@ class VirtualBuzzer {
             teamName: team.name
         });
 
+        // Request current buzzer state to sync with system
+        this.socket.emit('request-buzzer-state');
+
         console.log(`Selected team: ${team.name}`);
     }
 
@@ -417,6 +425,26 @@ class VirtualBuzzer {
 
     handleBuzzerAcknowledged(data) {
         console.log('Buzz acknowledged!');
+    }
+
+    handleBuzzerStateResponse(data) {
+        console.log('Virtual buzzer received state sync:', data);
+
+        // Sync virtual buzzer state with system state
+        if (data.armed && this.currentState !== 'pressed') {
+            this.currentState = 'armed';
+            console.log('Virtual buzzer synced to ARMED state');
+        } else if (!data.armed) {
+            this.currentState = 'idle';
+            console.log('Virtual buzzer synced to IDLE state');
+        }
+
+        this.updateBuzzerState();
+
+        // Haptic feedback if transitioning to armed
+        if (data.armed && navigator.vibrate) {
+            navigator.vibrate(50);
+        }
     }
 
     // Password Modal Methods

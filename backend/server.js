@@ -134,6 +134,40 @@ io.on('connection', (socket) => {
     io.to('control-panel').emit('virtual-buzzer-register', data);
   });
 
+  socket.on('request-buzzer-state', async () => {
+    console.log('Virtual buzzer requesting current state');
+    try {
+      // Get current buzzer state from ESP32 service or game service
+      const buzzerStatus = await esp32Service.getStatus();
+      const currentGame = gameService.getCurrentGlobalGame();
+
+      // Determine if buzzers are currently armed
+      let isArmed = false;
+      if (currentGame && gameService.currentQuestion) {
+        // Check if there's an active question with armed buzzers
+        const questionStatus = gameService.currentQuestion;
+        isArmed = questionStatus && questionStatus.buzzersArmed;
+      }
+
+      // Send current state to requesting virtual buzzer
+      socket.emit('buzzer-state-response', {
+        armed: isArmed,
+        gameActive: !!currentGame,
+        timestamp: Date.now()
+      });
+
+      console.log(`Sent buzzer state to virtual buzzer: armed=${isArmed}, gameActive=${!!currentGame}`);
+    } catch (error) {
+      console.error('Error getting buzzer state for virtual buzzer:', error);
+      // Send default state
+      socket.emit('buzzer-state-response', {
+        armed: false,
+        gameActive: false,
+        timestamp: Date.now()
+      });
+    }
+  });
+
   socket.on('request-global-game', async () => {
     try {
       const gameStatus = await gameService.getGlobalGameStatus();

@@ -2676,7 +2676,7 @@ class HostControl {
                     this.hideAnswerEvaluationModal();
 
                     // Re-arm buzzers for fresh attempts
-                    this.armAllBuzzers();
+                    this.armBuzzers();
                 }, 1000);
             }
 

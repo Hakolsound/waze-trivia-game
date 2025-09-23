@@ -114,7 +114,16 @@ io.on('connection', (socket) => {
   });
   
   socket.on('buzzer-press', (data) => {
+    console.log('Buzzer press received:', data);
+
+    // Handle the buzzer press through game service
     gameService.handleBuzzerPress(data);
+
+    // If this is a virtual buzzer press, also emit it to admin interfaces for testing
+    if (data.buzzerId && data.buzzerId.startsWith('virtual_')) {
+      console.log('Virtual buzzer press - broadcasting to control panel');
+      io.to('control-panel').emit('buzzer-press', data);
+    }
   });
 
   // Virtual buzzer events
@@ -137,16 +146,20 @@ io.on('connection', (socket) => {
   socket.on('request-buzzer-state', async () => {
     console.log('Virtual buzzer requesting current state');
     try {
-      // Get current buzzer state from ESP32 service or game service
+      // Get current buzzer state from ESP32 service
       const buzzerStatus = await esp32Service.getStatus();
       const currentGame = gameService.getCurrentGlobalGame();
 
-      // Determine if buzzers are currently armed
+      // Check if any buzzers are currently armed by examining buzzer states
       let isArmed = false;
-      if (currentGame && gameService.currentQuestion) {
-        // Check if there's an active question with armed buzzers
-        const questionStatus = gameService.currentQuestion;
-        isArmed = questionStatus && questionStatus.buzzersArmed;
+      if (buzzerStatus && buzzerStatus.buzzerStates) {
+        // Check if any device is armed
+        for (const [deviceId, state] of Object.entries(buzzerStatus.buzzerStates)) {
+          if (state.armed === true) {
+            isArmed = true;
+            break;
+          }
+        }
       }
 
       // Send current state to requesting virtual buzzer

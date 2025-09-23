@@ -1,4 +1,4 @@
-\#include <WiFi.h>
+#include <WiFi.h>
 #include <esp_now.h>
 #include <esp_wifi.h>
 
@@ -195,12 +195,24 @@ void loop() {
 
 void checkBuzzerButton() {
   bool currentButtonState = digitalRead(BUZZER_BUTTON_PIN);
-  
+
+  // Debug output every few seconds
+  static unsigned long lastDebug = 0;
+  if (millis() - lastDebug > 3000) {
+    Serial.printf("Button state: current=%s, last=%s, isArmed=%s, buzzerPressed=%s\n",
+                  currentButtonState ? "HIGH" : "LOW",
+                  lastButtonState ? "HIGH" : "LOW",
+                  isArmed ? "true" : "false",
+                  buzzerPressed ? "true" : "false");
+    lastDebug = millis();
+  }
+
   // Button pressed (active LOW) and buzzer is armed and not already pressed
   if (currentButtonState == LOW && lastButtonState == HIGH && isArmed && !buzzerPressed) {
+    Serial.println("Button press conditions met - calling handleBuzzerPress()");
     handleBuzzerPress();
   }
-  
+
   lastButtonState = currentButtonState;
 }
 

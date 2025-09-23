@@ -30,6 +30,13 @@ class AdminConfig {
         // Initialize buzzer sidebar
         this.buzzerDevices = new Map();
         this.loadThresholdSetting();
+
+        // Initialize virtual buzzer test state
+        this.virtualBuzzerTestState = {
+            connectedBuzzers: new Map(), // buzzerId -> {teamName, socketId, lastSeen}
+            testedBuzzers: new Set(),
+            isActive: false
+        };
         setTimeout(() => {
             this.refreshBuzzerStatus();
         }, 1000);
@@ -1765,11 +1772,9 @@ class AdminConfig {
             isActive: false
         };
 
-        this.virtualBuzzerTestState = {
-            connectedBuzzers: new Map(), // buzzerId -> {teamName, socketId, lastSeen}
-            testedBuzzers: new Set(),
-            isActive: false
-        };
+        // Reset virtual buzzer test state for this session
+        this.virtualBuzzerTestState.testedBuzzers.clear();
+        this.virtualBuzzerTestState.isActive = false;
         
         this.renderBuzzerTestGrid();
         this.refreshVirtualBuzzers();

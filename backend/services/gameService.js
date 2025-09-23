@@ -475,9 +475,15 @@ class GameService {
   async awardPoints(gameId, groupId, points) {
     const game = await this.getGame(gameId);
     const allowNegativeScores = Boolean(game.allow_negative_scores);
-    
+
+    // Debug: Check what groups exist for this game
+    const allGroups = await this.db.all('SELECT * FROM groups WHERE game_id = ?', [gameId]);
+    console.log(`[DEBUG] All groups for game ${gameId}:`, JSON.stringify(allGroups, null, 2));
+    console.log(`[DEBUG] Looking for groupId: "${groupId}" (type: ${typeof groupId})`);
+
     // Get current score before update
     const currentGroup = await this.db.get('SELECT * FROM groups WHERE id = ?', [groupId]);
+    console.log(`[DEBUG] Found currentGroup:`, JSON.stringify(currentGroup, null, 2));
     const currentScore = currentGroup ? currentGroup.score : 0;
     const newScore = currentScore + points;
     
@@ -497,7 +503,12 @@ class GameService {
     );
 
     const updatedGroup = await this.db.get('SELECT * FROM groups WHERE id = ?', [groupId]);
-    
+    console.log(`[DEBUG] Final updatedGroup query result:`, JSON.stringify(updatedGroup, null, 2));
+
+    if (!updatedGroup) {
+      throw new Error(`Group with id "${groupId}" not found after score update`);
+    }
+
     this.io.to(`game-${gameId}`).emit('score-update', {
       groupId,
       newScore: updatedGroup.score,

@@ -2048,6 +2048,7 @@ class HostControl {
     }
 
     showCurrentAnswererInModal(buzzer) {
+        console.log(`[MODAL DEBUG] showCurrentAnswererInModal called with buzzer:`, buzzer);
         this.elements.noBuzzerContent.classList.add('hidden');
         this.elements.currentAnswererContent.classList.remove('hidden');
 
@@ -2067,7 +2068,10 @@ class HostControl {
         // Update points - show actual time-based points if applicable
         const actualPoints = this.getActualPointsForBuzzer(buzzer);
         console.log(`[MODAL DEBUG] Updating modal points for ${teamName}: ${actualPoints} (questionStartTime: ${this.questionStartTime}, buzzer.timestamp: ${buzzer.timestamp})`);
+        console.log(`[MODAL DEBUG] Question points element:`, this.elements.questionPoints);
+        console.log(`[MODAL DEBUG] Setting textContent to: +${actualPoints}`);
         this.elements.questionPoints.textContent = `+${actualPoints}`;
+        console.log(`[MODAL DEBUG] After update, element textContent:`, this.elements.questionPoints.textContent);
 
         // Store current buzzer position for evaluation
         this.currentBuzzerPosition = this.buzzerOrder.indexOf(buzzer);

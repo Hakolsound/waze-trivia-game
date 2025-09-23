@@ -596,21 +596,32 @@ class AdminConfig {
             this.updateBuzzerHeartbeat(data);
         });
         
-        // Buzzer press listener for test mode
+        // Buzzer press listener for test mode (hardware buzzers)
         this.socket.on('buzzer-press', (data) => {
-            console.log('Admin received buzzer-press event:', data);
-            console.log('Hardware buzzer test active:', this.buzzerTestState?.isActive);
-            console.log('Team buzzer test active:', this.teamBuzzerTestActive);
-
-            // Route to appropriate test handler
-            if (this.buzzerTestState && this.buzzerTestState.isActive) {
-                console.log('Routing to unified buzzer test handler');
-                this.handleBuzzerTestPress(data);
-            } else if (this.teamBuzzerTestActive) {
-                console.log('Routing to team buzzer test handler');
-                this.handleTeamBuzzerPress(data);
-            }
+            console.log('Admin received buzzer-press event (hardware):', data);
+            this.handleBuzzerEvent(data);
         });
+
+        // Buzzer press listener for virtual buzzers
+        this.socket.on('buzzer-pressed', (data) => {
+            console.log('Admin received buzzer-pressed event (virtual):', data);
+            this.handleBuzzerEvent(data);
+        });
+    }
+
+    // Unified buzzer event handler for both hardware and virtual
+    handleBuzzerEvent(data) {
+        console.log('Hardware buzzer test active:', this.buzzerTestState?.isActive);
+        console.log('Team buzzer test active:', this.teamBuzzerTestActive);
+
+        // Route to appropriate test handler
+        if (this.buzzerTestState && this.buzzerTestState.isActive) {
+            console.log('Routing to unified buzzer test handler');
+            this.handleBuzzerTestPress(data);
+        } else if (this.teamBuzzerTestActive) {
+            console.log('Routing to team buzzer test handler');
+            this.handleTeamBuzzerPress(data);
+        }
 
         // Virtual buzzer connection tracking
         this.socket.on('virtual-buzzer-register', (data) => {

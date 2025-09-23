@@ -1753,6 +1753,16 @@ class HostControl {
             this.clearArmedIndicators();
         }
 
+        // Check for duplicate team buzzer presses - prevent same team from being added multiple times
+        const groupId = data.groupId;
+        const teamAlreadyBuzzed = this.buzzerOrder.some(buzzer => buzzer.groupId === groupId);
+
+        if (teamAlreadyBuzzed) {
+            console.log(`[FRONTEND] Duplicate buzzer press ignored for team ${groupId}:`, data);
+            return; // Don't add duplicate
+        }
+
+        console.log(`[FRONTEND] Adding new buzzer press for team ${groupId}:`, data);
         this.buzzerOrder.push(data);
         this.updateBuzzerResults();
         this.updateAnswerEvaluation();

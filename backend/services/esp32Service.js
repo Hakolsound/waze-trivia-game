@@ -42,7 +42,7 @@ class ESP32Service extends EventEmitter {
 
     this.MESSAGE_SIZES = {
       BUZZER_MESSAGE: 12,
-      STATUS_MESSAGE: 16,
+      STATUS_MESSAGE: 17,
       COMMAND_MESSAGE: 8
     };
   }

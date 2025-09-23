@@ -1756,11 +1756,15 @@ class AdminConfig {
             
             teams.forEach(team => {
                 const card = document.createElement('div');
-                card.className = 'buzzer-test-card';
+                card.className = 'buzzer-test-card physical-buzzer';
                 card.dataset.teamId = team.id;
                 card.dataset.buzzerId = team.buzzer_id;
-                
+
                 card.innerHTML = `
+                    <div class="buzzer-type-indicator physical">
+                        <span class="material-icons">hardware</span>
+                        <span class="type-label">Physical</span>
+                    </div>
                     <div class="buzzer-test-team-name">${team.name}</div>
                     <div class="buzzer-test-buzzer-id">Buzzer ID: ${team.buzzer_id}</div>
                     <div class="buzzer-test-status waiting">
@@ -1768,7 +1772,30 @@ class AdminConfig {
                         <span>Waiting for press...</span>
                     </div>
                 `;
-                
+
+                this.elements.buzzerTestGrid.appendChild(card);
+            });
+
+            // Add virtual buzzers to the test grid
+            this.virtualBuzzerTestState.connectedBuzzers.forEach((buzzer, buzzerId) => {
+                const card = document.createElement('div');
+                card.className = 'buzzer-test-card virtual-buzzer';
+                card.dataset.buzzerId = buzzerId;
+                card.dataset.teamId = buzzer.groupId || buzzerId;
+
+                card.innerHTML = `
+                    <div class="buzzer-type-indicator virtual">
+                        <span class="material-icons">smartphone</span>
+                        <span class="type-label">Virtual</span>
+                    </div>
+                    <div class="buzzer-test-team-name">${buzzer.teamName || 'Virtual Buzzer'}</div>
+                    <div class="buzzer-test-buzzer-id">Device: ${buzzerId.split('_')[1] || 'Mobile'}</div>
+                    <div class="buzzer-test-status waiting">
+                        <span class="material-icons">radio_button_unchecked</span>
+                        <span>Waiting for press...</span>
+                    </div>
+                `;
+
                 this.elements.buzzerTestGrid.appendChild(card);
             });
             
@@ -1821,25 +1848,56 @@ class AdminConfig {
         }
     }
     
-    resetBuzzerTest() {
-        this.buzzerTestState.testedBuzzers.clear();
-        
-        // Reset all card states
-        const cards = this.elements.buzzerTestGrid.querySelectorAll('.buzzer-test-card');
-        cards.forEach(card => {
-            card.className = 'buzzer-test-card';
-            const status = card.querySelector('.buzzer-test-status');
-            status.className = 'buzzer-test-status waiting';
-            status.innerHTML = `
-                <span class="material-icons">radio_button_unchecked</span>
-                <span>Waiting for press...</span>
-            `;
-        });
-        
-        this.updateTestProgress();
-        
-        if (this.buzzerTestState.isActive) {
-            this.startBuzzerTest();
+    async resetBuzzerTest() {
+        try {
+            // First disarm all buzzers
+            console.log('Disarming all buzzers...');
+            await fetch('/api/buzzers/disarm', { method: 'POST' });
+
+            // Wait a short moment for disarm to complete
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // Reset all card states
+            this.buzzerTestState.testedBuzzers.clear();
+            const cards = this.elements.buzzerTestGrid.querySelectorAll('.buzzer-test-card');
+            cards.forEach(card => {
+                card.classList.remove('tested', 'testing', 'physical-buzzer', 'virtual-buzzer');
+                card.classList.add('buzzer-test-card');
+                const status = card.querySelector('.buzzer-test-status');
+                if (status) {
+                    status.className = 'buzzer-test-status waiting';
+                    status.innerHTML = `
+                        <span class="material-icons">radio_button_unchecked</span>
+                        <span>Waiting for press...</span>
+                    `;
+                }
+            });
+
+            this.updateTestProgress();
+
+            // If test was active, re-arm buzzers after reset
+            if (this.buzzerTestState.isActive) {
+                console.log('Re-arming all buzzers...');
+                await fetch('/api/buzzers/arm', { method: 'POST' });
+            }
+        } catch (error) {
+            console.error('Error during buzzer test reset:', error);
+            // Continue with UI reset even if API calls fail
+            this.buzzerTestState.testedBuzzers.clear();
+            const cards = this.elements.buzzerTestGrid.querySelectorAll('.buzzer-test-card');
+            cards.forEach(card => {
+                card.classList.remove('tested', 'testing', 'physical-buzzer', 'virtual-buzzer');
+                card.classList.add('buzzer-test-card');
+                const status = card.querySelector('.buzzer-test-status');
+                if (status) {
+                    status.className = 'buzzer-test-status waiting';
+                    status.innerHTML = `
+                        <span class="material-icons">radio_button_unchecked</span>
+                        <span>Waiting for press...</span>
+                    `;
+                }
+            });
+            this.updateTestProgress();
         }
     }
 

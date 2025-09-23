@@ -1056,6 +1056,63 @@ textarea {
     display: inline-block;
 }
 
+/* Buzzer Type Indicators */
+.buzzer-type-indicator {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    backdrop-filter: blur(8px);
+    transition: all var(--md-sys-motion-duration-medium) var(--md-sys-motion-easing-standard);
+}
+
+.buzzer-type-indicator.physical {
+    background: rgba(74, 158, 191, 0.8);
+    color: #ffffff;
+    border: 1px solid rgba(74, 158, 191, 0.5);
+}
+
+.buzzer-type-indicator.virtual {
+    background: rgba(184, 115, 90, 0.8);
+    color: #ffffff;
+    border: 1px solid rgba(184, 115, 90, 0.5);
+}
+
+.buzzer-type-indicator .material-icons {
+    font-size: 16px;
+}
+
+.buzzer-type-indicator .type-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Enhanced card styling for different types */
+.buzzer-test-card.physical-buzzer {
+    border-left: 4px solid var(--waze-primary);
+}
+
+.buzzer-test-card.virtual-buzzer {
+    border-left: 4px solid var(--waze-secondary);
+}
+
+.buzzer-test-card.physical-buzzer.tested {
+    border-color: var(--md-sys-color-success);
+    border-left-color: var(--waze-primary);
+}
+
+.buzzer-test-card.virtual-buzzer.tested {
+    border-color: var(--md-sys-color-success);
+    border-left-color: var(--waze-secondary);
+}
+
 /* Virtual Buzzer Test Styles */
 .virtual-buzzer-test-section {
     margin: 32px 0;

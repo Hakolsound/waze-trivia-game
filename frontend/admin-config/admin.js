@@ -2090,6 +2090,10 @@ class AdminConfig {
         const { buzzerId, buzzer_id, groupId, deltaMs, position, timestamp } = data;
         const actualBuzzerId = buzzerId || buzzer_id;
 
+        console.log('Virtual buzzer test press received:', data);
+        console.log('Looking for buzzerId:', actualBuzzerId);
+        console.log('Connected buzzers:', Array.from(this.virtualBuzzerTestState.connectedBuzzers.keys()));
+
         // Check if this is a virtual buzzer we're tracking
         if (actualBuzzerId && this.virtualBuzzerTestState.connectedBuzzers.has(actualBuzzerId)) {
             // Mark as tested
@@ -2099,6 +2103,20 @@ class AdminConfig {
             const buzzer = this.virtualBuzzerTestState.connectedBuzzers.get(actualBuzzerId);
             buzzer.lastSeen = Date.now();
 
+            // Calculate position and deltaMs for virtual buzzer if not provided
+            let calculatedPosition = position;
+            let calculatedDeltaMs = deltaMs;
+
+            if (calculatedPosition === undefined) {
+                // Calculate position based on number of tested buzzers
+                calculatedPosition = this.virtualBuzzerTestState.testedBuzzers.size;
+            }
+
+            if (calculatedDeltaMs === undefined && this.virtualBuzzerTestState.testStartTime) {
+                // Calculate delta time from test start
+                calculatedDeltaMs = Date.now() - this.virtualBuzzerTestState.testStartTime;
+            }
+
             // Re-render to show test result
             this.renderVirtualBuzzerGrid();
 
@@ -2106,9 +2124,9 @@ class AdminConfig {
             const protocolInfo = [];
             const formattedTime = this.formatTimestamp(Date.now());
             protocolInfo.push(formattedTime);
-            if (position !== undefined) protocolInfo.push(`Rank #${position}`);
+            if (calculatedPosition !== undefined) protocolInfo.push(`Rank #${calculatedPosition}`);
             // Only show delta time for ranks > 1 (first place has Δt=0)
-            if (deltaMs !== undefined && position > 1) protocolInfo.push(`Δt: ${this.formatDeltaTime(deltaMs)}`);
+            if (calculatedDeltaMs !== undefined && calculatedPosition > 1) protocolInfo.push(`Δt: ${this.formatDeltaTime(calculatedDeltaMs)}`);
 
             const protocolDetails = protocolInfo.length > 0 ? ` (${protocolInfo.join(' • ')})` : '';
             this.showToast(`✅ Virtual buzzer ${actualBuzzerId} tested!${protocolDetails}`, 'success');
@@ -2123,6 +2141,7 @@ class AdminConfig {
 
         this.virtualBuzzerTestState.isActive = true;
         this.virtualBuzzerTestState.testedBuzzers.clear();
+        this.virtualBuzzerTestState.testStartTime = Date.now(); // Track test start time for delta calculation
 
         try {
             // Arm buzzers for testing

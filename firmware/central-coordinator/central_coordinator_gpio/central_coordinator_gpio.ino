@@ -155,8 +155,10 @@ void sendBinaryStatus() {
 }
 
 void processBinaryCommands() {
+  Serial.println("Processing binary commands...");
   while (Serial.available()) {
     uint8_t byte = Serial.read();
+    Serial.printf("Read byte: 0x%02X (pos=%d)\n", byte, commandBufferPos);
 
     // Wait for command header
     if (commandBufferPos == 0 && byte != 0xBB) {
@@ -325,6 +327,7 @@ void loop() {
 
   // Check for serial commands from Raspberry Pi
   if (Serial.available()) {
+    Serial.printf("Serial data available: %d bytes\n", Serial.available());
     if (BINARY_PROTOCOL_ENABLED) {
       processBinaryCommands();
     } else {

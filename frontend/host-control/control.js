@@ -2653,6 +2653,8 @@ class HostControl {
                     // Show next answerer if available
                     const nextBuzzer = this.buzzerOrder.find(b => !b.evaluated);
                     if (nextBuzzer) {
+                        // Update currentBuzzerPosition to point to the next unevaluated buzzer
+                        this.currentBuzzerPosition = this.buzzerOrder.indexOf(nextBuzzer);
                         this.showCurrentAnswererHighlight(nextBuzzer);
                     } else {
                         // No more teams to answer - hide modal

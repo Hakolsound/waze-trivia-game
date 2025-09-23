@@ -3018,11 +3018,17 @@ class AdminConfig {
     resetTeamBuzzerStatus() {
         const teamCards = document.querySelectorAll('.team-card');
         teamCards.forEach(card => {
+            const statusElement = card.querySelector('.buzzer-status');
             const statusDot = card.querySelector('.status-dot');
             const statusText = card.querySelector('.status-text');
-            if (statusDot && statusText) {
+
+            if (statusElement && statusDot && statusText) {
+                statusElement.className = 'buzzer-status';
                 statusDot.className = 'status-dot waiting';
                 statusText.textContent = 'Ready';
+
+                // Reset team card appearance
+                card.classList.remove('buzzer-working', 'buzzer-failed', 'buzzer-testing');
             }
         });
         this.testedTeamBuzzers.clear();
@@ -3032,24 +3038,49 @@ class AdminConfig {
         const statusElement = document.getElementById(`buzzer-status-${teamId}`);
         if (!statusElement) return;
 
+        const teamCard = statusElement.closest('.team-card');
         const statusDot = statusElement.querySelector('.status-dot');
         const statusText = statusElement.querySelector('.status-text');
 
         if (statusDot && statusText) {
+            // Update status dot
             statusDot.className = `status-dot ${status}`;
 
+            // Update status container with enhanced styling
+            statusElement.className = `buzzer-status ${status}`;
+
+            // Update team card appearance
+            if (teamCard) {
+                // Remove existing status classes
+                teamCard.classList.remove('buzzer-working', 'buzzer-failed', 'buzzer-testing');
+
+                // Add new status class
+                if (status === 'tested') {
+                    teamCard.classList.add('buzzer-working');
+                } else if (status === 'failed') {
+                    teamCard.classList.add('buzzer-failed');
+                } else if (status === 'testing') {
+                    teamCard.classList.add('buzzer-testing');
+                }
+            }
+
+            // Update text content
             switch(status) {
                 case 'testing':
                     statusText.textContent = 'Testing...';
                     break;
                 case 'tested':
-                    statusText.textContent = 'Working!';
+                    statusText.textContent = '✓ Working!';
                     break;
                 case 'failed':
-                    statusText.textContent = 'Failed';
+                    statusText.textContent = '✗ Failed';
                     break;
                 default:
                     statusText.textContent = 'Ready';
+                    statusElement.className = 'buzzer-status';
+                    if (teamCard) {
+                        teamCard.classList.remove('buzzer-working', 'buzzer-failed', 'buzzer-testing');
+                    }
             }
         }
     }
@@ -3064,11 +3095,7 @@ class AdminConfig {
             if (response.ok) {
                 this.updateTeamBuzzerStatus(teamId, 'tested');
                 this.showToast(`🔔 Buzzer test signal sent to ${buzzerId}`, 'success');
-
-                // Auto-reset status after 3 seconds
-                setTimeout(() => {
-                    this.updateTeamBuzzerStatus(teamId, 'waiting');
-                }, 3000);
+                // Result persists until test is reset or ended
             } else {
                 throw new Error(result.error || 'Test failed');
             }
@@ -3076,11 +3103,7 @@ class AdminConfig {
             console.error(`Failed to test buzzer ${buzzerId}:`, error);
             this.updateTeamBuzzerStatus(teamId, 'failed');
             this.showToast(`❌ Failed to test buzzer ${buzzerId}`, 'error');
-
-            // Auto-reset status after 3 seconds
-            setTimeout(() => {
-                this.updateTeamBuzzerStatus(teamId, 'waiting');
-            }, 3000);
+            // Result persists until test is reset or ended
         }
     }
 
@@ -3102,10 +3125,7 @@ class AdminConfig {
         // Show success message
         this.showToast(`✅ ${team.name} buzzer working!`, 'success');
 
-        // Auto-reset status after 5 seconds
-        setTimeout(() => {
-            this.updateTeamBuzzerStatus(team.id, 'waiting');
-        }, 5000);
+        // Result persists until test is ended - no auto-reset
 
         // Check if all teams have been tested
         if (this.testedTeamBuzzers.size === this.currentGame.groups.length) {

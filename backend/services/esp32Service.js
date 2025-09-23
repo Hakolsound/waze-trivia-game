@@ -268,6 +268,15 @@ class ESP32Service extends EventEmitter {
           last_seen: Date.now(),
           last_online: Date.now()
         });
+
+        // Emit heartbeat for admin interface
+        this.io.emit('buzzer-heartbeat', {
+          device_id: deviceId,
+          status: 'online',
+          armed: (armedMask & bitMask) !== 0,
+          pressed: (pressedMask & bitMask) !== 0,
+          timestamp: Date.now()
+        });
       }
     }
 
@@ -520,6 +529,17 @@ class ESP32Service extends EventEmitter {
       // Store device state
       this.buzzerStates.set(deviceId, params);
       console.log(`Updated device ${deviceId}:`, params);
+
+      // Emit heartbeat for admin interface if device is online
+      if (params.online) {
+        this.io.emit('buzzer-heartbeat', {
+          device_id: deviceId,
+          status: 'online',
+          armed: params.armed,
+          pressed: params.pressed,
+          timestamp: Date.now()
+        });
+      }
       
     } catch (error) {
       console.error('Error parsing device data:', error);

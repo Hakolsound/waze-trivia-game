@@ -792,6 +792,7 @@ class HostControl {
 
     // Virtual Buzzer Methods
     handleVirtualBuzzerToggle(enabled) {
+        console.log('[VIRTUAL BUZZER DEBUG] Toggle changed to:', enabled);
         const teamsListElement = this.elements.teamsScoring;
         if (enabled) {
             teamsListElement.classList.add('virtual-buzzer-enabled');
@@ -804,21 +805,41 @@ class HostControl {
 
     setupTeamClickHandlers() {
         const teamItems = this.elements.teamsScoring.querySelectorAll('.team-item');
-        teamItems.forEach(teamItem => {
-            teamItem.addEventListener('click', this.handleTeamClick.bind(this));
+        console.log('[VIRTUAL BUZZER DEBUG] Setting up click handlers for', teamItems.length, 'team items');
+        teamItems.forEach((teamItem, index) => {
+            // Remove existing handlers first
+            teamItem.removeEventListener('click', this.boundHandleTeamClick);
+
+            // Add new handler
+            this.boundHandleTeamClick = this.handleTeamClick.bind(this);
+            teamItem.addEventListener('click', this.boundHandleTeamClick);
+            console.log('[VIRTUAL BUZZER DEBUG] Added click handler to team item', index);
         });
     }
 
     removeTeamClickHandlers() {
         const teamItems = this.elements.teamsScoring.querySelectorAll('.team-item');
+        console.log('[VIRTUAL BUZZER DEBUG] Removing click handlers from', teamItems.length, 'team items');
         teamItems.forEach(teamItem => {
-            teamItem.removeEventListener('click', this.handleTeamClick.bind(this));
+            if (this.boundHandleTeamClick) {
+                teamItem.removeEventListener('click', this.boundHandleTeamClick);
+            }
         });
+        this.boundHandleTeamClick = null;
     }
 
     handleTeamClick(event) {
+        console.log('[VIRTUAL BUZZER DEBUG] Team clicked:', {
+            ctrlKey: event.ctrlKey,
+            metaKey: event.metaKey,
+            toggleEnabled: this.elements.virtualBuzzerEnabled ? this.elements.virtualBuzzerEnabled.checked : 'toggle not found',
+            isQuestionActive: this.isQuestionActive,
+            isBuzzersArmed: this.isBuzzersArmed
+        });
+
         // Only proceed if Ctrl/Cmd is pressed and virtual buzzer is enabled
         if (!(event.ctrlKey || event.metaKey) || !this.elements.virtualBuzzerEnabled.checked) {
+            console.log('[VIRTUAL BUZZER DEBUG] Conditions not met - exiting');
             return;
         }
 

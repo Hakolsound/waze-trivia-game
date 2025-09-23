@@ -317,6 +317,7 @@ class ESP32Service extends EventEmitter {
     // Call gameService directly instead of emitting Socket.IO event
     if (this.gameService) {
       console.log('Calling gameService.handleBuzzerPress() directly for physical buzzer');
+      console.log('Data being sent to gameService:', JSON.stringify(buzzerData, null, 2));
       this.gameService.handleBuzzerPress(buzzerData);
     } else {
       console.warn('GameService not available, cannot handle physical buzzer press');

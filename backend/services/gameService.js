@@ -238,7 +238,18 @@ class GameService {
   }
 
   async evaluateAnswer(gameId, isCorrect, buzzerPosition = 0) {
+    console.log('=== GAMESERVICE EVALUATE ANSWER ===');
+    console.log('gameId:', gameId);
+    console.log('isCorrect:', isCorrect);
+    console.log('buzzerPosition:', buzzerPosition, 'type:', typeof buzzerPosition);
+
     const gameState = this.activeGames.get(gameId);
+    console.log('gameState exists:', !!gameState);
+    console.log('buzzerOrder length:', gameState?.buzzerOrder?.length || 0);
+    if (gameState?.buzzerOrder) {
+      console.log('buzzerOrder contents:', JSON.stringify(gameState.buzzerOrder, null, 2));
+    }
+
     if (!gameState || !gameState.buzzerOrder.length) {
       throw new Error('No active question or buzzer presses found');
     }

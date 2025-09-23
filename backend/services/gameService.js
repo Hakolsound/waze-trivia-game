@@ -284,8 +284,21 @@ class GameService {
         pointsToAward = currentQuestion.points;
       }
     } else {
-      // Incorrect answers still lose half points regardless of time-based scoring
-      pointsToAward = -Math.floor(currentQuestion.points * 0.5);
+      // Incorrect answers - apply time-based scoring to negative points too
+      if (game.time_based_scoring) {
+        // Calculate time remaining when buzzer was pressed
+        const timeElapsed = buzzerEntry.deltaMs;
+        const questionTimeLimit = currentQuestion.time_limit || 30; // Default to 30s if not set
+        const totalTime = questionTimeLimit * 1000;
+        const timeRemaining = Math.max(0, totalTime - timeElapsed);
+
+        // Calculate time-based points, then make negative and apply half penalty
+        const timeBasedPoints = this.calculateTimeBasedPoints(currentQuestion.points, timeRemaining, totalTime);
+        pointsToAward = -Math.floor(timeBasedPoints * 0.5);
+      } else {
+        // Non time-based: lose half of base points
+        pointsToAward = -Math.floor(currentQuestion.points * 0.5);
+      }
     }
     console.log(`[EVAL] Calculated points: ${pointsToAward} for team ${currentTeam?.name} (${buzzerEntry.groupId})`);
 

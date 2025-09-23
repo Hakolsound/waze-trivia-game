@@ -121,6 +121,9 @@ void sendBinaryBuzzerPress(uint8_t deviceId, uint32_t timestamp, uint16_t deltaM
 
   Serial.write((uint8_t*)&buzzerMsg, sizeof(buzzerMsg));
   Serial.flush(); // Ensure immediate transmission
+
+  Serial.printf("Sent binary buzzer press: device=%d, deltaMs=%d, position=%d\n",
+                deviceId, deltaMs, position);
 }
 
 void sendBinaryStatus() {
@@ -395,11 +398,14 @@ void handleSerialCommand() {
 }
 
 void handleBuzzerPress(Message msg) {
-  if (!gameActive) {
-    Serial.println("ERROR:Game not active");
+  Serial.printf("Buzzer press received from device %d (gameActive=%s, systemArmed=%s)\n",
+                msg.deviceId, gameActive ? "true" : "false", systemArmed ? "true" : "false");
+
+  if (!gameActive && !systemArmed) {
+    Serial.println("ERROR:Game not active and system not armed");
     return;
   }
-  
+
   // Check if already pressed
   for (int i = 0; i < buzzerPressCount; i++) {
     if (buzzerOrder[i].deviceId == msg.deviceId) {

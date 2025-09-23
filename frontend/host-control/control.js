@@ -2657,12 +2657,15 @@ class HostControl {
                 // Update the evaluation interface for next buzzer if answer is wrong
                 setTimeout(() => {
                     // Show next answerer if available
+                    console.log(`[FRONTEND] Current buzzerOrder:`, this.buzzerOrder);
                     const nextBuzzer = this.buzzerOrder.find(b => !b.evaluated);
+                    console.log(`[FRONTEND] Found next unevaluated buzzer:`, nextBuzzer);
                     if (nextBuzzer) {
                         // Update currentBuzzerPosition to point to the next unevaluated buzzer
                         const newPosition = this.buzzerOrder.indexOf(nextBuzzer);
                         console.log(`[FRONTEND] Transitioning from buzzerPosition ${this.currentBuzzerPosition} to ${newPosition}`);
                         console.log(`[FRONTEND] Next buzzer to evaluate:`, nextBuzzer);
+                        console.log(`[FRONTEND] buzzerOrder.indexOf result:`, newPosition);
                         this.currentBuzzerPosition = newPosition;
                         this.showCurrentAnswererHighlight(nextBuzzer);
                         // Update the modal to show the correct team

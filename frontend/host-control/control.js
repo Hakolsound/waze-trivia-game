@@ -2658,15 +2658,23 @@ class HostControl {
                 setTimeout(() => {
                     // Show next answerer if available
                     console.log(`[FRONTEND] Current buzzerOrder:`, this.buzzerOrder);
-                    const nextBuzzer = this.buzzerOrder.find(b => !b.evaluated);
-                    console.log(`[FRONTEND] Found next unevaluated buzzer:`, nextBuzzer);
-                    if (nextBuzzer) {
-                        // Update currentBuzzerPosition to point to the next unevaluated buzzer
-                        const newPosition = this.buzzerOrder.indexOf(nextBuzzer);
-                        console.log(`[FRONTEND] Transitioning from buzzerPosition ${this.currentBuzzerPosition} to ${newPosition}`);
+
+                    // Find the index of the next unevaluated buzzer
+                    let nextBuzzerIndex = -1;
+                    let nextBuzzer = null;
+                    for (let i = 0; i < this.buzzerOrder.length; i++) {
+                        if (!this.buzzerOrder[i].evaluated) {
+                            nextBuzzerIndex = i;
+                            nextBuzzer = this.buzzerOrder[i];
+                            break;
+                        }
+                    }
+
+                    console.log(`[FRONTEND] Found next unevaluated buzzer at index ${nextBuzzerIndex}:`, nextBuzzer);
+                    if (nextBuzzer && nextBuzzerIndex >= 0) {
+                        console.log(`[FRONTEND] Transitioning from buzzerPosition ${this.currentBuzzerPosition} to ${nextBuzzerIndex}`);
                         console.log(`[FRONTEND] Next buzzer to evaluate:`, nextBuzzer);
-                        console.log(`[FRONTEND] buzzerOrder.indexOf result:`, newPosition);
-                        this.currentBuzzerPosition = newPosition;
+                        this.currentBuzzerPosition = nextBuzzerIndex;
                         this.showCurrentAnswererHighlight(nextBuzzer);
                         // Update the modal to show the correct team
                         this.updateAnswerEvaluationModal();

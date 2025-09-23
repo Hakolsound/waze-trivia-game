@@ -58,10 +58,10 @@ module.exports = (esp32Service) => {
     }
   });
 
-  // Arm all buzzers (without game ID)
+  // Arm all buzzers (without game ID - for testing purposes)
   router.post('/arm', async (req, res) => {
     try {
-      const result = await esp32Service.armBuzzers();
+      const result = await esp32Service.armBuzzers('test-mode');
       res.json(result);
     } catch (error) {
       res.status(400).json({ error: error.message });

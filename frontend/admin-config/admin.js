@@ -186,6 +186,7 @@ class AdminConfig {
             saveAllBtn: document.getElementById('save-all-btn'),
             
             // Team elements
+            testTeamBuzzersBtn: document.getElementById('test-team-buzzers-btn'),
             addTeamBtn: document.getElementById('add-team-btn'),
             teamsContainer: document.getElementById('teams-container'),
             teamModal: document.getElementById('team-modal'),
@@ -376,6 +377,12 @@ class AdminConfig {
         }
 
         // Team management
+        if (this.elements.testTeamBuzzersBtn) {
+            this.elements.testTeamBuzzersBtn.addEventListener('click', () => {
+                this.startTeamBuzzerTest();
+            });
+        }
+
         if (this.elements.addTeamBtn) {
             this.elements.addTeamBtn.addEventListener('click', () => {
                 this.showTeamModal();
@@ -586,11 +593,15 @@ class AdminConfig {
         this.socket.on('buzzer-press', (data) => {
             console.log('Admin received buzzer-press event:', data);
             console.log('Hardware buzzer test active:', this.buzzerTestState?.isActive);
+            console.log('Team buzzer test active:', this.teamBuzzerTestActive);
 
-            // All buzzer presses (hardware + virtual) go to the unified test handler
+            // Route to appropriate test handler
             if (this.buzzerTestState && this.buzzerTestState.isActive) {
                 console.log('Routing to unified buzzer test handler');
                 this.handleBuzzerTestPress(data);
+            } else if (this.teamBuzzerTestActive) {
+                console.log('Routing to team buzzer test handler');
+                this.handleTeamBuzzerPress(data);
             }
         });
 
@@ -675,16 +686,23 @@ class AdminConfig {
         }
 
         this.elements.teamsContainer.innerHTML = teams.map(team => `
-            <div class="team-card">
+            <div class="team-card" data-team-id="${team.id}" data-buzzer-id="${team.buzzer_id}">
                 <div class="team-header">
                     <div class="team-name">${team.name}</div>
-                    <div class="team-color-indicator" style="background-color: ${team.color}"></div>
+                    <div class="team-status-indicators">
+                        <div class="buzzer-status" id="buzzer-status-${team.id}">
+                            <span class="status-dot waiting"></span>
+                            <span class="status-text">Ready</span>
+                        </div>
+                        <div class="team-color-indicator" style="background-color: ${team.color}"></div>
+                    </div>
                 </div>
                 <div class="team-info">
                     <div>Buzzer ID: ${team.buzzer_id}</div>
                     <div>Score: ${team.score || 0}</div>
                 </div>
                 <div class="team-actions">
+                    <button class="btn btn-small btn-secondary test-buzzer-btn" onclick="admin.testIndividualTeamBuzzer('${team.id}', '${team.buzzer_id}')" title="Test this buzzer">🔔</button>
                     <button class="btn btn-small btn-info" onclick="admin.editTeam('${team.id}')">Edit</button>
                     <button class="btn btn-small btn-danger" onclick="admin.deleteTeam('${team.id}')">Delete</button>
                 </div>
@@ -2939,6 +2957,155 @@ class AdminConfig {
         this.hideMediaPreview();
         // Focus back to the URL input
         this.elements.mediaUrl.focus();
+    }
+
+    // Team-based Buzzer Testing Methods
+    async startTeamBuzzerTest() {
+        if (!this.currentGame || !this.currentGame.groups) {
+            this.showToast('No teams available for testing', 'error');
+            return;
+        }
+
+        // Initialize team buzzer test state
+        this.teamBuzzerTestActive = true;
+        this.testedTeamBuzzers = new Set();
+
+        // Reset all team buzzer status indicators
+        this.resetTeamBuzzerStatus();
+
+        // Start listening for buzzer presses
+        try {
+            const response = await fetch('/api/buzzers/arm');
+            if (response.ok) {
+                this.showToast('🔔 Team buzzer test started - Press each team\'s buzzer!', 'info');
+                this.elements.testTeamBuzzersBtn.textContent = '🛑 Stop Test';
+                this.elements.testTeamBuzzersBtn.onclick = () => this.stopTeamBuzzerTest();
+            } else {
+                throw new Error('Failed to arm buzzers');
+            }
+        } catch (error) {
+            console.error('Failed to start team buzzer test:', error);
+            this.showToast('Failed to start buzzer test - Check ESP32 connection', 'error');
+            this.teamBuzzerTestActive = false;
+        }
+    }
+
+    async stopTeamBuzzerTest() {
+        this.teamBuzzerTestActive = false;
+
+        try {
+            await fetch('/api/buzzers/disarm');
+        } catch (error) {
+            console.error('Failed to disarm buzzers:', error);
+        }
+
+        this.elements.testTeamBuzzersBtn.textContent = '🔔 Test Buzzers';
+        this.elements.testTeamBuzzersBtn.onclick = () => this.startTeamBuzzerTest();
+
+        const testedCount = this.testedTeamBuzzers.size;
+        const totalCount = this.currentGame.groups.length;
+        this.showToast(`Test completed: ${testedCount}/${totalCount} buzzers tested`,
+                      testedCount === totalCount ? 'success' : 'warning');
+    }
+
+    resetTeamBuzzerStatus() {
+        const teamCards = document.querySelectorAll('.team-card');
+        teamCards.forEach(card => {
+            const statusDot = card.querySelector('.status-dot');
+            const statusText = card.querySelector('.status-text');
+            if (statusDot && statusText) {
+                statusDot.className = 'status-dot waiting';
+                statusText.textContent = 'Ready';
+            }
+        });
+        this.testedTeamBuzzers.clear();
+    }
+
+    updateTeamBuzzerStatus(teamId, status) {
+        const statusElement = document.getElementById(`buzzer-status-${teamId}`);
+        if (!statusElement) return;
+
+        const statusDot = statusElement.querySelector('.status-dot');
+        const statusText = statusElement.querySelector('.status-text');
+
+        if (statusDot && statusText) {
+            statusDot.className = `status-dot ${status}`;
+
+            switch(status) {
+                case 'testing':
+                    statusText.textContent = 'Testing...';
+                    break;
+                case 'tested':
+                    statusText.textContent = 'Working!';
+                    break;
+                case 'failed':
+                    statusText.textContent = 'Failed';
+                    break;
+                default:
+                    statusText.textContent = 'Ready';
+            }
+        }
+    }
+
+    async testIndividualTeamBuzzer(teamId, buzzerId) {
+        this.updateTeamBuzzerStatus(teamId, 'testing');
+
+        try {
+            const response = await fetch(`/api/buzzers/test/${buzzerId}`, { method: 'POST' });
+            const result = await response.json();
+
+            if (response.ok) {
+                this.updateTeamBuzzerStatus(teamId, 'tested');
+                this.showToast(`🔔 Buzzer test signal sent to ${buzzerId}`, 'success');
+
+                // Auto-reset status after 3 seconds
+                setTimeout(() => {
+                    this.updateTeamBuzzerStatus(teamId, 'waiting');
+                }, 3000);
+            } else {
+                throw new Error(result.error || 'Test failed');
+            }
+        } catch (error) {
+            console.error(`Failed to test buzzer ${buzzerId}:`, error);
+            this.updateTeamBuzzerStatus(teamId, 'failed');
+            this.showToast(`❌ Failed to test buzzer ${buzzerId}`, 'error');
+
+            // Auto-reset status after 3 seconds
+            setTimeout(() => {
+                this.updateTeamBuzzerStatus(teamId, 'waiting');
+            }, 3000);
+        }
+    }
+
+    // Override the existing buzzer press handler to work with team cards
+    handleTeamBuzzerPress(data) {
+        if (!this.teamBuzzerTestActive) return;
+
+        const buzzerId = data.buzzer_id || data.groupId;
+        if (!buzzerId) return;
+
+        // Find the team with this buzzer ID
+        const team = this.currentGame.groups.find(g => g.buzzer_id === buzzerId);
+        if (!team) return;
+
+        // Mark this buzzer as tested
+        this.testedTeamBuzzers.add(buzzerId);
+        this.updateTeamBuzzerStatus(team.id, 'tested');
+
+        // Show success message
+        this.showToast(`✅ ${team.name} buzzer working!`, 'success');
+
+        // Auto-reset status after 5 seconds
+        setTimeout(() => {
+            this.updateTeamBuzzerStatus(team.id, 'waiting');
+        }, 5000);
+
+        // Check if all teams have been tested
+        if (this.testedTeamBuzzers.size === this.currentGame.groups.length) {
+            setTimeout(() => {
+                this.stopTeamBuzzerTest();
+            }, 1000);
+        }
     }
 }
 

@@ -55,7 +55,10 @@
                         <div class="panel">
                             <div class="panel-header">
                                 <h3>👥 Team Management</h3>
-                                <button id="add-team-btn" class="btn btn-primary">+ Add Team</button>
+                                <div class="header-actions">
+                                    <button id="test-team-buzzers-btn" class="btn btn-info">🔔 Test Buzzers</button>
+                                    <button id="add-team-btn" class="btn btn-primary">+ Add Team</button>
+                                </div>
                             </div>
                             <div id="teams-container" class="teams-container">
                                 <!-- Teams will be populated here -->
@@ -107,7 +110,6 @@
                                 </div>
                             </div>
                             <div class="system-actions">
-                                <button id="test-buzzer-connectivity-btn" class="btn btn-info">🔔 Test Buzzer Connectivity</button>
                                 <button id="refresh-system-status-btn" class="btn btn-secondary">Refresh Status</button>
                                 <button id="backup-db-btn" class="btn btn-warning">Backup Database</button>
                             </div>
@@ -386,36 +388,6 @@
                 </div>
             </div>
 
-            <!-- Buzzer Connectivity Test Modal -->
-            <div id="buzzer-test-modal" class="modal hidden">
-                <div class="modal-content buzzer-test">
-                    <div class="modal-header">
-                        <h3>🔔 Buzzer Connectivity Test</h3>
-                        <button id="close-buzzer-test-btn" class="btn btn-secondary">×</button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="buzzer-test-instructions">
-                            <p>🎯 <strong>Instructions:</strong> Press each team's buzzer to test connectivity. Teams will light up green when their buzzer is pressed.</p>
-                            <div class="test-status">
-                                <span class="status-indicator" id="test-status-indicator">Ready to test</span>
-                                <button id="reset-buzzer-test-btn" class="btn btn-small btn-secondary">Reset Test</button>
-                            </div>
-                        </div>
-                        
-                        <div class="buzzer-test-grid" id="buzzer-test-grid">
-                            <!-- Team cards will be populated here -->
-                        </div>
-
-
-                        <div class="buzzer-test-controls">
-                            <div class="test-progress">
-                                <span id="test-progress-text">Waiting for buzzer presses...</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
             <!-- Unsaved Changes Modal -->
             <div id="unsaved-changes-modal" class="modal hidden">
                 <div class="modal-content">

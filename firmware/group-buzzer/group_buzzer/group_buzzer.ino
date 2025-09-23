@@ -5,10 +5,10 @@
 // Hardware Configuration
 #define BUZZER_PIN 2
 #define LED_PIN 4
-#define BUZZER_BUTTON_PIN 0
+#define BUZZER_BUTTON_PIN 5
 
 // Device Configuration
-#define DEVICE_ID 2  // Change this for each group buzzer (1, 2, 3, etc.)
+#define DEVICE_ID 1  // Change this for each group buzzer (1, 2, 3, etc.)
 #define MAX_GROUPS 15
 
 // Central coordinator MAC address

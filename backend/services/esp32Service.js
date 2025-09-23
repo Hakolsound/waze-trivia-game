@@ -39,7 +39,7 @@ class ESP32Service extends EventEmitter {
         autoOpen: false
       });
 
-      this.parser = this.serialPort.pipe(new ReadlineParser({ delimiter: '\r\n' }));
+      this.parser = this.serialPort.pipe(new ReadlineParser({ delimiter: '\n' }));
 
       this.serialPort.on('open', () => {
         console.log('ESP32 Serial connection established');

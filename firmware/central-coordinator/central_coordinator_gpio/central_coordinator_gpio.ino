@@ -110,10 +110,7 @@ void OnDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *data, int l
 }
 
 void setup() {
-  // Initialize GPIO serial for Pi communication
-  Serial2.begin(SERIAL_BAUD, SERIAL_8N1, RX_PIN, TX_PIN);
-  
-  // Also initialize USB serial for debugging
+  // Use USB serial for both Pi communication and debugging
   Serial.begin(SERIAL_BAUD);
   delay(1000);
   
@@ -140,33 +137,27 @@ void setup() {
   delay(500);
   
   // Print coordinator MAC address
-  Serial2.println("=== ESP32 Central Coordinator ===");
-  Serial2.print("MAC: ");
-  Serial2.println(WiFi.macAddress());
-  Serial2.println("Waiting for buzzers...");
-  
   Serial.println("=== ESP32 Central Coordinator ===");
   Serial.print("MAC: ");
   Serial.println(WiFi.macAddress());
-  Serial.println("GPIO Serial: RX=16, TX=17");
+  Serial.println("Using USB Serial for Pi communication");
   
   // Initialize ESP-NOW
   if (esp_now_init() != ESP_OK) {
-    Serial2.println("ERROR: ESP-NOW init failed");
     Serial.println("ERROR: ESP-NOW init failed");
     return;
   }
-  
+
   Serial.println("ESP-NOW initialized successfully");
-  
+
   // Register callbacks
   esp_now_register_send_cb(OnDataSent);
   esp_now_register_recv_cb(OnDataRecv);
-  
+
   // Startup complete
   digitalWrite(STATUS_LED_PIN, HIGH);
-  
-  Serial2.println("READY");
+
+  Serial.println("READY");
   Serial.println("Central Coordinator ready");
   sendStatusToSerial();
 }
@@ -175,7 +166,7 @@ void loop() {
   unsigned long currentTime = millis();
   
   // Check for serial commands from Raspberry Pi
-  if (Serial2.available()) {
+  if (Serial.available()) {
     handleSerialCommand();
   }
   
@@ -196,12 +187,21 @@ void loop() {
 }
 
 void handleSerialCommand() {
-  String command = Serial2.readStringUntil('\n');
+  String command = Serial.readStringUntil('\n');
   command.trim();
-  
-  Serial.print("Command: ");
-  Serial.println(command);
-  
+
+  // For debugging - comment out in production to avoid clutter
+  // Serial.print("Command: '");
+  // Serial.print(command);
+  // Serial.print("' (length: ");
+  // Serial.print(command.length());
+  // Serial.println(")");
+
+  // Ignore empty commands
+  if (command.length() == 0) {
+    return;
+  }
+
   if (command == "STATUS") {
     sendStatusToSerial();
   } else if (command == "ARM") {
@@ -219,14 +219,14 @@ void handleSerialCommand() {
   } else if (command == "RESET") {
     resetSystem();
   } else {
-    Serial2.println("ERROR:Unknown command");
-    Serial.println("ERROR:Unknown command");
+    Serial.print("ERROR:Unknown command '");
+    Serial.print(command);
+    Serial.println("'");
   }
 }
 
 void handleBuzzerPress(Message msg) {
   if (!gameActive) {
-    Serial2.println("ERROR:Game not active");
     Serial.println("ERROR:Game not active");
     return;
   }
@@ -259,14 +259,14 @@ void handleBuzzerPress(Message msg) {
   }
   
   // Send to Pi (simple format for now)
-  Serial2.print("BUZZER:");
-  Serial2.print(msg.deviceId);
-  Serial2.print(",");
-  Serial2.print(msg.timestamp);
-  Serial2.print(",");
-  Serial2.print(deltaMs);
-  Serial2.print(",");
-  Serial2.println(buzzerPressCount);
+  Serial.print("BUZZER:");
+  Serial.print(msg.deviceId);
+  Serial.print(",");
+  Serial.print(msg.timestamp);
+  Serial.print(",");
+  Serial.print(deltaMs);
+  Serial.print(",");
+  Serial.println(buzzerPressCount);
   
   Serial.print("BUZZER PRESS: Device ");
   Serial.print(msg.deviceId);
@@ -326,10 +326,10 @@ void updateDeviceHeartbeat(const uint8_t *mac, uint8_t deviceId) {
     snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
              mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
     
-    Serial2.print("NEW_DEVICE:");
-    Serial2.print(deviceId);
-    Serial2.print(":");
-    Serial2.println(macStr);
+    Serial.print("NEW_DEVICE:");
+    Serial.print(deviceId);
+    Serial.print(":");
+    Serial.println(macStr);
     
     Serial.print("NEW DEVICE REGISTERED: ID=");
     Serial.print(deviceId);
@@ -357,8 +357,8 @@ void checkDeviceTimeouts(unsigned long currentTime) {
   for (int i = 0; i < registeredDeviceCount; i++) {
     if (devices[i].isOnline && (currentTime - devices[i].lastHeartbeat > HEARTBEAT_TIMEOUT)) {
       devices[i].isOnline = false;
-      Serial2.print("TIMEOUT:");
-      Serial2.println(devices[i].deviceId);
+      Serial.print("TIMEOUT:");
+      Serial.println(devices[i].deviceId);
       Serial.print("Device timeout: ");
       Serial.println(devices[i].deviceId);
     }
@@ -387,7 +387,7 @@ void armAllBuzzers() {
   uint8_t broadcastMAC[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
   esp_err_t result = esp_now_send(broadcastMAC, (uint8_t*)&cmd, sizeof(cmd));
   
-  Serial2.println("ACK:ARMED");
+  Serial.println("ACK:ARMED");
   Serial.print("Buzzers armed - Broadcast result: ");
   Serial.println(result == ESP_OK ? "SUCCESS" : "FAILED");
 }
@@ -410,7 +410,7 @@ void disarmAllBuzzers() {
     }
   }
   
-  Serial2.println("ACK:DISARMED");
+  Serial.println("ACK:DISARMED");
   Serial.println("Buzzers disarmed");
 }
 
@@ -428,22 +428,22 @@ void testBuzzer(uint8_t deviceId) {
         delay(10);
       }
     }
-    Serial2.println("ACK:TEST_ALL");
+    Serial.println("ACK:TEST_ALL");
     Serial.println("Testing all buzzers");
   } else {
     // Test specific device
     for (int i = 0; i < registeredDeviceCount; i++) {
       if (devices[i].deviceId == deviceId && devices[i].isOnline) {
         esp_now_send(devices[i].macAddress, (uint8_t*)&cmd, sizeof(cmd));
-        Serial2.print("ACK:TEST_");
-        Serial2.println(deviceId);
+        Serial.print("ACK:TEST_");
+        Serial.println(deviceId);
         Serial.print("Testing buzzer ");
         Serial.println(deviceId);
         return;
       }
     }
-    Serial2.print("ERROR:Device not found ");
-    Serial2.println(deviceId);
+    Serial.print("ERROR:Device not found ");
+    Serial.println(deviceId);
   }
 }
 
@@ -453,8 +453,8 @@ void startGame(String gameId) {
   gameStartTime = millis();
   buzzerPressCount = 0;
   
-  Serial2.print("ACK:GAME_START:");
-  Serial2.println(gameId);
+  Serial.print("ACK:GAME_START:");
+  Serial.println(gameId);
   Serial.print("Game started: ");
   Serial.println(gameId);
 }
@@ -463,7 +463,7 @@ void endGame() {
   gameActive = false;
   disarmAllBuzzers();
   
-  Serial2.println("ACK:GAME_END");
+  Serial.println("ACK:GAME_END");
   Serial.println("Game ended");
 }
 
@@ -485,40 +485,40 @@ void resetSystem() {
     }
   }
   
-  Serial2.println("ACK:RESET");
+  Serial.println("ACK:RESET");
   Serial.println("System reset");
 }
 
 void sendStatusToSerial() {
   // Simple status format (no JSON)
-  Serial2.print("STATUS:");
-  Serial2.print(millis());
-  Serial2.print(",armed=");
-  Serial2.print(systemArmed);
-  Serial2.print(",game=");
-  Serial2.print(gameActive);
-  Serial2.print(",devices=");
-  Serial2.print(registeredDeviceCount);
-  Serial2.print(",presses=");
-  Serial2.println(buzzerPressCount);
-  
+  Serial.print("STATUS:");
+  Serial.print(millis());
+  Serial.print(",armed=");
+  Serial.print(systemArmed);
+  Serial.print(",game=");
+  Serial.print(gameActive);
+  Serial.print(",devices=");
+  Serial.print(registeredDeviceCount);
+  Serial.print(",presses=");
+  Serial.println(buzzerPressCount);
+
   // Device details
   for (int i = 0; i < registeredDeviceCount; i++) {
-    Serial2.print("DEVICE:");
-    Serial2.print(devices[i].deviceId);
-    Serial2.print(",online=");
-    Serial2.print(devices[i].isOnline);
-    Serial2.print(",armed=");
-    Serial2.print(devices[i].isArmed);
-    Serial2.print(",pressed=");
-    Serial2.print(devices[i].isPressed);
-    Serial2.print(",mac=");
+    Serial.print("DEVICE:");
+    Serial.print(devices[i].deviceId);
+    Serial.print(",online=");
+    Serial.print(devices[i].isOnline);
+    Serial.print(",armed=");
+    Serial.print(devices[i].isArmed);
+    Serial.print(",pressed=");
+    Serial.print(devices[i].isPressed);
+    Serial.print(",mac=");
     for (int j = 0; j < 6; j++) {
-      if (devices[i].macAddress[j] < 16) Serial2.print("0");
-      Serial2.print(devices[i].macAddress[j], HEX);
-      if (j < 5) Serial2.print(":");
+      if (devices[i].macAddress[j] < 16) Serial.print("0");
+      Serial.print(devices[i].macAddress[j], HEX);
+      if (j < 5) Serial.print(":");
     }
-    Serial2.println();
+    Serial.println();
   }
 }
 

@@ -758,6 +758,35 @@ textarea {
     font-weight: 600;
     font-size: 1.1rem;
     color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.virtual-badge {
+    background: linear-gradient(135deg, rgba(0, 123, 255, 0.2), rgba(0, 86, 179, 0.1));
+    border: 1px solid rgba(0, 123, 255, 0.4);
+    border-radius: 12px;
+    padding: 2px 6px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: #4dabf7;
+    white-space: nowrap;
+}
+
+.has-virtual-buzzer {
+    border-color: rgba(0, 123, 255, 0.3);
+}
+
+.has-virtual-buzzer:hover {
+    border-color: rgba(0, 123, 255, 0.5);
+}
+
+.buzzer-type {
+    font-size: 0.85rem;
+    color: #adb5bd;
+    margin-top: 4px;
 }
 
 .team-color-indicator {

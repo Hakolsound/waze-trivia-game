@@ -685,28 +685,35 @@ class AdminConfig {
             return;
         }
 
-        this.elements.teamsContainer.innerHTML = teams.map(team => `
-            <div class="team-card" data-team-id="${team.id}" data-buzzer-id="${team.buzzer_id}">
-                <div class="team-header">
-                    <div class="team-name">${team.name}</div>
-                    <div class="team-status-indicators">
-                        <div class="buzzer-status" id="buzzer-status-${team.id}">
-                            <span class="status-dot waiting"></span>
-                            <span class="status-text">Ready</span>
+        this.elements.teamsContainer.innerHTML = teams.map(team => {
+            const hasVirtualBuzzer = this.hasActiveVirtualBuzzer(team.id);
+            return `
+                <div class="team-card ${hasVirtualBuzzer ? 'has-virtual-buzzer' : ''}" data-team-id="${team.id}" data-buzzer-id="${team.buzzer_id}">
+                    <div class="team-header">
+                        <div class="team-name">
+                            ${team.name}
+                            ${hasVirtualBuzzer ? '<span class="virtual-badge">📱 Virtual</span>' : ''}
                         </div>
-                        <div class="team-color-indicator" style="background-color: ${team.color}"></div>
+                        <div class="team-status-indicators">
+                            <div class="buzzer-status" id="buzzer-status-${team.id}">
+                                <span class="status-dot waiting"></span>
+                                <span class="status-text">Ready</span>
+                            </div>
+                            <div class="team-color-indicator" style="background-color: ${team.color}"></div>
+                        </div>
+                    </div>
+                    <div class="team-info">
+                        <div>Buzzer ID: ${team.buzzer_id}</div>
+                        <div>Score: ${team.score || 0}</div>
+                        ${hasVirtualBuzzer ? '<div class="buzzer-type">📱 Virtual Buzzer Active</div>' : '<div class="buzzer-type">🔌 Hardware Buzzer</div>'}
+                    </div>
+                    <div class="team-actions">
+                        <button class="btn btn-small btn-info" onclick="admin.editTeam('${team.id}')">Edit</button>
+                        <button class="btn btn-small btn-danger" onclick="admin.deleteTeam('${team.id}')">Delete</button>
                     </div>
                 </div>
-                <div class="team-info">
-                    <div>Buzzer ID: ${team.buzzer_id}</div>
-                    <div>Score: ${team.score || 0}</div>
-                </div>
-                <div class="team-actions">
-                    <button class="btn btn-small btn-info" onclick="admin.editTeam('${team.id}')">Edit</button>
-                    <button class="btn btn-small btn-danger" onclick="admin.deleteTeam('${team.id}')">Delete</button>
-                </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
     showTeamModal(team = null) {
@@ -2230,6 +2237,8 @@ class AdminConfig {
             });
 
             this.renderVirtualBuzzerGrid();
+            // Refresh team display to show virtual badge
+            this.loadTeams();
             this.showToast(`📱 Virtual buzzer connected: ${data.teamName || data.buzzerId}`, 'info');
         }
     }
@@ -2242,6 +2251,8 @@ class AdminConfig {
             this.virtualBuzzerTestState.testedBuzzers.delete(data.buzzerId);
 
             this.renderVirtualBuzzerGrid();
+            // Refresh team display to remove virtual badge
+            this.loadTeams();
             this.showToast(`📱 Virtual buzzer disconnected: ${data.teamName || data.buzzerId}`, 'warning');
         }
     }
@@ -3033,6 +3044,23 @@ class AdminConfig {
         this.testedTeamBuzzers.clear();
     }
 
+    // Check if a team has an active virtual buzzer
+    hasActiveVirtualBuzzer(teamId) {
+        if (!this.virtualBuzzerTestState?.connectedBuzzers) return false;
+
+        const currentTime = Date.now();
+        const offlineThreshold = 30000; // 30 seconds
+
+        for (const [buzzerId, buzzerData] of this.virtualBuzzerTestState.connectedBuzzers) {
+            // Check if this virtual buzzer is for the specified team and is recent
+            if (buzzerId.includes(`virtual_${teamId}`) &&
+                (currentTime - buzzerData.lastSeen) < offlineThreshold) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     updateTeamBuzzerStatus(teamId, status) {
         const statusElement = document.getElementById(`buzzer-status-${teamId}`);
         if (!statusElement) return;
@@ -3092,16 +3120,33 @@ class AdminConfig {
         const buzzerId = data.buzzer_id || data.groupId;
         if (!buzzerId) return;
 
-        // Find the team with this buzzer ID
-        const team = this.currentGame.groups.find(g => g.buzzer_id === buzzerId);
-        if (!team) return;
+        let team = null;
+        let isVirtual = false;
+
+        // Check if it's a hardware buzzer press (match by buzzer_id)
+        team = this.currentGame.groups.find(g => g.buzzer_id === buzzerId);
+
+        // If no team found by buzzer ID, check if it's a virtual buzzer press (match by team groupId)
+        if (!team && data.groupId) {
+            team = this.currentGame.groups.find(g => g.id === data.groupId);
+            isVirtual = true;
+        }
+
+        if (!team) {
+            console.log('No team found for buzzer press:', data);
+            return;
+        }
+
+        // Use team's buzzer_id as the key for tracking (consistent for both hardware and virtual)
+        const testKey = team.buzzer_id;
 
         // Mark this buzzer as tested
-        this.testedTeamBuzzers.add(buzzerId);
+        this.testedTeamBuzzers.add(testKey);
         this.updateTeamBuzzerStatus(team.id, 'tested');
 
-        // Show success message
-        this.showToast(`✅ ${team.name} buzzer working!`, 'success');
+        // Show success message with buzzer type
+        const buzzerType = isVirtual ? 'Virtual' : 'Hardware';
+        this.showToast(`✅ ${team.name} ${buzzerType.toLowerCase()} buzzer working!`, 'success');
 
         // Result persists until test is ended - no auto-reset
 

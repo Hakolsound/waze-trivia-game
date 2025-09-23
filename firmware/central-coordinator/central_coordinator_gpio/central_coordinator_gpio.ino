@@ -494,12 +494,23 @@ void updateDeviceHeartbeat(const uint8_t *mac, uint8_t deviceId) {
     }
   }
   
-  // Register new device (don't add as peer yet - just track it)
+  // Register new device and add as ESP-NOW peer
   if (!found && registeredDeviceCount < MAX_GROUPS) {
     memcpy(devices[registeredDeviceCount].macAddress, mac, 6);
     devices[registeredDeviceCount].deviceId = deviceId;
     devices[registeredDeviceCount].isRegistered = true;
     devices[registeredDeviceCount].isOnline = true;
+
+    // Add device as ESP-NOW peer for sending commands
+    esp_now_peer_info_t peerInfo = {};
+    memcpy(peerInfo.peer_addr, mac, 6);
+    peerInfo.channel = 0; // Use same channel
+    peerInfo.encrypt = false;
+    peerInfo.ifidx = WIFI_IF_STA;
+
+    esp_err_t result = esp_now_add_peer(&peerInfo);
+    Serial.printf("Added device %d as ESP-NOW peer: %s\n", deviceId,
+                  result == ESP_OK ? "SUCCESS" : "FAILED");
     devices[registeredDeviceCount].lastHeartbeat = millis();
     
     registeredDeviceCount++;
@@ -565,9 +576,22 @@ void armAllBuzzers() {
     }
   }
   
-  // Use broadcast to reach all devices
-  uint8_t broadcastMAC[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-  esp_err_t result = esp_now_send(broadcastMAC, (uint8_t*)&cmd, sizeof(cmd));
+  // Send to all registered devices individually for reliability
+  esp_err_t result = ESP_OK;
+  int sent = 0;
+  for (int i = 0; i < registeredDeviceCount; i++) {
+    if (devices[i].isRegistered) {
+      esp_err_t deviceResult = esp_now_send(devices[i].macAddress, (uint8_t*)&cmd, sizeof(cmd));
+      if (deviceResult != ESP_OK) {
+        result = deviceResult; // Keep track of any failures
+      } else {
+        sent++;
+      }
+      delay(10); // Small delay between sends
+    }
+  }
+
+  Serial.printf("ARM sent to %d devices\n", sent);
   
   Serial.println("ACK:ARMED");
   Serial.print("Buzzers armed - Broadcast result: ");

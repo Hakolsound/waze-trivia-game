@@ -114,14 +114,6 @@ class AdminConfig {
 
         // Make the indicator clickable to show game selector
         indicator.style.cursor = 'pointer';
-
-        // Remove any existing click listeners to avoid duplicates
-        indicator.replaceWith(indicator.cloneNode(true));
-        const newIndicator = document.getElementById('current-game-indicator');
-        newIndicator.addEventListener('click', () => {
-            console.log('Game indicator clicked, showing game selector');
-            this.gameSelector.showGameSelector();
-        });
     }
 
     onGamesLoaded(games) {
@@ -308,6 +300,15 @@ class AdminConfig {
         // New action buttons
         if (this.elements.changeGameBtn) {
             this.elements.changeGameBtn.addEventListener('click', () => {
+                this.gameSelector.showGameSelector();
+            });
+        }
+
+        // Game indicator click handler
+        const gameIndicator = document.getElementById('current-game-indicator');
+        if (gameIndicator) {
+            gameIndicator.addEventListener('click', () => {
+                console.log('Game indicator clicked, showing game selector');
                 this.gameSelector.showGameSelector();
             });
         }

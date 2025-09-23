@@ -492,12 +492,20 @@ void handleStatusUpdate(Message msg) {
 void updateDeviceHeartbeat(const uint8_t *mac, uint8_t deviceId) {
   // Check if device already registered
   bool found = false;
+  bool wasOffline = false;
   for (int i = 0; i < registeredDeviceCount; i++) {
     if (devices[i].deviceId == deviceId) {
+      wasOffline = !devices[i].isOnline; // Detect offline→online transition
       memcpy(devices[i].macAddress, mac, 6);
       devices[i].lastHeartbeat = millis();
       devices[i].isOnline = true;
       found = true;
+
+      // Sync state if device was offline and now came back online
+      if (wasOffline) {
+        syncDeviceState(deviceId);
+        Serial.printf("Device %d reconnected - syncing state\n", deviceId);
+      }
       break;
     }
   }
@@ -550,6 +558,37 @@ void updateDeviceHeartbeat(const uint8_t *mac, uint8_t deviceId) {
     } else {
       Serial.printf("Warning: Could not add peer for device %d (error %d) - will use broadcast\n", deviceId, addResult);
     }
+
+    // Sync current system state to new device
+    syncDeviceState(deviceId);
+    Serial.printf("New device %d registered - syncing current state\n", deviceId);
+  }
+}
+
+void syncDeviceState(uint8_t deviceId) {
+  // Send current system state to a specific device
+  Command cmd;
+  cmd.command = systemArmed ? 1 : 2; // 1=ARM, 2=DISARM
+  cmd.targetDevice = deviceId;
+  cmd.timestamp = millis();
+
+  // Find device MAC address
+  uint8_t* targetMAC = nullptr;
+  for (int i = 0; i < registeredDeviceCount; i++) {
+    if (devices[i].deviceId == deviceId) {
+      targetMAC = devices[i].macAddress;
+      break;
+    }
+  }
+
+  if (targetMAC) {
+    esp_err_t result = esp_now_send(targetMAC, (uint8_t*)&cmd, sizeof(cmd));
+    Serial.printf("State sync sent to device %d (%s): %s\n",
+                  deviceId,
+                  systemArmed ? "ARM" : "DISARM",
+                  result == ESP_OK ? "SUCCESS" : "FAILED");
+  } else {
+    Serial.printf("Error: Could not find MAC address for device %d\n", deviceId);
   }
 }
 

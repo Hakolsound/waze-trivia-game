@@ -2659,40 +2659,25 @@ class HostControl {
 
             // Handle game flow based on answer correctness
             if (isCorrect) {
-                // Hide modal - server will handle advancing to next question via prepareNextQuestion
+                // Correct answer - hide modal, server will handle advancing to next question
                 setTimeout(() => {
                     this.hideAnswerEvaluationModal();
                 }, 1000);
             } else {
-                // Update the evaluation interface for next buzzer if answer is wrong
+                // Wrong answer - clear buzzer order and re-arm for fresh attempts
+                console.log(`[FRONTEND] Wrong answer - clearing buzzer order and re-arming`);
+
                 setTimeout(() => {
-                    // Show next answerer if available
-                    console.log(`[FRONTEND] Current buzzerOrder:`, this.buzzerOrder);
+                    // Clear the buzzer order and reset state
+                    this.buzzerOrder = [];
+                    this.currentBuzzerPosition = -1;
 
-                    // Find the index of the next unevaluated buzzer
-                    let nextBuzzerIndex = -1;
-                    let nextBuzzer = null;
-                    for (let i = 0; i < this.buzzerOrder.length; i++) {
-                        if (!this.buzzerOrder[i].evaluated) {
-                            nextBuzzerIndex = i;
-                            nextBuzzer = this.buzzerOrder[i];
-                            break;
-                        }
-                    }
+                    // Hide the evaluation modal
+                    this.hideAnswerEvaluationModal();
 
-                    console.log(`[FRONTEND] Found next unevaluated buzzer at index ${nextBuzzerIndex}:`, nextBuzzer);
-                    if (nextBuzzer && nextBuzzerIndex >= 0) {
-                        console.log(`[FRONTEND] Transitioning from buzzerPosition ${this.currentBuzzerPosition} to ${nextBuzzerIndex}`);
-                        console.log(`[FRONTEND] Next buzzer to evaluate:`, nextBuzzer);
-                        this.currentBuzzerPosition = nextBuzzerIndex;
-                        this.showCurrentAnswererHighlight(nextBuzzer);
-                        // Update the modal to show the correct team
-                        this.updateAnswerEvaluationModal();
-                    } else {
-                        // No more teams to answer - hide modal
-                        this.hideAnswerEvaluationModal();
-                    }
-                }, 500);
+                    // Re-arm buzzers for fresh attempts
+                    this.armAllBuzzers();
+                }, 1000);
             }
 
         } catch (error) {

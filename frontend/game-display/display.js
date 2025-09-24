@@ -755,14 +755,14 @@ class GameDisplay {
             icon.textContent = '✓';
             icon.className = 'feedback-icon correct';
             points.className = 'feedback-points positive';
-            points.innerHTML = `+${data.points || 100}<span class="pts-label">pts</span>`;
+            points.innerHTML = `👍 ${data.points || 100}<span class="pts-label">pts</span>`;
             message.textContent = '';
             feedback.className = 'answer-feedback correct show';
         } else {
             icon.textContent = '✗';
             icon.className = 'feedback-icon incorrect';
             points.className = 'feedback-points negative';
-            points.innerHTML = `-${data.points || 100}<span class="pts-label">pts</span>`;
+            points.innerHTML = `👎 ${data.points || 100}<span class="pts-label">pts</span>`;
             message.textContent = '';
             feedback.className = 'answer-feedback incorrect show';
         }

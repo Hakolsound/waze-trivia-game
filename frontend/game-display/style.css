@@ -564,7 +564,7 @@ h1.question-text,
   font-weight: 500;
 }
 
-/* Answer Feedback - Google-inspired design */
+/* Answer Feedback - Clean centered design */
 .answer-feedback {
   position: fixed;
   top: 0;
@@ -578,105 +578,40 @@ h1.question-text,
   text-align: center;
   z-index: 1000;
   opacity: 0;
-  transform: scale(0.7) translateY(50px);
-  transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  backdrop-filter: blur(20px);
+  transform: scale(0.8);
+  transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .answer-feedback.show {
   opacity: 1;
-  transform: scale(1) translateY(0);
+  transform: scale(1);
 }
 
 .answer-feedback.correct {
-  background: linear-gradient(135deg,
-    rgba(232, 245, 233, 0.96) 0%,
-    rgba(237, 247, 237, 0.98) 100%);
+  background: rgba(46, 125, 50, 0.95);
 }
 
 .answer-feedback.incorrect {
-  background: linear-gradient(135deg,
-    rgba(255, 235, 238, 0.96) 0%,
-    rgba(255, 242, 242, 0.98) 100%);
-}
-
-.answer-feedback::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 600px;
-  height: 500px;
-  background: white;
-  border-radius: 24px;
-  box-shadow:
-    0 32px 64px rgba(0, 0, 0, 0.12),
-    0 8px 16px rgba(0, 0, 0, 0.08);
-  z-index: -1;
-  animation: slideInUp 0.6s ease-out both;
-}
-
-.answer-feedback.correct::before {
-  border: 2px solid rgba(52, 168, 83, 0.2);
-}
-
-.answer-feedback.incorrect::before {
-  border: 2px solid rgba(234, 67, 53, 0.2);
+  background: rgba(211, 47, 47, 0.95);
 }
 
 .feedback-icon {
-  font-size: 8rem;
-  margin-bottom: 40px;
-  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.15));
-  animation: gentleBounce 2s ease-in-out infinite;
-}
-
-.feedback-icon.correct {
-  color: #34a853;
-}
-
-.feedback-icon.incorrect {
-  color: #ea4335;
+  font-size: 10rem;
+  margin-bottom: 32px;
+  color: white;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  animation: scaleIn 0.5s ease-out;
 }
 
 .feedback-team {
-  font-size: 4.5rem;
+  font-size: 5rem;
   font-weight: 700;
-  margin-bottom: 32px;
-  color: #202124;
+  margin-bottom: 24px;
+  color: white;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  background: linear-gradient(135deg, #4285f4, #34a853, #ea4335, #fbbc05);
-  background-size: 300% 300%;
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: gradientShift 3s ease-in-out infinite, slideInUp 0.8s ease-out 0.1s both;
-  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  position: relative;
-}
-
-.feedback-team::before {
-  content: '';
-  position: absolute;
-  top: -8px;
-  left: -16px;
-  right: -16px;
-  bottom: -8px;
-  background: rgba(66, 133, 244, 0.1);
-  border-radius: 12px;
-  z-index: -1;
-  animation: slideInUp 0.8s ease-out 0.1s both;
-}
-
-@keyframes gradientShift {
-  0%, 100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
+  letter-spacing: 0.1em;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  animation: slideInUp 0.6s ease-out 0.2s both;
 }
 
 .feedback-points {
@@ -694,29 +629,23 @@ h1.question-text,
   margin-left: 8px;
 }
 
-.feedback-points.positive {
-  color: #34a853;
-}
-
-.feedback-points.negative {
-  color: #ea4335;
+.feedback-points {
+  color: white;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .feedback-message {
-  font-size: 2.8rem;
-  font-weight: 600;
-  color: #5f6368;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  animation: slideInUp 0.8s ease-out 0.4s both;
+  display: none;
 }
 
-@keyframes gentleBounce {
-  0%, 100% {
-    transform: scale(1) translateY(0);
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0);
   }
-  50% {
-    transform: scale(1.05) translateY(-5px);
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 

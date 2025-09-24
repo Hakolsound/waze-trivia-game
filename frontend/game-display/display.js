@@ -744,34 +744,33 @@ class GameDisplay {
     showAnswerFeedback(data) {
         const feedback = this.elements.answerFeedback;
         const teamName = this.teamNames.get(data.buzzerId) || `Team ${data.buzzerId}`;
-        
+
         // Update content
         const icon = feedback.querySelector('.feedback-icon');
         const team = feedback.querySelector('.feedback-team');
         const points = feedback.querySelector('.feedback-points');
         const message = feedback.querySelector('.feedback-message');
-        
+
         if (data.correct) {
-            icon.textContent = '🎉';
+            icon.textContent = '✓';
             icon.className = 'feedback-icon correct';
             points.className = 'feedback-points positive';
             points.textContent = `+${data.points || 100}`;
             message.textContent = 'CORRECT!';
             feedback.className = 'answer-feedback correct show';
         } else {
-            icon.textContent = '❌';
+            icon.textContent = '✗';
             icon.className = 'feedback-icon incorrect';
             points.className = 'feedback-points negative';
             points.textContent = `-${data.points || 100}`;
             message.textContent = 'WRONG!';
             feedback.className = 'answer-feedback incorrect show';
         }
-        
+
         team.textContent = teamName;
-        
+
         // Add some celebration effects for correct answers
         if (data.correct) {
-            // Add confetti or celebration animation here if desired
             document.body.style.animation = 'celebrate 0.5s ease-in-out';
             setTimeout(() => {
                 document.body.style.animation = '';

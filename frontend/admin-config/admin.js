@@ -730,7 +730,14 @@ class AdminConfig {
             return;
         }
 
-        this.elements.teamsContainer.innerHTML = teams.map(team => {
+        // Sort teams by buzzer_id in ascending order
+        const sortedTeams = [...teams].sort((a, b) => {
+            const buzzerA = parseInt(a.buzzer_id) || 0;
+            const buzzerB = parseInt(b.buzzer_id) || 0;
+            return buzzerA - buzzerB;
+        });
+
+        this.elements.teamsContainer.innerHTML = sortedTeams.map(team => {
             const hasVirtualBuzzer = this.hasActiveVirtualBuzzer(team.id);
             return `
                 <div class="team-card ${hasVirtualBuzzer ? 'has-virtual-buzzer' : ''}" data-team-id="${team.id}" data-buzzer-id="${team.buzzer_id}">

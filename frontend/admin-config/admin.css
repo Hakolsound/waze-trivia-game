@@ -606,10 +606,56 @@ textarea {
 }
 
 /* Teams Container */
+/* View selector styles */
+.view-selector {
+    display: flex;
+    gap: 4px;
+    margin-right: 12px;
+}
+
+.view-btn {
+    padding: 8px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: transparent;
+    color: rgba(255, 255, 255, 0.7);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 16px;
+}
+
+.view-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.view-btn.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+/* Teams container - Grid view (default) */
 .teams-container {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+    transition: all 0.3s ease;
+}
+
+/* Teams container - List view */
+.teams-container.list-view {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.teams-container.list-view .team-card {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    padding: 16px 20px;
+    min-height: auto;
 }
 
 .team-card {
@@ -662,6 +708,89 @@ textarea {
     box-shadow:
         0 0 25px rgba(0, 255, 0, 0.3),
         0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* New team card structure styles */
+.team-name-primary {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    line-height: 1.2;
+}
+
+.team-details {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.team-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.team-info-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.info-label {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.info-value {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 500;
+}
+
+/* List view specific overrides */
+.teams-container.list-view .team-name-primary {
+    font-size: 1.4rem;
+    margin-bottom: 0;
+}
+
+.teams-container.list-view .team-details {
+    margin-bottom: 0;
+    flex-direction: row;
+    align-items: center;
+    gap: 24px;
+}
+
+.teams-container.list-view .team-status-row {
+    min-width: 120px;
+}
+
+.teams-container.list-view .team-info-grid {
+    display: flex;
+    gap: 24px;
+}
+
+.teams-container.list-view .info-item {
+    flex-direction: row;
+    gap: 8px;
+    align-items: center;
+    min-width: 100px;
+}
+
+.teams-container.list-view .info-label::after {
+    content: ":";
 }
 
 .team-header {

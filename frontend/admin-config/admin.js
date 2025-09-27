@@ -364,6 +364,33 @@ class AdminConfig {
             });
         }
 
+        // View toggle buttons
+        const gridViewBtn = document.getElementById('grid-view-btn');
+        const listViewBtn = document.getElementById('list-view-btn');
+        const teamsContainer = document.getElementById('teams-container');
+
+        if (gridViewBtn && listViewBtn && teamsContainer) {
+            gridViewBtn.addEventListener('click', () => {
+                gridViewBtn.classList.add('active');
+                listViewBtn.classList.remove('active');
+                teamsContainer.classList.remove('list-view');
+                localStorage.setItem('teamViewMode', 'grid');
+            });
+
+            listViewBtn.addEventListener('click', () => {
+                listViewBtn.classList.add('active');
+                gridViewBtn.classList.remove('active');
+                teamsContainer.classList.add('list-view');
+                localStorage.setItem('teamViewMode', 'list');
+            });
+
+            // Load saved view preference
+            const savedViewMode = localStorage.getItem('teamViewMode') || 'grid';
+            if (savedViewMode === 'list') {
+                listViewBtn.click();
+            }
+        }
+
         // Virtual buzzer settings
         if (this.elements.virtualBuzzersEnabled) {
             this.elements.virtualBuzzersEnabled.addEventListener('change', () => {
@@ -707,23 +734,32 @@ class AdminConfig {
             const hasVirtualBuzzer = this.hasActiveVirtualBuzzer(team.id);
             return `
                 <div class="team-card ${hasVirtualBuzzer ? 'has-virtual-buzzer' : ''}" data-team-id="${team.id}" data-buzzer-id="${team.buzzer_id}">
-                    <div class="team-header">
-                        <div class="team-name">
-                            ${team.name}
-                            ${hasVirtualBuzzer ? '<span class="virtual-badge">📱 Virtual</span>' : ''}
-                        </div>
-                        <div class="team-status-indicators">
+                    <div class="team-name-primary">
+                        ${team.name}
+                        ${hasVirtualBuzzer ? '<span class="virtual-badge">📱 Virtual</span>' : ''}
+                    </div>
+                    <div class="team-details">
+                        <div class="team-status-row">
                             <div class="buzzer-status" id="buzzer-status-${team.id}">
                                 <span class="status-dot waiting"></span>
                                 <span class="status-text">Ready</span>
                             </div>
                             <div class="team-color-indicator" style="background-color: ${team.color}"></div>
                         </div>
-                    </div>
-                    <div class="team-info">
-                        <div>Buzzer ID: ${team.buzzer_id}</div>
-                        <div>Score: ${team.score || 0}</div>
-                        ${hasVirtualBuzzer ? '<div class="buzzer-type">📱 Virtual Buzzer Active</div>' : '<div class="buzzer-type">🔌 Hardware Buzzer</div>'}
+                        <div class="team-info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Buzzer ID</span>
+                                <span class="info-value">${team.buzzer_id}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Score</span>
+                                <span class="info-value">${team.score || 0}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Type</span>
+                                <span class="info-value">${hasVirtualBuzzer ? '📱 Virtual' : '🔌 Hardware'}</span>
+                            </div>
+                        </div>
                     </div>
                     <div class="team-actions">
                         <button class="btn btn-small btn-info" onclick="admin.editTeam('${team.id}')">Edit</button>

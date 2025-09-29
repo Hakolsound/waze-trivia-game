@@ -470,6 +470,9 @@ void handleSerialCommand() {
     sendStatusToSerial();
   } else if (command == "ARM") {
     armAllBuzzers();
+  } else if (command.startsWith("ARM_SPECIFIC:")) {
+    String deviceList = command.substring(13);
+    armSpecificBuzzers(deviceList);
   } else if (command == "DISARM") {
     disarmAllBuzzers();
   } else if (command.startsWith("TEST:")) {
@@ -936,6 +939,95 @@ void disarmAllBuzzers() {
 
   Serial.println("ACK:DISARMED");
   Serial.printf("Buzzers disarmed with ACK - Success: %d, Failed: %d\n", sent, failed);
+}
+
+void armSpecificBuzzers(String deviceList) {
+  Serial.print("DEBUG:ARM_SPECIFIC received: ");
+  Serial.println(deviceList);
+  Serial.print("DEBUG:Registered device count: ");
+  Serial.println(registeredDeviceCount);
+
+  // Show registered devices
+  Serial.print("DEBUG:Registered devices: ");
+  for (int i = 0; i < registeredDeviceCount; i++) {
+    Serial.print(devices[i].deviceId);
+    if (i < registeredDeviceCount - 1) Serial.print(", ");
+  }
+  Serial.println();
+
+  systemArmed = true;
+  buzzerPressCount = 0;
+  gameStartTime = millis();
+
+  // Clear previous buzzer presses
+  for (int i = 0; i < MAX_GROUPS; i++) {
+    buzzerOrder[i] = {0, 0, 0, 0};
+    if (devices[i].isRegistered) {
+      devices[i].isPressed = false;
+    }
+  }
+
+  // Parse comma-separated device IDs and send ARM command to each
+  int startIndex = 0;
+  int commaIndex = 0;
+  int armedCount = 0;
+  int sent = 0;
+  int failed = 0;
+
+  while (startIndex <= deviceList.length()) {
+    commaIndex = deviceList.indexOf(',', startIndex);
+    if (commaIndex == -1) {
+      commaIndex = deviceList.length();
+    }
+
+    String deviceIdStr = deviceList.substring(startIndex, commaIndex);
+    deviceIdStr.trim();
+
+    if (deviceIdStr.length() > 0) {
+      uint8_t deviceId = deviceIdStr.toInt();
+      Serial.print("DEBUG:Parsing device ID: ");
+      Serial.println(deviceId);
+
+      // Find device by ID and send ARM command
+      bool found = false;
+      for (int i = 0; i < registeredDeviceCount; i++) {
+        if (devices[i].deviceId == deviceId && devices[i].isOnline) {
+          Serial.print("DEBUG:Found device ");
+          Serial.print(deviceId);
+          Serial.print(" at index ");
+          Serial.println(i);
+
+          if (sendCommandWithAck(deviceId, CMD_ARM)) {
+            armedCount++;
+            sent++;
+            Serial.print("DEBUG:Successfully armed device ");
+            Serial.println(deviceId);
+          } else {
+            failed++;
+            Serial.print("DEBUG:Failed to arm device ");
+            Serial.println(deviceId);
+          }
+          found = true;
+          delay(10);
+          break;
+        }
+      }
+      if (!found) {
+        Serial.print("DEBUG:Device ");
+        Serial.print(deviceId);
+        Serial.println(" not found in registered/online devices");
+      }
+    }
+
+    startIndex = commaIndex + 1;
+  }
+
+  Serial.printf("[ACK] ARM_SPECIFIC sent to %d devices (%d successful, %d failed)\n",
+                armedCount, sent, failed);
+
+  Serial.print("ACK:ARM_SPECIFIC:");
+  Serial.println(armedCount);
+  Serial.printf("Specific buzzers armed with ACK - Success: %d, Failed: %d\n", sent, failed);
 }
 
 void testBuzzer(uint8_t deviceId) {

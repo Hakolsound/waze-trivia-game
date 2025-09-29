@@ -327,7 +327,7 @@ class ESP32Service extends EventEmitter {
     }
 
     // Still emit for admin interface and other listeners
-    this.io.emit('buzzer-press', buzzerData);
+    this.io.emit('buzzer-pressed', buzzerData);
   }
 
   getGroupIdByBuzzerId(buzzerId) {

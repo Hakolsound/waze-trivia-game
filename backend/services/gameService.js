@@ -141,7 +141,7 @@ class GameService {
       questionId: currentQuestion.id,
       startTime: Date.now(),
       buzzerOrder: [],
-      answeredBuzzers: [], // Track buzzers that have already answered (correctly or incorrectly)
+      answeredBuzzers: [], // Track buzzers that have already answered THIS question (correctly or incorrectly)
       timeLimit: currentQuestion.time_limit * 1000,
       timeoutId: timeoutId,
       isPaused: false,
@@ -149,7 +149,7 @@ class GameService {
       totalPausedDuration: 0
     });
 
-    console.log(`[START] Question ${questionIndex} started - answered buzzers list reset to empty`);
+    console.log(`[START] Question ${questionIndex} started - answered buzzers list reset to empty for new question`);
 
     this.io.to(`game-${gameId}`).emit('question-start', {
       gameId,
@@ -349,6 +349,20 @@ class GameService {
     buzzerEntry.evaluated = true;
     buzzerEntry.isCorrect = isCorrect;
     buzzerEntry.pointsAwarded = pointsToAward;
+
+    // Check for duplicate evaluation first to prevent duplicate feedback commands
+    const alreadyAnswered = gameState.answeredBuzzers.some(ab => ab.buzzer_id === buzzerEntry.buzzer_id);
+    if (alreadyAnswered) {
+      console.log(`[EVAL] WARNING: Buzzer ${buzzerEntry.buzzer_id} already evaluated - ignoring duplicate evaluation call`);
+      return {
+        success: false,
+        isCorrect: false,
+        pointsAwarded: 0,
+        nextInLine: false,
+        questionComplete: false,
+        error: 'Buzzer already evaluated'
+      };
+    }
 
     // Send LED feedback to the buzzer
     if (this.esp32Service) {

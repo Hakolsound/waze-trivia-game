@@ -2664,8 +2664,8 @@ class HostControl {
                     this.hideAnswerEvaluationModal();
                 }, 1000);
             } else {
-                // Wrong answer - clear buzzer order and re-arm for fresh attempts
-                console.log(`[FRONTEND] Wrong answer - clearing buzzer order and re-arming`);
+                // Wrong answer - clear buzzer order (backend handles selective re-arming)
+                console.log(`[FRONTEND] Wrong answer - clearing buzzer order (backend handles re-arming)`);
 
                 setTimeout(() => {
                     // Clear the buzzer order and reset state
@@ -2675,8 +2675,8 @@ class HostControl {
                     // Hide the evaluation modal
                     this.hideAnswerEvaluationModal();
 
-                    // Re-arm buzzers for fresh attempts
-                    this.armBuzzers();
+                    // NOTE: Removed this.armBuzzers() call - backend already handles selective re-arming
+                    // The backend only arms buzzers that haven't answered wrong yet
                 }, 1000);
             }
 

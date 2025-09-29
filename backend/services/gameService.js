@@ -144,6 +144,8 @@ class GameService {
       totalPausedDuration: 0
     });
 
+    console.log(`[START] Question ${questionIndex} started - answered buzzers list reset to empty`);
+
     this.io.to(`game-${gameId}`).emit('question-start', {
       gameId,
       question: currentQuestion,
@@ -386,9 +388,12 @@ class GameService {
 
     // Handle timer logic based on answer correctness
     if (isCorrect) {
-      // Correct answer - end question (this also clears the timer)
-      await this.endQuestion(gameId);
-      await this.prepareNextQuestion(gameId);
+      // Correct answer - wait 2 seconds for green LED fade to complete before ending
+      console.log(`[EVAL] Correct answer - waiting 2 seconds for LED feedback before ending round`);
+      setTimeout(async () => {
+        await this.endQuestion(gameId);
+        await this.prepareNextQuestion(gameId);
+      }, 2000); // 2 second delay to match buzzer green fade duration
     } else {
       // Wrong answer - clear buzzer order and resume timer for fresh attempts
       console.log(`[EVAL] Wrong answer - clearing buzzer order and resuming timer`);
@@ -428,9 +433,16 @@ class GameService {
   }
 
   async prepareNextQuestion(gameId) {
+    // Clear answered buzzers list to prevent it from carrying over to next question
+    const gameState = this.activeGames.get(gameId);
+    if (gameState) {
+      console.log(`[PREP] Clearing answered buzzers list for next question: was [${gameState.answeredBuzzers.map(ab => ab.buzzer_id).join(', ')}]`);
+      gameState.answeredBuzzers = [];
+    }
+
     const game = await this.getGame(gameId);
     const nextQuestionIndex = game.current_question_index + 1;
-    
+
     if (nextQuestionIndex < game.questions.length) {
       // Update current question index but don't start yet (host controls when to start)
       await this.db.run(

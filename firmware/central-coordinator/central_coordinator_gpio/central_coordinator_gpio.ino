@@ -39,7 +39,7 @@ typedef struct {
 } Message;
 
 typedef struct {
-  uint8_t command;      // 1=arm, 2=disarm, 3=test, 4=reset
+  uint8_t command;      // 1=arm, 2=disarm, 3=test, 4=reset, 5=correct_answer, 6=wrong_answer, 7=end_round
   uint8_t targetDevice; // 0=all, or specific device ID
   uint32_t timestamp;
 } Command;
@@ -69,7 +69,7 @@ struct StatusMessage {
 
 struct CommandMessage {
   uint8_t header = 0xBB;       // Command marker
-  uint8_t command;             // 1=arm, 2=disarm, 3=test, 4=status_req
+  uint8_t command;             // 1=arm, 2=disarm, 3=test, 4=status_req, 5=correct_answer, 6=wrong_answer, 7=end_round
   uint8_t targetDevice;        // 0=all, 1-15=specific device
   uint32_t gameId;
   uint8_t checksum;
@@ -214,6 +214,15 @@ void handleBinaryCommand(CommandMessage cmd) {
       } else {
         sendStatusToSerial();
       }
+      break;
+    case 5: // CORRECT_ANSWER
+      sendCorrectAnswerFeedback(cmd.targetDevice);
+      break;
+    case 6: // WRONG_ANSWER
+      sendWrongAnswerFeedback(cmd.targetDevice);
+      break;
+    case 7: // END_ROUND
+      endRoundReset(cmd.targetDevice);
       break;
     default:
       if (TEXT_DEBUG_ENABLED) {
@@ -698,6 +707,80 @@ void testBuzzer(uint8_t deviceId) {
     }
     Serial.print("ERROR:Device not found ");
     Serial.println(deviceId);
+  }
+}
+
+void sendCorrectAnswerFeedback(uint8_t deviceId) {
+  Command cmd;
+  cmd.command = 5; // CORRECT_ANSWER
+  cmd.targetDevice = deviceId;
+  cmd.timestamp = millis();
+
+  if (deviceId == 0) {
+    Serial.println("ERROR:Correct answer feedback requires specific device ID");
+    return;
+  }
+
+  // Send to specific device that answered correctly
+  for (int i = 0; i < registeredDeviceCount; i++) {
+    if (devices[i].deviceId == deviceId && devices[i].isOnline) {
+      esp_now_send(devices[i].macAddress, (uint8_t*)&cmd, sizeof(cmd));
+      Serial.printf("Correct answer feedback sent to buzzer %d\n", deviceId);
+      return;
+    }
+  }
+  Serial.printf("ERROR:Device %d not found for correct answer feedback\n", deviceId);
+}
+
+void sendWrongAnswerFeedback(uint8_t deviceId) {
+  Command cmd;
+  cmd.command = 6; // WRONG_ANSWER
+  cmd.targetDevice = deviceId;
+  cmd.timestamp = millis();
+
+  if (deviceId == 0) {
+    Serial.println("ERROR:Wrong answer feedback requires specific device ID");
+    return;
+  }
+
+  // Send to specific device that answered incorrectly
+  for (int i = 0; i < registeredDeviceCount; i++) {
+    if (devices[i].deviceId == deviceId && devices[i].isOnline) {
+      esp_now_send(devices[i].macAddress, (uint8_t*)&cmd, sizeof(cmd));
+      Serial.printf("Wrong answer feedback sent to buzzer %d\n", deviceId);
+      return;
+    }
+  }
+  Serial.printf("ERROR:Device %d not found for wrong answer feedback\n", deviceId);
+}
+
+void endRoundReset(uint8_t deviceId) {
+  Command cmd;
+  cmd.command = 7; // END_ROUND
+  cmd.targetDevice = deviceId;
+  cmd.timestamp = millis();
+
+  if (deviceId == 0) {
+    // End round for all devices
+    for (int i = 0; i < registeredDeviceCount; i++) {
+      if (devices[i].isOnline) {
+        devices[i].isPressed = false; // Reset pressed state
+        esp_now_send(devices[i].macAddress, (uint8_t*)&cmd, sizeof(cmd));
+        delay(10);
+      }
+    }
+    Serial.println("End round reset sent to all buzzers");
+  } else {
+    // End round for specific device
+    for (int i = 0; i < registeredDeviceCount; i++) {
+      if (devices[i].deviceId == deviceId && devices[i].isOnline) {
+        devices[i].isPressed = false; // Reset pressed state
+        esp_now_send(devices[i].macAddress, (uint8_t*)&cmd, sizeof(cmd));
+        Serial.printf("End round reset sent to buzzer %d\n", deviceId);
+        return;
+      }
+    }
+    Serial.printf("ERROR:Device %d not found for end round reset\n", deviceId);
   }
 }
 

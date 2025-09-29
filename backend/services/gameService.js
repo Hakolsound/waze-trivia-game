@@ -252,6 +252,9 @@ class GameService {
       try {
         await this.esp32Service.disarmBuzzers();
         console.log(`Physical buzzers disarmed for game ${gameId}`);
+
+        // Send end round command to reset all buzzers to their proper state
+        await this.esp32Service.endRound(0); // 0 = all devices
       } catch (error) {
         console.error('Failed to disarm physical buzzers:', error);
       }
@@ -338,6 +341,17 @@ class GameService {
     buzzerEntry.evaluated = true;
     buzzerEntry.isCorrect = isCorrect;
     buzzerEntry.pointsAwarded = pointsToAward;
+
+    // Send LED feedback to the buzzer
+    if (this.esp32Service) {
+      // For now, use groupId as buzzer device ID (they match in current setup)
+      const buzzerDeviceId = parseInt(buzzerEntry.groupId) || buzzerEntry.groupId;
+      if (isCorrect) {
+        await this.esp32Service.sendCorrectAnswerFeedback(buzzerDeviceId);
+      } else {
+        await this.esp32Service.sendWrongAnswerFeedback(buzzerDeviceId);
+      }
+    }
 
     // Emit answer evaluation event
     this.io.to(`game-${gameId}`).emit('answer-evaluated', {

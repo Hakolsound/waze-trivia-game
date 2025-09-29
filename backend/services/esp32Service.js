@@ -38,7 +38,10 @@ class ESP32Service extends EventEmitter {
       ARM: 0x01,
       DISARM: 0x02,
       TEST: 0x03,
-      STATUS_REQUEST: 0x04
+      STATUS_REQUEST: 0x04,
+      CORRECT_ANSWER: 0x05,
+      WRONG_ANSWER: 0x06,
+      END_ROUND: 0x07
     };
 
     this.MESSAGE_SIZES = {
@@ -435,12 +438,48 @@ class ESP32Service extends EventEmitter {
 
   async testBuzzer(buzzerId) {
     const success = this.sendCommand(`TEST:${buzzerId}`);
-    
+
     return {
       success: true,
       buzzerId,
       timestamp: Date.now(),
       hardwareConnected: success
+    };
+  }
+
+  async sendCorrectAnswerFeedback(buzzerId) {
+    console.log(`[ESP32] Sending correct answer feedback to buzzer ${buzzerId}`);
+    const success = this.sendBinaryCommand(this.COMMAND_TYPES.CORRECT_ANSWER, buzzerId, parseInt(this.currentGameId) || 0);
+
+    return {
+      success: true,
+      buzzerId,
+      hardwareConnected: success,
+      message: success ? 'Correct answer feedback sent' : 'Correct answer feedback simulated (no hardware)'
+    };
+  }
+
+  async sendWrongAnswerFeedback(buzzerId) {
+    console.log(`[ESP32] Sending wrong answer feedback to buzzer ${buzzerId}`);
+    const success = this.sendBinaryCommand(this.COMMAND_TYPES.WRONG_ANSWER, buzzerId, parseInt(this.currentGameId) || 0);
+
+    return {
+      success: true,
+      buzzerId,
+      hardwareConnected: success,
+      message: success ? 'Wrong answer feedback sent' : 'Wrong answer feedback simulated (no hardware)'
+    };
+  }
+
+  async endRound(targetDevice = 0) {
+    console.log(`[ESP32] Ending round for device ${targetDevice === 0 ? 'all' : targetDevice}`);
+    const success = this.sendBinaryCommand(this.COMMAND_TYPES.END_ROUND, targetDevice, parseInt(this.currentGameId) || 0);
+
+    return {
+      success: true,
+      targetDevice,
+      hardwareConnected: success,
+      message: success ? 'End round command sent' : 'End round command simulated (no hardware)'
     };
   }
 

@@ -32,16 +32,19 @@ typedef struct {
 
 // Message structures (must match group buzzer firmware)
 typedef struct {
-  uint8_t messageType;  // 1=buzzer_press, 2=heartbeat, 3=status_update
+  uint8_t messageType;  // 1=buzzer_press, 2=heartbeat, 3=status_update, 4=command_ack
   uint8_t deviceId;
   uint32_t timestamp;
-  uint8_t data[8];
+  uint8_t data[8];      // data[0] = sequenceId for ACK messages
 } Message;
 
 typedef struct {
   uint8_t command;      // 1=arm, 2=disarm, 3=test, 4=reset, 5=correct_answer, 6=wrong_answer, 7=end_round
   uint8_t targetDevice; // 0=all, or specific device ID
   uint32_t timestamp;
+  uint16_t sequenceId;  // New: for tracking acknowledgments
+  uint8_t retryCount;   // New: retry attempt counter
+  uint8_t reserved;     // Padding to maintain alignment
 } Command;
 
 // Binary Protocol Structures for Pi Communication
@@ -93,6 +96,32 @@ typedef struct {
 
 BuzzerPress buzzerOrder[MAX_GROUPS];
 int buzzerPressCount = 0;
+
+// Acknowledgment system configuration
+#define MAX_PENDING_COMMANDS 20
+#define ACK_TIMEOUT_MS 500
+#define MAX_RETRIES 3
+#define RETRY_DELAY_MS 100
+
+// Commands that require acknowledgment (critical commands only)
+#define CMD_ARM 1
+#define CMD_DISARM 2
+#define CMD_CORRECT_ANSWER 5
+#define CMD_WRONG_ANSWER 6
+#define CMD_END_ROUND 7
+
+// Pending command tracking
+typedef struct {
+  uint16_t sequenceId;
+  uint8_t targetDevice;
+  uint8_t command;
+  unsigned long sentTime;
+  uint8_t retryCount;
+  bool isActive;
+} PendingCommand;
+
+PendingCommand pendingCommands[MAX_PENDING_COMMANDS];
+uint16_t nextSequenceId = 1;
 
 // Binary protocol buffer for incoming commands
 static uint8_t commandBuffer[32];
@@ -311,6 +340,7 @@ void OnDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *data, int l
     // Handle different message types
     switch (msg.messageType) {
       case 1: // buzzer_press
+        Serial.printf("[ESP-NOW] Processing BUZZER_PRESS from device %d\n", msg.deviceId);
         handleBuzzerPress(msg);
         break;
       case 2: // heartbeat
@@ -318,6 +348,9 @@ void OnDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *data, int l
         break;
       case 3: // status_update
         handleStatusUpdate(msg);
+        break;
+      case 4: // command_ack
+        handleCommandAck(msg.data[0], msg.deviceId); // data[0] contains sequenceId
         break;
       default:
         Serial.printf("Unknown message type: %d\n", msg.messageType);
@@ -396,7 +429,10 @@ void loop() {
   
   // Check device timeouts
   checkDeviceTimeouts(currentTime);
-  
+
+  // Process pending acknowledgment commands
+  processPendingCommands();
+
   // Send periodic status updates
   static unsigned long lastStatusUpdate = 0;
   if (currentTime - lastStatusUpdate > 5000) {
@@ -619,6 +655,183 @@ void updateDeviceHeartbeat(const uint8_t *mac, uint8_t deviceId) {
   }
 }
 
+// Acknowledgment System Functions
+bool requiresAck(uint8_t command) {
+  return (command == CMD_ARM || command == CMD_DISARM ||
+          command == CMD_CORRECT_ANSWER || command == CMD_WRONG_ANSWER ||
+          command == CMD_END_ROUND);
+}
+
+uint16_t generateSequenceId() {
+  uint16_t id = nextSequenceId++;
+  if (nextSequenceId == 0) nextSequenceId = 1; // Skip 0
+  return id;
+}
+
+int findPendingCommand(uint16_t sequenceId, uint8_t deviceId) {
+  for (int i = 0; i < MAX_PENDING_COMMANDS; i++) {
+    if (pendingCommands[i].isActive &&
+        pendingCommands[i].sequenceId == sequenceId &&
+        pendingCommands[i].targetDevice == deviceId) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+int findFreePendingSlot() {
+  for (int i = 0; i < MAX_PENDING_COMMANDS; i++) {
+    if (!pendingCommands[i].isActive) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+void addPendingCommand(uint16_t sequenceId, uint8_t targetDevice, uint8_t command) {
+  int slot = findFreePendingSlot();
+  if (slot >= 0) {
+    pendingCommands[slot].sequenceId = sequenceId;
+    pendingCommands[slot].targetDevice = targetDevice;
+    pendingCommands[slot].command = command;
+    pendingCommands[slot].sentTime = millis();
+    pendingCommands[slot].retryCount = 0;
+    pendingCommands[slot].isActive = true;
+
+    Serial.printf("[ACK] Added pending command: seq=%d, dev=%d, cmd=%d\n",
+                  sequenceId, targetDevice, command);
+  } else {
+    Serial.printf("[ACK] Warning: No free slots for pending command tracking\n");
+  }
+}
+
+void handleCommandAck(uint16_t sequenceId, uint8_t deviceId) {
+  int slot = findPendingCommand(sequenceId, deviceId);
+  if (slot >= 0) {
+    Serial.printf("[ACK] Received ACK from device %d for seq=%d, cmd=%d\n",
+                  deviceId, sequenceId, pendingCommands[slot].command);
+    pendingCommands[slot].isActive = false; // Mark as acknowledged
+  } else {
+    Serial.printf("[ACK] Warning: Received unexpected ACK from device %d, seq=%d\n",
+                  deviceId, sequenceId);
+  }
+}
+
+void processPendingCommands() {
+  unsigned long currentTime = millis();
+
+  for (int i = 0; i < MAX_PENDING_COMMANDS; i++) {
+    if (!pendingCommands[i].isActive) continue;
+
+    if (currentTime - pendingCommands[i].sentTime > ACK_TIMEOUT_MS) {
+      if (pendingCommands[i].retryCount < MAX_RETRIES) {
+        // Retry the command
+        pendingCommands[i].retryCount++;
+        pendingCommands[i].sentTime = currentTime;
+
+        Serial.printf("[ACK] Retrying command: seq=%d, dev=%d, cmd=%d, attempt=%d\n",
+                      pendingCommands[i].sequenceId, pendingCommands[i].targetDevice,
+                      pendingCommands[i].command, pendingCommands[i].retryCount);
+
+        // Resend the command
+        retrySendCommand(pendingCommands[i]);
+
+      } else {
+        // Max retries exceeded
+        Serial.printf("[ACK] Command failed after %d retries: seq=%d, dev=%d, cmd=%d\n",
+                      MAX_RETRIES, pendingCommands[i].sequenceId,
+                      pendingCommands[i].targetDevice, pendingCommands[i].command);
+        pendingCommands[i].isActive = false;
+      }
+    }
+  }
+}
+
+void retrySendCommand(PendingCommand &pending) {
+  // Find device MAC address
+  uint8_t* targetMAC = nullptr;
+  for (int i = 0; i < registeredDeviceCount; i++) {
+    if (devices[i].deviceId == pending.targetDevice) {
+      targetMAC = devices[i].macAddress;
+      break;
+    }
+  }
+
+  if (targetMAC) {
+    Command cmd;
+    cmd.command = pending.command;
+    cmd.targetDevice = pending.targetDevice;
+    cmd.timestamp = millis();
+    cmd.sequenceId = pending.sequenceId; // Keep same sequence ID for retry
+    cmd.retryCount = pending.retryCount;
+
+    esp_err_t result = esp_now_send(targetMAC, (uint8_t*)&cmd, sizeof(cmd));
+    Serial.printf("[ACK] Retry send result: %s\n", result == ESP_OK ? "SUCCESS" : "FAILED");
+  }
+}
+
+bool sendCommandWithAck(uint8_t targetDevice, uint8_t command) {
+  // Find device MAC address
+  uint8_t* targetMAC = nullptr;
+  for (int i = 0; i < registeredDeviceCount; i++) {
+    if (devices[i].deviceId == targetDevice) {
+      targetMAC = devices[i].macAddress;
+      break;
+    }
+  }
+
+  if (!targetMAC) {
+    Serial.printf("[ACK] Error: Could not find MAC for device %d\n", targetDevice);
+    return false;
+  }
+
+  uint16_t seqId = generateSequenceId();
+
+  Command cmd;
+  cmd.command = command;
+  cmd.targetDevice = targetDevice;
+  cmd.timestamp = millis();
+  cmd.sequenceId = seqId;
+  cmd.retryCount = 0;
+
+  esp_err_t result = esp_now_send(targetMAC, (uint8_t*)&cmd, sizeof(cmd));
+
+  if (result == ESP_OK) {
+    addPendingCommand(seqId, targetDevice, command);
+    Serial.printf("[ACK] Command sent with ACK: dev=%d, cmd=%d, seq=%d\n",
+                  targetDevice, command, seqId);
+    return true;
+  } else {
+    Serial.printf("[ACK] Failed to send command: dev=%d, cmd=%d\n", targetDevice, command);
+    return false;
+  }
+}
+
+bool sendCommandNoAck(uint8_t targetDevice, uint8_t command) {
+  // Original fire-and-forget method for non-critical commands
+  uint8_t* targetMAC = nullptr;
+  for (int i = 0; i < registeredDeviceCount; i++) {
+    if (devices[i].deviceId == targetDevice) {
+      targetMAC = devices[i].macAddress;
+      break;
+    }
+  }
+
+  if (!targetMAC) {
+    return false;
+  }
+
+  Command cmd;
+  cmd.command = command;
+  cmd.targetDevice = targetDevice;
+  cmd.timestamp = millis();
+  cmd.sequenceId = 0; // 0 indicates no ACK required
+  cmd.retryCount = 0;
+
+  esp_err_t result = esp_now_send(targetMAC, (uint8_t*)&cmd, sizeof(cmd));
+  return result == ESP_OK;
+}
+
 void syncDeviceState(uint8_t deviceId) {
   // Send current system state to a specific device
   Command cmd;
@@ -678,48 +891,51 @@ void armAllBuzzers() {
     }
   }
   
-  // Send to all registered devices individually for reliability
-  esp_err_t result = ESP_OK;
+  // Send to all registered devices individually with ACK reliability
   int sent = 0;
+  int failed = 0;
   for (int i = 0; i < registeredDeviceCount; i++) {
     if (devices[i].isRegistered) {
-      esp_err_t deviceResult = esp_now_send(devices[i].macAddress, (uint8_t*)&cmd, sizeof(cmd));
-      if (deviceResult != ESP_OK) {
-        result = deviceResult; // Keep track of any failures
-      } else {
+      if (sendCommandWithAck(devices[i].deviceId, CMD_ARM)) {
         sent++;
+      } else {
+        failed++;
       }
       delay(10); // Small delay between sends
     }
   }
 
-  Serial.printf("ARM sent to %d devices\n", sent);
-  
+  Serial.printf("[ACK] ARM sent to %d devices (%d successful, %d failed)\n",
+                registeredDeviceCount, sent, failed);
+
   Serial.println("ACK:ARMED");
-  Serial.print("Buzzers armed - Broadcast result: ");
-  Serial.println(result == ESP_OK ? "SUCCESS" : "FAILED");
+  Serial.printf("Buzzers armed with ACK - Success: %d, Failed: %d\n", sent, failed);
 }
 
 void disarmAllBuzzers() {
-  Command cmd;
-  cmd.command = 2; // DISARM
-  cmd.targetDevice = 0;
-  cmd.timestamp = millis();
-  
   systemArmed = false;
   gameActive = false;
   currentGameId = "";
-  
-  // Send to all devices
+
+  // Send to all devices with ACK reliability
+  int sent = 0;
+  int failed = 0;
   for (int i = 0; i < registeredDeviceCount; i++) {
     if (devices[i].isOnline) {
-      esp_now_send(devices[i].macAddress, (uint8_t*)&cmd, sizeof(cmd));
+      if (sendCommandWithAck(devices[i].deviceId, CMD_DISARM)) {
+        sent++;
+      } else {
+        failed++;
+      }
       delay(10);
     }
   }
-  
+
+  Serial.printf("[ACK] DISARM sent to %d devices (%d successful, %d failed)\n",
+                registeredDeviceCount, sent, failed);
+
   Serial.println("ACK:DISARMED");
-  Serial.println("Buzzers disarmed");
+  Serial.printf("Buzzers disarmed with ACK - Success: %d, Failed: %d\n", sent, failed);
 }
 
 void testBuzzer(uint8_t deviceId) {
@@ -756,47 +972,33 @@ void testBuzzer(uint8_t deviceId) {
 }
 
 void sendCorrectAnswerFeedback(uint8_t deviceId) {
-  Command cmd;
-  cmd.command = 5; // CORRECT_ANSWER
-  cmd.targetDevice = deviceId;
-  cmd.timestamp = millis();
-
   if (deviceId == 0) {
     Serial.println("ERROR:Correct answer feedback requires specific device ID");
     return;
   }
 
-  // Send to specific device that answered correctly
-  for (int i = 0; i < registeredDeviceCount; i++) {
-    if (devices[i].deviceId == deviceId && devices[i].isOnline) {
-      esp_now_send(devices[i].macAddress, (uint8_t*)&cmd, sizeof(cmd));
-      Serial.printf("Correct answer feedback sent to buzzer %d\n", deviceId);
-      return;
-    }
+  Serial.printf("[ESP32] Sending correct answer feedback to buzzer %d\n", deviceId);
+
+  if (sendCommandWithAck(deviceId, CMD_CORRECT_ANSWER)) {
+    Serial.printf("Correct answer feedback sent to buzzer %d (with ACK)\n", deviceId);
+  } else {
+    Serial.printf("ERROR:Failed to send correct answer feedback to device %d\n", deviceId);
   }
-  Serial.printf("ERROR:Device %d not found for correct answer feedback\n", deviceId);
 }
 
 void sendWrongAnswerFeedback(uint8_t deviceId) {
-  Command cmd;
-  cmd.command = 6; // WRONG_ANSWER
-  cmd.targetDevice = deviceId;
-  cmd.timestamp = millis();
-
   if (deviceId == 0) {
     Serial.println("ERROR:Wrong answer feedback requires specific device ID");
     return;
   }
 
-  // Send to specific device that answered incorrectly
-  for (int i = 0; i < registeredDeviceCount; i++) {
-    if (devices[i].deviceId == deviceId && devices[i].isOnline) {
-      esp_now_send(devices[i].macAddress, (uint8_t*)&cmd, sizeof(cmd));
-      Serial.printf("Wrong answer feedback sent to buzzer %d\n", deviceId);
-      return;
-    }
+  Serial.printf("[ESP32] Sending wrong answer feedback to buzzer %d\n", deviceId);
+
+  if (sendCommandWithAck(deviceId, CMD_WRONG_ANSWER)) {
+    Serial.printf("Wrong answer feedback sent to buzzer %d (with ACK)\n", deviceId);
+  } else {
+    Serial.printf("ERROR:Failed to send wrong answer feedback to device %d\n", deviceId);
   }
-  Serial.printf("ERROR:Device %d not found for wrong answer feedback\n", deviceId);
 }
 
 void endRoundReset(uint8_t deviceId) {

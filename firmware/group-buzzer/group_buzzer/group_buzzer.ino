@@ -16,7 +16,7 @@
 #define BRIGHTNESS 64     // 0-255, adjust for desired brightness
 
 // Device Configuration
-#define DEVICE_ID 4  // Change this for each group buzzer (1, 2, 3, etc.)
+#define DEVICE_ID 5  // Change this for each group buzzer (1, 2, 3, etc.)
 #define MAX_GROUPS 15
 
 // Central coordinator MAC address
@@ -69,16 +69,19 @@ unsigned long correctAnswerStartTime = 0;
 
 // Message structure for ESP-NOW communication
 typedef struct {
-  uint8_t messageType;  // 1=buzzer_press, 2=heartbeat, 3=status_update
+  uint8_t messageType;  // 1=buzzer_press, 2=heartbeat, 3=status_update, 4=command_ack
   uint8_t deviceId;
   uint32_t timestamp;
-  uint8_t data[8];      // Additional data if needed
+  uint8_t data[8];      // Additional data if needed, data[0] = sequenceId for ACK
 } Message;
 
 typedef struct {
   uint8_t command;      // 1=arm, 2=disarm, 3=test, 4=reset, 5=correct_answer, 6=wrong_answer, 7=end_round
   uint8_t targetDevice; // 0=all, or specific device ID
   uint32_t timestamp;
+  uint16_t sequenceId;  // New: for tracking acknowledgments
+  uint8_t retryCount;   // New: retry attempt counter
+  uint8_t reserved;     // Padding to maintain alignment
 } Command;
 
 // ESP-NOW callback for sending data (ESP-IDF v5.x signature)
@@ -436,46 +439,73 @@ void handleBuzzerPress() {
   playBuzzerPattern();
 }
 
+void sendCommandAck(uint16_t sequenceId) {
+  // Send acknowledgment back to coordinator
+  if (sequenceId == 0) {
+    // No ACK required for this command
+    return;
+  }
+
+  Message ackMsg;
+  ackMsg.messageType = 4; // command_ack
+  ackMsg.deviceId = DEVICE_ID;
+  ackMsg.timestamp = millis();
+  memset(ackMsg.data, 0, sizeof(ackMsg.data));
+  ackMsg.data[0] = sequenceId; // Store sequence ID in data[0]
+
+  esp_err_t result = esp_now_send(coordinatorMAC, (uint8_t*)&ackMsg, sizeof(ackMsg));
+  Serial.printf("[ACK] Sent ACK for seq=%d, result: %s\n", sequenceId,
+                result == ESP_OK ? "SUCCESS" : "FAILED");
+}
+
 void handleCommand(Command cmd) {
-  Serial.print("Received command: ");
-  Serial.print(cmd.command);
-  Serial.print(" for device: ");
-  Serial.println(cmd.targetDevice);
-  
+  Serial.printf("[CMD] Device %d received command: %d for target: %d, seq: %d\n",
+                DEVICE_ID, cmd.command, cmd.targetDevice, cmd.sequenceId);
+
+  // Send acknowledgment first (for critical commands)
+  sendCommandAck(cmd.sequenceId);
+
   switch (cmd.command) {
     case 1: // ARM
+      Serial.printf("[CMD] Device %d executing ARM command\n", DEVICE_ID);
       armBuzzer();
       break;
 
     case 2: // DISARM
+      Serial.printf("[CMD] Device %d executing DISARM command\n", DEVICE_ID);
       disarmBuzzer();
       break;
 
     case 3: // TEST
+      Serial.printf("[CMD] Device %d executing TEST command\n", DEVICE_ID);
       testBuzzer();
       break;
 
     case 4: // RESET
+      Serial.printf("[CMD] Device %d executing RESET command\n", DEVICE_ID);
       resetBuzzer();
       break;
 
     case 5: // CORRECT_ANSWER
+      Serial.printf("[CMD] Device %d executing CORRECT_ANSWER command\n", DEVICE_ID);
       correctAnswerFeedback();
       break;
 
     case 6: // WRONG_ANSWER
+      Serial.printf("[CMD] Device %d executing WRONG_ANSWER command\n", DEVICE_ID);
       wrongAnswerFeedback();
       break;
 
     case 7: // END_ROUND (return to armed state)
+      Serial.printf("[CMD] Device %d executing END_ROUND command\n", DEVICE_ID);
       endRoundReset();
       break;
 
     default:
-      Serial.println("Unknown command");
+      Serial.printf("[CMD] Device %d received unknown command: %d\n", DEVICE_ID, cmd.command);
       break;
   }
-  
+
   // Send status update after handling command
   sendStatusUpdate();
 }
@@ -581,10 +611,15 @@ void correctAnswerFeedback() {
 }
 
 void wrongAnswerFeedback() {
-  Serial.println("Wrong answer feedback");
+  Serial.printf("[WRONG_ANSWER] Device %d receiving wrong answer feedback - switching to red state\n", DEVICE_ID);
   currentState = STATE_WRONG_ANSWER;
   buzzerPressed = false; // Reset buzzer press state
   waitingForAnswerFeedback = false; // Clear timeout
+
+  // Force immediate LED update to red
+  setAllLeds(COLOR_WRONG_ANSWER);
+
+  Serial.printf("[WRONG_ANSWER] Device %d red LEDs should now be visible\n", DEVICE_ID);
 
   // Play wrong answer tone
   playWrongAnswerTone();

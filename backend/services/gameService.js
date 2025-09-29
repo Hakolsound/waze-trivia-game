@@ -127,6 +127,11 @@ class GameService {
       clearTimeout(existingGameState.timeoutId);
     }
 
+    // FORCE clear any existing answered buzzers from previous question
+    if (existingGameState && existingGameState.answeredBuzzers && existingGameState.answeredBuzzers.length > 0) {
+      console.log(`[START] FORCE clearing previous answered buzzers: [${existingGameState.answeredBuzzers.map(ab => ab.buzzer_id).join(', ')}]`);
+    }
+
     // Set up the new timeout
     const timeoutId = setTimeout(() => {
       this.endQuestion(gameId);

@@ -190,6 +190,9 @@ void handleSerialCommand() {
     sendStatusToSerial();
   } else if (command == "ARM") {
     armAllBuzzers();
+  } else if (command.startsWith("ARM_SPECIFIC:")) {
+    String deviceList = command.substring(13);
+    armSpecificBuzzers(deviceList);
   } else if (command == "DISARM") {
     disarmAllBuzzers();
   } else if (command.startsWith("TEST:")) {
@@ -366,16 +369,68 @@ void disarmAllBuzzers() {
   cmd.command = 2; // DISARM
   cmd.targetDevice = 0; // All devices
   cmd.timestamp = millis();
-  
+
   systemArmed = false;
   gameActive = false;
   currentGameId = "";
-  
+
   // Broadcast command to all devices
   uint8_t broadcastMAC[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
   esp_now_send(broadcastMAC, (uint8_t*)&cmd, sizeof(cmd));
-  
+
   Serial.println("ACK:DISARMED");
+}
+
+void armSpecificBuzzers(String deviceList) {
+  Command cmd;
+  cmd.command = 1; // ARM
+  cmd.timestamp = millis();
+
+  gameStartTime = cmd.timestamp;
+  systemArmed = true;
+  buzzerPressCount = 0;
+
+  // Clear previous buzzer presses
+  for (int i = 0; i < MAX_GROUPS; i++) {
+    buzzerOrder[i] = {0, 0, 0, 0};
+    if (devices[i].isRegistered) {
+      devices[i].isPressed = false;
+    }
+  }
+
+  // Parse comma-separated device IDs and send ARM command to each
+  int startIndex = 0;
+  int commaIndex = 0;
+  int armedCount = 0;
+
+  while (startIndex <= deviceList.length()) {
+    commaIndex = deviceList.indexOf(',', startIndex);
+    if (commaIndex == -1) {
+      commaIndex = deviceList.length();
+    }
+
+    String deviceIdStr = deviceList.substring(startIndex, commaIndex);
+    deviceIdStr.trim();
+
+    if (deviceIdStr.length() > 0) {
+      uint8_t deviceId = deviceIdStr.toInt();
+
+      // Find device by ID and send ARM command
+      for (int i = 0; i < registeredDeviceCount; i++) {
+        if (devices[i].deviceId == deviceId) {
+          cmd.targetDevice = deviceId;
+          esp_now_send(devices[i].macAddress, (uint8_t*)&cmd, sizeof(cmd));
+          armedCount++;
+          break;
+        }
+      }
+    }
+
+    startIndex = commaIndex + 1;
+  }
+
+  Serial.print("ACK:ARM_SPECIFIC:");
+  Serial.println(armedCount);
 }
 
 void testBuzzer(uint8_t deviceId) {

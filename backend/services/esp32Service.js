@@ -366,6 +366,17 @@ class ESP32Service extends EventEmitter {
     } else if (command.startsWith('TEST:')) {
       const deviceId = parseInt(command.substring(5)) || 0;
       return this.sendBinaryCommand(this.COMMAND_TYPES.TEST, deviceId, 0);
+    } else if (command.startsWith('ARM_SPECIFIC:')) {
+      // ARM_SPECIFIC is not supported in binary protocol yet, send as text
+      if (this.isConnectedFlag && this.serialPort) {
+        console.log('Sending ESP32 text command:', command);
+        this.serialPort.write(command + '\n');
+        return true;
+      } else {
+        console.log('ESP32 not connected, simulating command:', command);
+        this.simulateCommand(command);
+        return false;
+      }
     } else {
       console.warn('Unknown command for binary protocol:', command);
       return false;
@@ -400,8 +411,12 @@ class ESP32Service extends EventEmitter {
     setTimeout(() => {
       if (command === 'STATUS') {
         this.handleSerialData('STATUS:{"buzzer_1":{"armed":false},"buzzer_2":{"armed":false},"buzzer_3":{"armed":false},"buzzer_4":{"armed":false}}');
-      } else if (command.startsWith('ARM')) {
+      } else if (command === 'ARM') {
         this.handleSerialData('ACK:ARMED');
+      } else if (command.startsWith('ARM_SPECIFIC:')) {
+        const deviceList = command.substring(13);
+        const deviceCount = deviceList.split(',').filter(id => id.trim().length > 0).length;
+        this.handleSerialData(`ACK:ARM_SPECIFIC:${deviceCount}`);
       } else if (command === 'DISARM') {
         this.handleSerialData('ACK:DISARMED');
       }
@@ -440,13 +455,11 @@ class ESP32Service extends EventEmitter {
       };
     }
 
-    // Send ARM command to each specific buzzer
-    for (const buzzerId of buzzerIds) {
-      const deviceId = parseInt(buzzerId);
-      console.log(`[ESP32] Arming specific buzzer ${deviceId}`);
-      const commandSuccess = this.sendBinaryCommand(this.COMMAND_TYPES.ARM, deviceId, parseInt(this.currentGameId) || 0);
-      if (!commandSuccess) success = false;
-    }
+    // Send ARM_SPECIFIC command with comma-separated device IDs
+    const deviceList = buzzerIds.join(',');
+    console.log(`[ESP32] Arming specific buzzers: ${deviceList}`);
+    const commandSuccess = this.sendCommand(`ARM_SPECIFIC:${deviceList}`);
+    if (!commandSuccess) success = false;
 
     this.io.emit('buzzers-armed', { gameId, buzzerIds });
 

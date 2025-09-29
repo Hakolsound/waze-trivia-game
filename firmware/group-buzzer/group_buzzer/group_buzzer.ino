@@ -16,7 +16,7 @@
 #define BRIGHTNESS 64     // 0-255, adjust for desired brightness
 
 // Device Configuration
-#define DEVICE_ID 5  // Change this for each group buzzer (1, 2, 3, etc.)
+#define DEVICE_ID 6  // Change this for each group buzzer (1, 2, 3, etc.)
 #define MAX_GROUPS 15
 
 // Central coordinator MAC address
@@ -613,6 +613,7 @@ void correctAnswerFeedback() {
 void wrongAnswerFeedback() {
   Serial.printf("[WRONG_ANSWER] Device %d receiving wrong answer feedback - switching to red state\n", DEVICE_ID);
   currentState = STATE_WRONG_ANSWER;
+  isArmed = false; // Disarm the buzzer when wrong answer is received
   buzzerPressed = false; // Reset buzzer press state
   waitingForAnswerFeedback = false; // Clear timeout
 

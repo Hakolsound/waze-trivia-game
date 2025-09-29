@@ -1958,14 +1958,27 @@ class HostControl {
                 const devices = await response.json();
                 const now = Date.now();
                 
-                // Update our device map with fresh data
-                this.buzzerDevices.clear();
+                // Don't clear the map - instead update existing entries or add new ones
+                // Mark all existing devices as potentially offline first
+                this.buzzerDevices.forEach(device => {
+                    device.server_reported = false;
+                });
+
                 devices.forEach(device => {
-                    this.buzzerDevices.set(device.device_id, {
-                        ...device,
-                        last_seen: device.last_seen || now,
-                        last_online: device.last_online // Preserve last_online from backend
-                    });
+                    const deviceId = device.device_id;
+                    // Only accept numeric device IDs (1, 2, 3, 4) not text ones (buzzer_1, etc)
+                    if (deviceId && /^\d+$/.test(deviceId.toString())) {
+                        const existingDevice = this.buzzerDevices.get(deviceId);
+                        this.buzzerDevices.set(deviceId, {
+                            // Default to offline
+                            status: 'offline',
+                            online: false,
+                            ...existingDevice, // Keep existing data (like last_seen from socket events)
+                            ...device, // Overlay server data
+                            server_reported: true,
+                            last_online: device.last_online // Preserve last_online from backend
+                        });
+                    }
                 });
                 
                 this.updateModalBuzzerStatusDisplay();
@@ -2852,14 +2865,27 @@ class HostControl {
                 const devices = await response.json();
                 const now = Date.now();
                 
-                // Update our device map with fresh data
-                this.buzzerDevices = new Map();
+                // Don't clear the map - instead update existing entries or add new ones
+                // Mark all existing devices as potentially offline first
+                this.buzzerDevices.forEach(device => {
+                    device.server_reported = false;
+                });
+
                 devices.forEach(device => {
-                    this.buzzerDevices.set(device.device_id, {
-                        ...device,
-                        last_seen: device.last_seen || now,
-                        last_online: device.last_online // Preserve last_online from backend
-                    });
+                    const deviceId = device.device_id;
+                    // Only accept numeric device IDs (1, 2, 3, 4) not text ones (buzzer_1, etc)
+                    if (deviceId && /^\d+$/.test(deviceId.toString())) {
+                        const existingDevice = this.buzzerDevices.get(deviceId);
+                        this.buzzerDevices.set(deviceId, {
+                            // Default to offline
+                            status: 'offline',
+                            online: false,
+                            ...existingDevice, // Keep existing data (like last_seen from socket events)
+                            ...device, // Overlay server data
+                            server_reported: true,
+                            last_online: device.last_online // Preserve last_online from backend
+                        });
+                    }
                 });
                 
                 this.updateBuzzerSidebar();

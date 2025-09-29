@@ -358,6 +358,9 @@ class GameService {
         await this.esp32Service.sendCorrectAnswerFeedback(buzzerDeviceId);
       } else {
         await this.esp32Service.sendWrongAnswerFeedback(buzzerDeviceId);
+        // Wait briefly to ensure wrong answer feedback reaches and is processed by the buzzer
+        // before sending re-arm commands to other buzzers
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
 

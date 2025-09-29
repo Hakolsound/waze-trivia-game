@@ -261,9 +261,8 @@ class GameService {
         await this.esp32Service.disarmBuzzers();
         console.log(`Physical buzzers disarmed for game ${gameId}`);
 
-        // NOTE: Removed endRound() call to preserve wrong-answer LED states
-        // The wrong-answer buzzers should maintain their red LEDs until next question starts
-        console.log(`[END] Preserving wrong-answer states - not sending END_ROUND command`);
+        // Send end round command to reset all buzzers to their proper state
+        await this.esp32Service.endRound(0); // 0 = all devices
       } catch (error) {
         console.error('Failed to disarm physical buzzers:', error);
       }

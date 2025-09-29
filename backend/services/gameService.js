@@ -136,6 +136,7 @@ class GameService {
       questionId: currentQuestion.id,
       startTime: Date.now(),
       buzzerOrder: [],
+      answeredBuzzers: [], // Track buzzers that have already answered (correctly or incorrectly)
       timeLimit: currentQuestion.time_limit * 1000,
       timeoutId: timeoutId,
       isPaused: false,
@@ -353,6 +354,16 @@ class GameService {
       }
     }
 
+    // Track that this buzzer has answered (correctly or incorrectly)
+    const answeredBuzzer = {
+      buzzer_id: buzzerEntry.buzzer_id,
+      groupId: buzzerEntry.groupId,
+      isCorrect: isCorrect,
+      timestamp: Date.now()
+    };
+    gameState.answeredBuzzers.push(answeredBuzzer);
+    console.log(`[EVAL] Added buzzer ${buzzerEntry.buzzer_id} to answered list (${isCorrect ? 'correct' : 'wrong'})`);
+
     // Emit answer evaluation event
     this.io.to(`game-${gameId}`).emit('answer-evaluated', {
       gameId,
@@ -386,6 +397,24 @@ class GameService {
       // Resume timer for remaining time
       if (gameState.isPaused) {
         this.resumeQuestion(gameId);
+      }
+
+      // RE-ARM ONLY BUZZERS that haven't answered yet (exclude buzzers that already answered wrong)
+      if (this.esp32Service) {
+        // Get all groups for this game to find their buzzer IDs
+        const allGroups = await this.db.all('SELECT buzzer_id FROM groups WHERE game_id = ?', [gameId]);
+        const allBuzzerIds = allGroups.map(g => g.buzzer_id).filter(id => id); // Remove null/empty buzzer IDs
+
+        // Filter out buzzers that have already answered
+        const answeredBuzzerIds = gameState.answeredBuzzers.map(ab => ab.buzzer_id);
+        const availableBuzzerIds = allBuzzerIds.filter(buzzerI => !answeredBuzzerIds.includes(buzzerI));
+
+        console.log(`[EVAL] Re-arming only available buzzers after wrong answer:`);
+        console.log(`[EVAL] All buzzers: [${allBuzzerIds.join(', ')}]`);
+        console.log(`[EVAL] Already answered: [${answeredBuzzerIds.join(', ')}]`);
+        console.log(`[EVAL] Available to arm: [${availableBuzzerIds.join(', ')}]`);
+
+        await this.esp32Service.armSpecificBuzzers(gameId, availableBuzzerIds);
       }
     }
 
@@ -545,6 +574,12 @@ class GameService {
     // PAUSE TIMER when first team buzzes in
     if (gameState.buzzerOrder.length === 1 && !gameState.isPaused) {
       this.pauseQuestion(gameId);
+
+      // DISARM ALL BUZZERS to prevent others from buzzing during evaluation
+      if (this.esp32Service) {
+        console.log(`[BUZZ] Disarming all buzzers - first team has buzzed, waiting for evaluation`);
+        await this.esp32Service.disarmBuzzers(gameId);
+      }
     }
 
     await this.db.run(

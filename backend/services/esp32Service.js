@@ -423,6 +423,43 @@ class ESP32Service extends EventEmitter {
     };
   }
 
+  async armSpecificBuzzers(gameId, buzzerIds = []) {
+    this.currentGameId = gameId;
+    let success = true;
+
+    if (buzzerIds.length === 0) {
+      // No buzzers to arm
+      console.log(`[ESP32] No buzzers to arm for game ${gameId}`);
+      return {
+        success: true,
+        gameId,
+        buzzerIds: [],
+        timestamp: Date.now(),
+        hardwareConnected: true,
+        message: 'No buzzers to arm'
+      };
+    }
+
+    // Send ARM command to each specific buzzer
+    for (const buzzerId of buzzerIds) {
+      const deviceId = parseInt(buzzerId);
+      console.log(`[ESP32] Arming specific buzzer ${deviceId}`);
+      const commandSuccess = this.sendBinaryCommand(this.COMMAND_TYPES.ARM, deviceId, parseInt(this.currentGameId) || 0);
+      if (!commandSuccess) success = false;
+    }
+
+    this.io.emit('buzzers-armed', { gameId, buzzerIds });
+
+    return {
+      success: true,
+      gameId,
+      buzzerIds,
+      timestamp: Date.now(),
+      hardwareConnected: success,
+      message: success ? `Armed ${buzzerIds.length} specific buzzers successfully` : `Armed ${buzzerIds.length} specific buzzers (no hardware connected)`
+    };
+  }
+
   async disarmBuzzers() {
     const success = this.sendCommand('DISARM');
     this.currentGameId = null;

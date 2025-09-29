@@ -63,6 +63,10 @@ uint8_t chaserPosition = 0;
 unsigned long answerFeedbackTimeout = 0;
 bool waitingForAnswerFeedback = false;
 
+// Correct answer LED display timer (3 second decay)
+unsigned long correctAnswerStartTime = 0;
+#define CORRECT_ANSWER_DURATION 3000  // 3 seconds
+
 // Message structure for ESP-NOW communication
 typedef struct {
   uint8_t messageType;  // 1=buzzer_press, 2=heartbeat, 3=status_update
@@ -291,25 +295,27 @@ void flashingWhite() {
   }
 }
 
-void dancingGreen() {
-  // Dancing green effect for correct answer
-  static uint8_t dancePhase = 0;
-  fill_solid(leds, NUM_LEDS, COLOR_OFF);
+void greenDecay() {
+  // 3-second green decay effect for correct answer
+  unsigned long elapsed = millis() - correctAnswerStartTime;
 
-  // Create a wave pattern
-  for (int i = 0; i < NUM_LEDS; i++) {
-    int brightness = 128 + (127 * sin((i * 0.5) + (dancePhase * 0.1)));
-    leds[i] = COLOR_CORRECT_ANSWER;
-    leds[i].fadeToBlackBy(255 - brightness);
+  if (elapsed < CORRECT_ANSWER_DURATION) {
+    // Calculate fade amount based on elapsed time (fade from full brightness to off)
+    float progress = (float)elapsed / CORRECT_ANSWER_DURATION;
+    int brightness = 255 * (1.0 - progress); // Start at 255, fade to 0
+
+    CRGB greenColor = COLOR_CORRECT_ANSWER;
+    greenColor.fadeToBlackBy(255 - brightness);
+    setAllLeds(greenColor);
+  } else {
+    // 3 seconds have passed, return to appropriate state
+    setAllLeds(COLOR_OFF);
+    if (isArmed) {
+      currentState = STATE_ARMED;
+    } else {
+      currentState = STATE_DISARMED;
+    }
   }
-
-  // Add some sparkle
-  if (random(100) < 30) {
-    leds[random(NUM_LEDS)] = CRGB::White;
-  }
-
-  FastLED.show();
-  dancePhase++;
 }
 
 void sadRed() {
@@ -339,7 +345,7 @@ void updateLedState() {
       break;
 
     case STATE_CORRECT_ANSWER:
-      dancingGreen();
+      greenDecay();
       break;
 
     case STATE_WRONG_ANSWER:
@@ -475,6 +481,12 @@ void handleCommand(Command cmd) {
 }
 
 void armBuzzer() {
+  // Don't arm buzzers that are in wrong answer state - they should stay red until round ends
+  if (currentState == STATE_WRONG_ANSWER) {
+    Serial.println("Buzzer in wrong answer state - ignoring ARM command until round ends");
+    return;
+  }
+
   if (!isArmed) {
     isArmed = true;
     buzzerPressed = false;
@@ -562,6 +574,7 @@ void correctAnswerFeedback() {
   currentState = STATE_CORRECT_ANSWER;
   buzzerPressed = false; // Reset buzzer press state
   waitingForAnswerFeedback = false; // Clear timeout
+  correctAnswerStartTime = millis(); // Start 3-second green decay timer
 }
 
 void wrongAnswerFeedback() {

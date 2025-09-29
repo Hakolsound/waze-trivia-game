@@ -63,9 +63,9 @@ uint8_t chaserPosition = 0;
 unsigned long answerFeedbackTimeout = 0;
 bool waitingForAnswerFeedback = false;
 
-// Correct answer LED display timer (3 second decay)
+// Correct answer LED display timer (2 second decay)
 unsigned long correctAnswerStartTime = 0;
-#define CORRECT_ANSWER_DURATION 3000  // 3 seconds
+#define CORRECT_ANSWER_DURATION 2000  // 2 seconds
 
 // Message structure for ESP-NOW communication
 typedef struct {
@@ -296,7 +296,7 @@ void flashingWhite() {
 }
 
 void greenDecay() {
-  // 3-second green decay effect for correct answer
+  // 2-second green decay effect for correct answer
   unsigned long elapsed = millis() - correctAnswerStartTime;
 
   if (elapsed < CORRECT_ANSWER_DURATION) {
@@ -308,7 +308,7 @@ void greenDecay() {
     greenColor.fadeToBlackBy(255 - brightness);
     setAllLeds(greenColor);
   } else {
-    // 3 seconds have passed, return to appropriate state
+    // 2 seconds have passed, return to appropriate state
     setAllLeds(COLOR_OFF);
     if (isArmed) {
       currentState = STATE_ARMED;
@@ -574,7 +574,10 @@ void correctAnswerFeedback() {
   currentState = STATE_CORRECT_ANSWER;
   buzzerPressed = false; // Reset buzzer press state
   waitingForAnswerFeedback = false; // Clear timeout
-  correctAnswerStartTime = millis(); // Start 3-second green decay timer
+  correctAnswerStartTime = millis(); // Start 2-second green decay timer
+
+  // Play correct answer tone
+  playCorrectAnswerTone();
 }
 
 void wrongAnswerFeedback() {
@@ -582,6 +585,9 @@ void wrongAnswerFeedback() {
   currentState = STATE_WRONG_ANSWER;
   buzzerPressed = false; // Reset buzzer press state
   waitingForAnswerFeedback = false; // Clear timeout
+
+  // Play wrong answer tone
+  playWrongAnswerTone();
 }
 
 void endRoundReset() {
@@ -596,11 +602,11 @@ void endRoundReset() {
 }
 
 void playBuzzerPattern() {
-  // Victory pattern when buzzer is pressed - Much louder and longer
-  int melody[] = {523, 659, 784, 1047}; // C, E, G, C (octave higher)
-  int noteDurations[] = {300, 300, 300, 600}; // Longer durations
+  // Positive ascending buzz-in sound when buzzer is pressed
+  int melody[] = {440, 550, 660}; // A4, C#5, E5 (ascending, pleasant)
+  int noteDurations[] = {100, 100, 200}; // Quick-quick-longer
 
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 3; i++) {
     // Generate PWM tone for much louder output
     unsigned long startTime = millis();
     unsigned long toneDuration = noteDurations[i];
@@ -615,6 +621,50 @@ void playBuzzerPattern() {
 
     // Brief pause between notes
     delay(50);
+  }
+}
+
+void playCorrectAnswerTone() {
+  // Triumphant ascending tone for correct answer
+  int melody[] = {523, 659, 784, 1047}; // C5, E5, G5, C6 (major chord progression)
+  int noteDurations[] = {150, 150, 150, 400}; // Building to triumphant finish
+
+  for (int i = 0; i < 4; i++) {
+    // Generate PWM tone
+    unsigned long startTime = millis();
+    unsigned long toneDuration = noteDurations[i];
+    unsigned long halfPeriod = 500000 / melody[i];
+
+    while (millis() - startTime < toneDuration) {
+      digitalWrite(BUZZER_PIN, HIGH);
+      delayMicroseconds(halfPeriod);
+      digitalWrite(BUZZER_PIN, LOW);
+      delayMicroseconds(halfPeriod);
+    }
+
+    delay(30); // Brief pause between notes
+  }
+}
+
+void playWrongAnswerTone() {
+  // Descending sad tone for wrong answer
+  int melody[] = {392, 330, 294}; // G4, E4, D4 (descending, minor)
+  int noteDurations[] = {200, 200, 400}; // Slower, more somber
+
+  for (int i = 0; i < 3; i++) {
+    // Generate PWM tone
+    unsigned long startTime = millis();
+    unsigned long toneDuration = noteDurations[i];
+    unsigned long halfPeriod = 500000 / melody[i];
+
+    while (millis() - startTime < toneDuration) {
+      digitalWrite(BUZZER_PIN, HIGH);
+      delayMicroseconds(halfPeriod);
+      digitalWrite(BUZZER_PIN, LOW);
+      delayMicroseconds(halfPeriod);
+    }
+
+    delay(50); // Pause between notes
   }
 }
 

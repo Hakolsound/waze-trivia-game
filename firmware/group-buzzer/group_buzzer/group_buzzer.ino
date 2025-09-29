@@ -16,7 +16,7 @@
 #define BRIGHTNESS 64     // 0-255, adjust for desired brightness
 
 // Device Configuration
-#define DEVICE_ID 3  // Change this for each group buzzer (1, 2, 3, etc.)
+#define DEVICE_ID 4  // Change this for each group buzzer (1, 2, 3, etc.)
 #define MAX_GROUPS 15
 
 // Central coordinator MAC address
@@ -72,7 +72,7 @@ typedef struct {
 } Message;
 
 typedef struct {
-  uint8_t command;      // 1=arm, 2=disarm, 3=test, 4=reset
+  uint8_t command;      // 1=arm, 2=disarm, 3=test, 4=reset, 5=correct_answer, 6=wrong_answer, 7=end_round
   uint8_t targetDevice; // 0=all, or specific device ID
   uint32_t timestamp;
 } Command;
@@ -404,12 +404,12 @@ void handleBuzzerPress() {
   buzzerPressTime = millis();
   currentState = STATE_ANSWERING_NOW; // Change to flashing white state immediately
 
+  // Update LEDs immediately to show white flashing
+  updateLedState();
+
   // Start waiting for answer feedback with 10 second timeout
   waitingForAnswerFeedback = true;
   answerFeedbackTimeout = millis() + 10000;
-
-  // Start buzzer sound immediately (non-blocking)
-  digitalWrite(BUZZER_PIN, HIGH);
 
   Serial.print("BUZZER PRESSED! Device: ");
   Serial.print(DEVICE_ID);
@@ -426,7 +426,7 @@ void handleBuzzerPress() {
   esp_err_t result = esp_now_send(coordinatorMAC, (uint8_t*)&msg, sizeof(msg));
   Serial.printf("Buzzer press message send result: %s\n", result == ESP_OK ? "SUCCESS" : "FAILED");
 
-  // Play buzzer pattern in background
+  // Play buzzer pattern simultaneously with LED feedback
   playBuzzerPattern();
 }
 

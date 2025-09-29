@@ -113,15 +113,30 @@ bool verifyChecksum(uint8_t* data, int len) {
 }
 
 void sendBinaryBuzzerPress(uint8_t deviceId, uint32_t timestamp, uint16_t deltaMs, uint8_t position) {
-  BuzzerMessage buzzerMsg;
-  buzzerMsg.deviceId = deviceId;
-  buzzerMsg.timestamp = timestamp;
-  buzzerMsg.deltaMs = deltaMs;
-  buzzerMsg.position = position;
-  buzzerMsg.reserved = 0; // Clear reserved byte
-  buzzerMsg.checksum = calculateChecksum((uint8_t*)&buzzerMsg, sizeof(buzzerMsg) - 1);
+  uint8_t buffer[12];
 
-  Serial.write((uint8_t*)&buzzerMsg, sizeof(buzzerMsg));
+  // Build message manually to ensure little endian byte order
+  buffer[0] = 0xAA;        // header
+  buffer[1] = 0x01;        // messageType = buzzer press
+  buffer[2] = deviceId;
+
+  // Write timestamp as little endian (4 bytes)
+  buffer[3] = timestamp & 0xFF;
+  buffer[4] = (timestamp >> 8) & 0xFF;
+  buffer[5] = (timestamp >> 16) & 0xFF;
+  buffer[6] = (timestamp >> 24) & 0xFF;
+
+  // Write deltaMs as little endian (2 bytes)
+  buffer[7] = deltaMs & 0xFF;
+  buffer[8] = (deltaMs >> 8) & 0xFF;
+
+  buffer[9] = position;
+  buffer[10] = 0;          // reserved
+
+  // Calculate checksum for all bytes except the last
+  buffer[11] = calculateChecksum(buffer, 11);
+
+  Serial.write(buffer, sizeof(buffer));
   Serial.flush(); // Ensure immediate transmission
 
   Serial.printf("Sent binary buzzer press: device=%d, deltaMs=%d, position=%d\n",
@@ -129,33 +144,63 @@ void sendBinaryBuzzerPress(uint8_t deviceId, uint32_t timestamp, uint16_t deltaM
 }
 
 void sendBinaryStatus() {
-  StatusMessage statusMsg;
+  uint8_t buffer[17];  // StatusMessage size
 
   // Build device masks
-  statusMsg.deviceMask = 0;
-  statusMsg.armedMask = 0;
-  statusMsg.pressedMask = 0;
+  uint16_t deviceMask = 0;
+  uint16_t armedMask = 0;
+  uint16_t pressedMask = 0;
 
   for (int i = 0; i < registeredDeviceCount; i++) {
     uint8_t deviceBit = devices[i].deviceId - 1; // Convert to 0-based bit position
     if (deviceBit < 16) { // Safety check
       if (devices[i].isOnline) {
-        statusMsg.deviceMask |= (1 << deviceBit);
+        deviceMask |= (1 << deviceBit);
       }
       if (devices[i].isArmed) {
-        statusMsg.armedMask |= (1 << deviceBit);
+        armedMask |= (1 << deviceBit);
       }
       if (devices[i].isPressed) {
-        statusMsg.pressedMask |= (1 << deviceBit);
+        pressedMask |= (1 << deviceBit);
       }
     }
   }
 
-  statusMsg.timestamp = millis();
-  statusMsg.gameId = gameActive ? currentGameId.toInt() : 0;
-  statusMsg.checksum = calculateChecksum((uint8_t*)&statusMsg, sizeof(statusMsg) - 1);
+  uint32_t timestamp = millis();
+  uint32_t gameId = gameActive ? currentGameId.toInt() : 0;
 
-  Serial.write((uint8_t*)&statusMsg, sizeof(statusMsg));
+  // Build message manually to ensure little endian byte order
+  buffer[0] = 0xAA;        // header
+  buffer[1] = 0x02;        // messageType = status
+
+  // Write deviceMask as little endian (2 bytes)
+  buffer[2] = deviceMask & 0xFF;
+  buffer[3] = (deviceMask >> 8) & 0xFF;
+
+  // Write armedMask as little endian (2 bytes)
+  buffer[4] = armedMask & 0xFF;
+  buffer[5] = (armedMask >> 8) & 0xFF;
+
+  // Write pressedMask as little endian (2 bytes)
+  buffer[6] = pressedMask & 0xFF;
+  buffer[7] = (pressedMask >> 8) & 0xFF;
+
+  // Write timestamp as little endian (4 bytes)
+  buffer[8] = timestamp & 0xFF;
+  buffer[9] = (timestamp >> 8) & 0xFF;
+  buffer[10] = (timestamp >> 16) & 0xFF;
+  buffer[11] = (timestamp >> 24) & 0xFF;
+
+  // Write gameId as little endian (4 bytes)
+  buffer[12] = gameId & 0xFF;
+  buffer[13] = (gameId >> 8) & 0xFF;
+  buffer[14] = (gameId >> 16) & 0xFF;
+  buffer[15] = (gameId >> 24) & 0xFF;
+
+  // Calculate checksum for all bytes except the last
+  buffer[16] = calculateChecksum(buffer, 16);
+
+  Serial.write(buffer, 17);  // Total message size is 17 bytes
   Serial.flush();
 }
 

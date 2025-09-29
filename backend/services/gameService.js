@@ -344,8 +344,8 @@ class GameService {
 
     // Send LED feedback to the buzzer
     if (this.esp32Service) {
-      // For now, use groupId as buzzer device ID (they match in current setup)
-      const buzzerDeviceId = parseInt(buzzerEntry.groupId) || buzzerEntry.groupId;
+      // Use the actual buzzer device ID from the buzzer press event
+      const buzzerDeviceId = parseInt(buzzerEntry.buzzer_id) || buzzerEntry.buzzer_id;
       if (isCorrect) {
         await this.esp32Service.sendCorrectAnswerFeedback(buzzerDeviceId);
       } else {

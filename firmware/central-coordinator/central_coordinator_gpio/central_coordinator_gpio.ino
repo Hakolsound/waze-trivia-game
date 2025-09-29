@@ -235,6 +235,18 @@ void sendBinaryStatus() {
 
 void processBinaryCommands() {
   Serial.println("Processing binary commands...");
+
+  // Check if first byte is text (ARM_SPECIFIC starts with 'A' = 0x41)
+  if (Serial.available() > 0) {
+    uint8_t firstByte = Serial.peek();
+    if (firstByte >= 0x20 && firstByte <= 0x7E) {
+      // This looks like text, not binary - process as text command
+      Serial.println("Detected text command, switching to text processing");
+      handleSerialCommand();
+      return;
+    }
+  }
+
   while (Serial.available()) {
     uint8_t byte = Serial.read();
     Serial.printf("Read byte: 0x%02X (pos=%d)\n", byte, commandBufferPos);

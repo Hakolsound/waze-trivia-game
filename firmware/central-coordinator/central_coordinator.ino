@@ -382,6 +382,19 @@ void disarmAllBuzzers() {
 }
 
 void armSpecificBuzzers(String deviceList) {
+  Serial.print("DEBUG:ARM_SPECIFIC received: ");
+  Serial.println(deviceList);
+  Serial.print("DEBUG:Registered device count: ");
+  Serial.println(registeredDeviceCount);
+
+  // Show registered devices
+  Serial.print("DEBUG:Registered devices: ");
+  for (int i = 0; i < registeredDeviceCount; i++) {
+    Serial.print(devices[i].deviceId);
+    if (i < registeredDeviceCount - 1) Serial.print(", ");
+  }
+  Serial.println();
+
   Command cmd;
   cmd.command = 1; // ARM
   cmd.timestamp = millis();
@@ -414,15 +427,28 @@ void armSpecificBuzzers(String deviceList) {
 
     if (deviceIdStr.length() > 0) {
       uint8_t deviceId = deviceIdStr.toInt();
+      Serial.print("DEBUG:Parsing device ID: ");
+      Serial.println(deviceId);
 
       // Find device by ID and send ARM command
+      bool found = false;
       for (int i = 0; i < registeredDeviceCount; i++) {
         if (devices[i].deviceId == deviceId) {
+          Serial.print("DEBUG:Found device ");
+          Serial.print(deviceId);
+          Serial.print(" at index ");
+          Serial.println(i);
           cmd.targetDevice = deviceId;
           esp_now_send(devices[i].macAddress, (uint8_t*)&cmd, sizeof(cmd));
           armedCount++;
+          found = true;
           break;
         }
+      }
+      if (!found) {
+        Serial.print("DEBUG:Device ");
+        Serial.print(deviceId);
+        Serial.println(" not found in registered devices");
       }
     }
 

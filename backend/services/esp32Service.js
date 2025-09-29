@@ -410,6 +410,11 @@ class ESP32Service extends EventEmitter {
 
   async armBuzzers(gameId) {
     this.currentGameId = gameId;
+
+    // DEBUG: Add stack trace to identify where armBuzzers is being called
+    console.log(`[DEBUG] armBuzzers called for game ${gameId}`);
+    console.trace('Stack trace for armBuzzers call:');
+
     const success = this.sendCommand('ARM');
 
     this.io.emit('buzzers-armed', { gameId });

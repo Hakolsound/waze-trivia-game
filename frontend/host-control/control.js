@@ -2835,7 +2835,9 @@ class HostControl {
             
             // Add armed class to status dot when buzzers are armed
             const dotArmedClass = (isOnline && this.isBuzzersArmed) ? ' armed' : '';
-            
+
+            const batteryStatus = this.formatBatteryStatus(device.battery_percentage, device.battery_voltage);
+
             buzzerElement.innerHTML = `
                 <div class="buzzer-info">
                     <div class="buzzer-header">
@@ -2845,6 +2847,7 @@ class HostControl {
                     <div class="buzzer-details">
                         ${teamName ? `<div class="team-name">${teamName}</div>` : '<div class="no-team">No team assigned</div>'}
                         <div class="last-seen">${lastSeenText}</div>
+                        ${batteryStatus}
                     </div>
                 </div>
             `;
@@ -2932,7 +2935,7 @@ class HostControl {
 
     formatLastSeen(milliseconds) {
         const seconds = Math.floor(milliseconds / 1000);
-        
+
         if (seconds <= 0) {
             return 'now';
         } else if (seconds < 60) {
@@ -2942,6 +2945,31 @@ class HostControl {
         } else {
             return `${Math.floor(seconds / 3600)}h ago`;
         }
+    }
+
+    formatBatteryStatus(batteryPercentage, batteryVoltage) {
+        // Handle undefined or null values
+        if (batteryPercentage === undefined || batteryPercentage === null || batteryVoltage === undefined || batteryVoltage === null) {
+            return '<div class="battery-status unknown"><span class="battery-icon">🔋</span><span>---</span></div>';
+        }
+
+        let statusClass, icon;
+
+        if (batteryPercentage <= 10) {
+            statusClass = 'critical';
+            icon = '🔋';
+        } else if (batteryPercentage <= 25) {
+            statusClass = 'low';
+            icon = '🔋';
+        } else if (batteryPercentage <= 50) {
+            statusClass = 'medium';
+            icon = '🔋';
+        } else {
+            statusClass = 'good';
+            icon = '🔋';
+        }
+
+        return `<div class="battery-status ${statusClass}"><span class="battery-icon">${icon}</span><span>${batteryPercentage}% (${batteryVoltage.toFixed(2)}V)</span></div>`;
     }
 
     parseESP32DeviceData(esp32Data, timestamp) {

@@ -2302,3 +2302,51 @@ input:checked + .slider:before {
         font-size: 0.7rem;
     }
 }
+
+/* Battery Status Styles */
+.battery-status {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 8px;
+    font-weight: 500;
+    margin-top: 2px;
+    padding: 1px 4px;
+    border-radius: 2px;
+    line-height: 1;
+}
+
+.battery-status.critical {
+    color: #FF4444;
+    background: rgba(255, 68, 68, 0.1);
+    border: 1px solid rgba(255, 68, 68, 0.3);
+}
+
+.battery-status.low {
+    color: #FF9500;
+    background: rgba(255, 149, 0, 0.1);
+    border: 1px solid rgba(255, 149, 0, 0.3);
+}
+
+.battery-status.medium {
+    color: #FFCC00;
+    background: rgba(255, 204, 0, 0.1);
+    border: 1px solid rgba(255, 204, 0, 0.3);
+}
+
+.battery-status.good {
+    color: #4CAF50;
+    background: rgba(76, 175, 80, 0.1);
+    border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.battery-status.unknown {
+    color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.battery-icon {
+    font-size: 8px;
+    line-height: 1;
+}

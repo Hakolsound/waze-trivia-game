@@ -586,7 +586,9 @@ class ESP32Service extends EventEmitter {
         pressed: state.pressed === true,
         mac: state.mac || '',
         time_since_last_seen: timeSinceLastSeen,
-        time_since_last_online: timeSinceLastOnline
+        time_since_last_online: timeSinceLastOnline,
+        battery_percentage: state.battery_percentage || 0,
+        battery_voltage: state.battery_voltage || 0.0
       });
     }
     
@@ -610,18 +612,34 @@ class ESP32Service extends EventEmitter {
       const existingState = this.buzzerStates.get(deviceId) || {};
       
       // Parse parameters - default to offline
-      const params = { 
+      const params = {
         last_seen: Date.now(), // Always update when we receive data
         last_online: existingState.last_online, // Preserve existing last_online
         online: false, // Default offline
         armed: false,
-        pressed: false
+        pressed: false,
+        battery_percentage: 0,  // Default battery percentage
+        battery_voltage: 0.0    // Default battery voltage
       };
       
       for (let i = 1; i < parts.length; i++) {
         const [key, value] = parts[i].split('=');
         if (key && value !== undefined) {
-          params[key] = value === '1' ? true : value === '0' ? false : value;
+          // Handle boolean values
+          if (value === '1') {
+            params[key] = true;
+          } else if (value === '0') {
+            params[key] = false;
+          } else if (key === 'battery_percentage') {
+            // Parse battery percentage as integer
+            params[key] = parseInt(value) || 0;
+          } else if (key === 'battery_voltage') {
+            // Parse battery voltage as float
+            params[key] = parseFloat(value) || 0.0;
+          } else {
+            // Keep as string for other values (like MAC addresses)
+            params[key] = value;
+          }
         }
       }
       
@@ -644,6 +662,8 @@ class ESP32Service extends EventEmitter {
           status: 'online',
           armed: params.armed,
           pressed: params.pressed,
+          battery_percentage: params.battery_percentage,
+          battery_voltage: params.battery_voltage,
           timestamp: Date.now()
         });
       }

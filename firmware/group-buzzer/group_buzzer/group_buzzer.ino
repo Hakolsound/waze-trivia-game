@@ -13,11 +13,19 @@
 #define RGB_DATA_PIN 4    // Same pin as LED_PIN for WS2812B data
 #define LED_TYPE WS2812B
 #define COLOR_ORDER GRB
-#define BRIGHTNESS 64     // 0-255, adjust for desired brightness
+#define BRIGHTNESS 128     // 0-255, adjust for desired brightness
 
 // Device Configuration
 #define DEVICE_ID 6  // Change this for each group buzzer (1, 2, 3, etc.)
 #define MAX_GROUPS 15
+
+// Battery Monitoring Configuration
+#define BATTERY_ADC_PIN 34        // ADC1_CH6 - GPIO34 for battery voltage reading
+#define BATTERY_VOLTAGE_DIVIDER 2.0  // 100k/100k voltage divider (50% division)
+#define BATTERY_MIN_VOLTAGE 3.0   // Minimum battery voltage (0%)
+#define BATTERY_MAX_VOLTAGE 4.2   // Maximum battery voltage (100%)
+#define ADC_RESOLUTION 4095       // 12-bit ADC resolution
+#define ADC_REFERENCE_VOLTAGE 3.3 // ESP32 ADC reference voltage
 
 // Central coordinator MAC address
 uint8_t coordinatorMAC[] = {0x78, 0xE3, 0x6D, 0x1B, 0x13, 0x28};
@@ -42,7 +50,8 @@ enum BuzzerState {
   STATE_ANSWERING_NOW,
   STATE_CORRECT_ANSWER,
   STATE_WRONG_ANSWER,
-  STATE_TEST
+  STATE_TEST,
+  STATE_BATTERY_DISPLAY
 };
 
 // State management
@@ -63,9 +72,24 @@ uint8_t chaserPosition = 0;
 unsigned long answerFeedbackTimeout = 0;
 bool waitingForAnswerFeedback = false;
 
+// Battery monitoring variables
+float batteryVoltage = 0.0;
+uint8_t batteryPercentage = 0;
+unsigned long lastBatteryCheck = 0;
+unsigned long batteryCheckInterval = 60000;  // Start with 60 second interval
+
+// Battery display mode variables
+unsigned long buttonPressStartTime = 0;
+bool buttonPressActive = false;
+bool batteryModeActivationPending = false;
+unsigned long batteryDisplayStartTime = 0;
+bool idDisplayShown = false;  // Track if ID has been displayed
+#define BATTERY_MODE_TIMEOUT 10000  // 10 seconds display timeout (for ID + battery display)
+#define BUTTON_HOLD_THRESHOLD 3000  // 3 seconds to activate battery mode
+
 // Correct answer LED display timer (2 second decay)
 unsigned long correctAnswerStartTime = 0;
-#define CORRECT_ANSWER_DURATION 2000  // 2 seconds
+#define CORRECT_ANSWER_DURATION 3000  // 2 seconds
 
 // Message structure for ESP-NOW communication
 typedef struct {
@@ -127,6 +151,11 @@ void setup() {
   pinMode(BUZZER_PIN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
   pinMode(BUZZER_BUTTON_PIN, INPUT_PULLUP);
+
+  // Initialize battery monitoring ADC
+  pinMode(BATTERY_ADC_PIN, INPUT);
+  analogReadResolution(12); // Set ADC to 12-bit resolution
+  analogSetAttenuation(ADC_11db); // Set ADC attenuation for 0-3.3V range
 
   // Initialize FastLED
   FastLED.addLeds<LED_TYPE, RGB_DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
@@ -210,9 +239,15 @@ void setup() {
     Serial.println();
   }
   
+  // Initial battery reading
+  batteryVoltage = readBatteryVoltage();
+  batteryPercentage = voltageToPercentage(batteryVoltage);
+  updateBatteryCheckInterval();
+  Serial.printf("Initial battery reading: %.2fV (%d%%)\n", batteryVoltage, batteryPercentage);
+
   // Startup sequence - LED blink pattern
   startupSequence();
-  
+
   Serial.println("=== Group Buzzer initialized and ready ===");
   sendHeartbeat();
 }
@@ -311,12 +346,16 @@ void greenDecay() {
     greenColor.fadeToBlackBy(255 - brightness);
     setAllLeds(greenColor);
   } else {
-    // 2 seconds have passed, return to appropriate state
+    // 3 seconds have passed, return to appropriate state
     setAllLeds(COLOR_OFF);
-    if (isArmed) {
-      currentState = STATE_ARMED;
-    } else {
-      currentState = STATE_DISARMED;
+
+    // Don't override wrong answer state (though this should not happen in normal operation)
+    if (currentState != STATE_WRONG_ANSWER) {
+      if (isArmed) {
+        currentState = STATE_ARMED;
+      } else {
+        currentState = STATE_DISARMED;
+      }
     }
   }
 }
@@ -324,7 +363,7 @@ void greenDecay() {
 void sadRed() {
   // Sad red effect for wrong answer - slow dim pulsing
   static float pulsePhase = 0;
-  pulsePhase += 0.02; // Very slow pulse
+  pulsePhase += 0.05; // Very slow pulse
 
   int brightness = 80 + (40 * sin(pulsePhase)); // Dim pulse between 40-120
   CRGB sadColor = COLOR_WRONG_ANSWER;
@@ -358,6 +397,10 @@ void updateLedState() {
     case STATE_TEST:
       rainbowEffect();
       break;
+
+    case STATE_BATTERY_DISPLAY:
+      displayBatteryLevel();
+      break;
   }
 }
 
@@ -369,16 +412,37 @@ void loop() {
     checkBuzzerButton();
     lastButtonCheck = currentTime;
   }
+
+  // Handle battery mode activation
+  if (batteryModeActivationPending && currentState != STATE_ARMED) {
+    currentState = STATE_BATTERY_DISPLAY;
+    idDisplayShown = false;  // Reset ID display flag
+    playBatteryModeEntryAnimation();
+    batteryModeActivationPending = false;
+    batteryDisplayStartTime = currentTime;
+    Serial.println("[BATTERY] Battery display mode activated");
+  }
+
+  // Handle battery mode timeout
+  if (currentState == STATE_BATTERY_DISPLAY &&
+      (currentTime - batteryDisplayStartTime > BATTERY_MODE_TIMEOUT)) {
+    exitBatteryMode();
+    Serial.println("[BATTERY] Battery display mode timeout - exiting");
+  }
   
   // Handle answer feedback timeout (fallback for older coordinator)
   if (waitingForAnswerFeedback && currentTime > answerFeedbackTimeout) {
     waitingForAnswerFeedback = false;
-    if (isArmed) {
-      currentState = STATE_ARMED; // Return to armed state if no feedback received
-    } else {
-      currentState = STATE_DISARMED;
+
+    // Don't override wrong answer state - keep buzzers that answered wrong in red state until round ends
+    if (currentState != STATE_WRONG_ANSWER) {
+      if (isArmed) {
+        currentState = STATE_ARMED; // Return to armed state if no feedback received
+      } else {
+        currentState = STATE_DISARMED;
+      }
     }
-    Serial.println("Answer feedback timeout - returning to previous state");
+    Serial.printf("Answer feedback timeout - Device %d preserving state %d\n", DEVICE_ID, currentState);
   }
 
   // Update LED state based on current game state
@@ -387,12 +451,15 @@ void loop() {
     lastRgbUpdate = currentTime;
   }
   
+  // Check battery level periodically
+  checkBatteryLevel();
+
   // Send periodic heartbeat
   if (currentTime - lastHeartbeat > 5000) {
     sendHeartbeat();
     lastHeartbeat = currentTime;
   }
-  
+
   // Small delay to prevent watchdog issues
   delay(10);
 }
@@ -400,9 +467,41 @@ void loop() {
 void checkBuzzerButton() {
   bool currentButtonState = digitalRead(BUZZER_BUTTON_PIN);
 
+  // Handle battery display mode button exit
+  if (currentState == STATE_BATTERY_DISPLAY && currentButtonState == LOW && lastButtonState == HIGH) {
+    exitBatteryMode();
+    lastButtonState = currentButtonState;
+    return;
+  }
+
   // Button pressed (active LOW) and buzzer is armed and not already pressed
   if (currentButtonState == LOW && lastButtonState == HIGH && isArmed && !buzzerPressed) {
     handleBuzzerPress();
+  }
+
+  // Battery mode activation detection (only when not armed)
+  if (!isArmed && currentState != STATE_BATTERY_DISPLAY) {
+    // Button just pressed - start silent timer
+    if (currentButtonState == LOW && lastButtonState == HIGH) {
+      buttonPressStartTime = millis();
+      buttonPressActive = true;
+      Serial.println("[BATTERY] Button press started - silent monitoring");
+    }
+
+    // Button released - cancel activation
+    if (buttonPressActive && currentButtonState == HIGH && lastButtonState == LOW) {
+      buttonPressActive = false;
+      batteryModeActivationPending = false;
+      Serial.println("[BATTERY] Button released - activation cancelled");
+    }
+
+    // Check for 3-second hold completion
+    if (buttonPressActive && currentButtonState == LOW &&
+        (millis() - buttonPressStartTime >= BUTTON_HOLD_THRESHOLD)) {
+      batteryModeActivationPending = true;
+      buttonPressActive = false;
+      Serial.println("[BATTERY] 3-second hold completed - battery mode pending activation");
+    }
   }
 
   lastButtonState = currentButtonState;
@@ -416,9 +515,9 @@ void handleBuzzerPress() {
   // Update LEDs immediately to show white flashing
   updateLedState();
 
-  // Start waiting for answer feedback with 10 second timeout
+  // Start waiting for answer feedback with 30 second timeout
   waitingForAnswerFeedback = true;
-  answerFeedbackTimeout = millis() + 10000;
+  answerFeedbackTimeout = millis() + 30000;
 
   Serial.print("BUZZER PRESSED! Device: ");
   Serial.print(DEVICE_ID);
@@ -461,6 +560,15 @@ void sendCommandAck(uint16_t sequenceId) {
 void handleCommand(Command cmd) {
   Serial.printf("[CMD] Device %d received command: %d for target: %d, seq: %d\n",
                 DEVICE_ID, cmd.command, cmd.targetDevice, cmd.sequenceId);
+
+  // Cancel any pending battery mode activation on game command
+  batteryModeActivationPending = false;
+  buttonPressActive = false;
+
+  // Exit battery mode immediately if currently active
+  if (currentState == STATE_BATTERY_DISPLAY) {
+    exitBatteryMode();
+  }
 
   // Send acknowledgment first (for critical commands)
   sendCommandAck(cmd.sequenceId);
@@ -542,10 +650,15 @@ void armBuzzer() {
 void disarmBuzzer() {
   isArmed = false;
   buzzerPressed = false;
-  currentState = STATE_DISARMED;
+
+  // Don't override wrong answer state - keep buzzers that answered wrong in red state until round ends
+  if (currentState != STATE_WRONG_ANSWER) {
+    currentState = STATE_DISARMED;
+  }
+
   digitalWrite(BUZZER_PIN, LOW);
 
-  Serial.println("Buzzer DISARMED");
+  Serial.printf("Buzzer DISARMED - Device %d preserving state %d\n", DEVICE_ID, currentState);
 }
 
 void testBuzzer() {
@@ -744,6 +857,66 @@ void startupSequence() {
   Serial.println("Startup sequence complete");
 }
 
+// Battery monitoring functions
+float readBatteryVoltage() {
+  // Take multiple readings for stability
+  uint32_t adcSum = 0;
+  const int numReadings = 10;
+
+  for (int i = 0; i < numReadings; i++) {
+    adcSum += analogRead(BATTERY_ADC_PIN);
+    delay(10);
+  }
+
+  uint32_t adcAverage = adcSum / numReadings;
+
+  // Convert ADC reading to voltage
+  float adcVoltage = (float)adcAverage / ADC_RESOLUTION * ADC_REFERENCE_VOLTAGE;
+
+  // Account for voltage divider
+  float batteryVoltage = adcVoltage * BATTERY_VOLTAGE_DIVIDER;
+
+  return batteryVoltage;
+}
+
+uint8_t voltageToPercentage(float voltage) {
+  // LiPo discharge curve approximation
+  if (voltage >= BATTERY_MAX_VOLTAGE) return 100;
+  if (voltage <= BATTERY_MIN_VOLTAGE) return 0;
+
+  // Linear approximation for simplicity
+  float percentage = ((voltage - BATTERY_MIN_VOLTAGE) / (BATTERY_MAX_VOLTAGE - BATTERY_MIN_VOLTAGE)) * 100.0;
+  return constrain((uint8_t)percentage, 0, 100);
+}
+
+void updateBatteryCheckInterval() {
+  // Dynamic interval based on battery level
+  if (batteryPercentage > 50) {
+    batteryCheckInterval = 60000; // 60 seconds - preserve battery
+  } else if (batteryPercentage > 20) {
+    batteryCheckInterval = 30000; // 30 seconds - balanced monitoring
+  } else if (batteryPercentage > 10) {
+    batteryCheckInterval = 15000; // 15 seconds - frequent monitoring
+  } else {
+    batteryCheckInterval = 10000; // 10 seconds - critical monitoring
+  }
+}
+
+void checkBatteryLevel() {
+  unsigned long currentTime = millis();
+
+  if (currentTime - lastBatteryCheck >= batteryCheckInterval) {
+    batteryVoltage = readBatteryVoltage();
+    batteryPercentage = voltageToPercentage(batteryVoltage);
+
+    updateBatteryCheckInterval();
+    lastBatteryCheck = currentTime;
+
+    Serial.printf("Battery: %.2fV (%d%%) - Next check in %lus\n",
+                  batteryVoltage, batteryPercentage, batteryCheckInterval / 1000);
+  }
+}
+
 void sendHeartbeat() {
   Message msg;
   msg.messageType = 2; // heartbeat
@@ -751,11 +924,19 @@ void sendHeartbeat() {
   msg.timestamp = millis();
   msg.data[0] = isArmed ? 1 : 0;
   msg.data[1] = buzzerPressed ? 1 : 0;
-  
+
+  // Add battery data to heartbeat
+  msg.data[2] = batteryPercentage;  // Battery percentage (0-100)
+
+  // Send battery voltage as two bytes (voltage * 100 to preserve 2 decimal places)
+  uint16_t voltageInt = (uint16_t)(batteryVoltage * 100);
+  msg.data[3] = voltageInt & 0xFF;        // Low byte
+  msg.data[4] = (voltageInt >> 8) & 0xFF; // High byte
+
   esp_err_t result = esp_now_send(coordinatorMAC, (uint8_t*)&msg, sizeof(msg));
   Serial.print("Heartbeat sent to coordinator - Result: ");
   Serial.println(result == ESP_OK ? "SUCCESS" : "FAILED");
-  
+
   if (result != ESP_OK) {
     Serial.print("Error code: ");
     Serial.println(result);
@@ -771,6 +952,14 @@ void sendStatusUpdate() {
   msg.data[1] = buzzerPressed ? 1 : 0;
   msg.data[2] = (leds[0].r > 0 || leds[0].g > 0 || leds[0].b > 0) ? 1 : 0; // RGB LED status
 
+  // Add battery data to status update
+  msg.data[3] = batteryPercentage;  // Battery percentage (0-100)
+
+  // Send battery voltage as two bytes (voltage * 100 to preserve 2 decimal places)
+  uint16_t voltageInt = (uint16_t)(batteryVoltage * 100);
+  msg.data[4] = voltageInt & 0xFF;        // Low byte
+  msg.data[5] = (voltageInt >> 8) & 0xFF; // High byte
+
   esp_now_send(coordinatorMAC, (uint8_t*)&msg, sizeof(msg));
 
   Serial.print("Status - Armed: ");
@@ -779,4 +968,188 @@ void sendStatusUpdate() {
   Serial.print(buzzerPressed);
   Serial.print(" RGB Active: ");
   Serial.println((leds[0].r > 0 || leds[0].g > 0 || leds[0].b > 0) ? "Yes" : "No");
+}
+
+// Battery Display Mode Functions
+
+void playBatteryModeEntryAnimation() {
+  Serial.println("[BATTERY] Playing entry animation with sweep tune");
+
+  // Synchronized LED sweep + audio sweep
+  int startFreq = 800;
+  int endFreq = 1500;
+  int stepDuration = 8; // milliseconds per step
+
+  for (int i = 0; i < NUM_LEDS; i++) {
+    // LED animation - progressive blue fill
+    fill_solid(leds, i + 1, CRGB::Blue);
+    FastLED.show();
+
+    // Synchronized audio sweep
+    int freq = startFreq + (i * (endFreq - startFreq) / NUM_LEDS);
+    tone(BUZZER_PIN, freq, stepDuration);
+
+    delay(stepDuration);
+  }
+
+  noTone(BUZZER_PIN);
+  Serial.println("[BATTERY] Entry animation complete");
+
+  // Small pause before showing ID
+  delay(200);
+
+  // Display buzzer ID first
+  displayBuzzerID();
+
+  // Mark ID as displayed
+  idDisplayShown = true;
+
+  // Pause between ID and battery display
+  delay(500);
+  Serial.println("[BATTERY] Switching to battery level display");
+}
+
+void displayBatteryLevel() {
+  // If ID hasn't been shown yet, don't display battery (ID is shown in entry animation)
+  if (!idDisplayShown) {
+    return;
+  }
+
+  // Read current battery level
+  readBatteryVoltage();
+
+  // Calculate number of LEDs to light up (0-23)
+  uint8_t ledCount = (batteryPercentage * NUM_LEDS) / 100;
+  if (ledCount > NUM_LEDS) ledCount = NUM_LEDS;
+
+  // Clear all LEDs first
+  fill_solid(leds, NUM_LEDS, CRGB::Black);
+
+  // Determine single color based on battery percentage
+  CRGB batteryColor;
+  if (batteryPercentage < 26) {
+    // 0-25%: Red (Critical)
+    batteryColor = CRGB::Red;
+  } else if (batteryPercentage < 52) {
+    // 26-51%: Orange (Low)
+    batteryColor = CRGB::Orange;
+  } else if (batteryPercentage < 78) {
+    // 52-77%: Yellow (Medium)
+    batteryColor = CRGB::Yellow;
+  } else {
+    // 78-100%: Green (Good)
+    batteryColor = CRGB::Green;
+  }
+
+  // Fill the calculated number of LEDs with the single battery color
+  for (int i = 0; i < ledCount; i++) {
+    leds[i] = batteryColor;
+  }
+
+  // Add gentle pulsing effect if battery is critical (< 26%)
+  if (batteryPercentage < 26) {
+    static unsigned long lastPulse = 0;
+    static bool pulseBright = true;
+
+    if (millis() - lastPulse > 500) { // Pulse every 500ms
+      uint8_t brightness = pulseBright ? 255 : 100;
+      for (int i = 0; i < ledCount; i++) {
+        leds[i] = leds[i].fadeTo(brightness);
+      }
+      pulseBright = !pulseBright;
+      lastPulse = millis();
+    }
+  }
+
+  FastLED.show();
+}
+
+void exitBatteryMode() {
+  Serial.println("[BATTERY] Exiting battery display mode");
+
+  // Reset button press states
+  buttonPressActive = false;
+  batteryModeActivationPending = false;
+  idDisplayShown = false;  // Reset ID display flag
+
+  // Return to appropriate state
+  if (isArmed) {
+    currentState = STATE_ARMED;
+  } else {
+    currentState = STATE_DISARMED;
+  }
+
+  // Clear LEDs immediately
+  setAllLeds(COLOR_OFF);
+}
+
+// Buzzer ID Display Functions
+
+void displayBuzzerID() {
+  Serial.printf("[ID] Displaying buzzer ID: %d\n", DEVICE_ID);
+
+  uint8_t id = DEVICE_ID;
+  uint8_t fullGroups = id / 5;      // Number of complete groups of 5
+  uint8_t remainder = id % 5;       // Remaining individual LEDs
+
+  Serial.printf("[ID] Groups of 5: %d, Remainder: %d\n", fullGroups, remainder);
+
+  // Clear all LEDs
+  fill_solid(leds, NUM_LEDS, CRGB::Black);
+
+  // Light up complete groups of 5
+  for (int group = 0; group < fullGroups; group++) {
+    int startLED = group * 7;  // 5 LEDs + 2 gap = 7 positions per group
+    for (int i = 0; i < 5; i++) {
+      if (startLED + i < NUM_LEDS) {  // Safety check
+        leds[startLED + i] = CRGB::White;
+      }
+    }
+  }
+
+  // Light up remaining individual LEDs in next group
+  if (remainder > 0) {
+    int startLED = fullGroups * 7;
+    for (int i = 0; i < remainder; i++) {
+      if (startLED + i < NUM_LEDS) {  // Safety check
+        leds[startLED + i] = CRGB::White;
+      }
+    }
+  }
+
+  FastLED.show();
+
+  // Play audio pattern
+  playIDAudio(fullGroups, remainder);
+}
+
+void playIDAudio(uint8_t dashes, uint8_t dots) {
+  Serial.printf("[ID] Playing audio: %d dashes, %d dots\n", dashes, dots);
+
+  // Play dashes (groups of 5)
+  for (int i = 0; i < dashes; i++) {
+    Serial.printf("[ID] Playing dash %d\n", i + 1);
+    tone(BUZZER_PIN, 800, 400);  // Long tone - 800Hz for 400ms
+    delay(400);
+    noTone(BUZZER_PIN);
+    delay(200);  // Gap between dashes
+  }
+
+  // Extra pause between groups and individuals if both exist
+  if (dashes > 0 && dots > 0) {
+    delay(200);
+    Serial.println("[ID] Group separator pause");
+  }
+
+  // Play dots (individuals)
+  for (int i = 0; i < dots; i++) {
+    Serial.printf("[ID] Playing dot %d\n", i + 1);
+    tone(BUZZER_PIN, 1200, 100);  // Short tone - 1200Hz for 100ms
+    delay(100);
+    noTone(BUZZER_PIN);
+    delay(200);  // Gap between dots
+  }
+
+  noTone(BUZZER_PIN);
+  Serial.println("[ID] Audio pattern complete");
 }

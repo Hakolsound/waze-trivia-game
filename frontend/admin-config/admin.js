@@ -44,7 +44,7 @@ class AdminConfig {
         // Set up periodic status updates to handle stale devices
         setInterval(() => {
             this.updateBuzzerSidebar(); // Check for stale devices based on timestamps
-        }, 5000); // Check every 5 seconds
+        }, 3000); // Check every 3 seconds
     }
 
     // Helper function to format timestamp as HH:MM:SS.mmm
@@ -1466,6 +1466,8 @@ class AdminConfig {
             const timeSinceLastSeen = Date.now() - device.last_seen;
             const lastSeenText = this.formatLastSeen(timeSinceLastSeen);
             
+            const batteryStatus = this.formatBatteryStatus(device.battery_percentage, device.battery_voltage);
+
             buzzerElement.innerHTML = `
                 <div class="buzzer-info">
                     <div class="buzzer-header">
@@ -1475,6 +1477,7 @@ class AdminConfig {
                     <div class="buzzer-details">
                         ${teamName ? `<div class="team-name">${teamName}</div>` : '<div class="no-team">No team assigned</div>'}
                         <div class="last-seen">${lastSeenText}</div>
+                        ${batteryStatus}
                     </div>
                 </div>
             `;
@@ -1485,7 +1488,7 @@ class AdminConfig {
 
     formatLastSeen(milliseconds) {
         const seconds = Math.floor(milliseconds / 1000);
-        
+
         if (seconds <= 0) {
             return 'now';
         } else if (seconds < 60) {
@@ -1495,6 +1498,34 @@ class AdminConfig {
         } else {
             return `${Math.floor(seconds / 3600)}h ago`;
         }
+    }
+
+    formatBatteryStatus(percentage, voltage) {
+        if (!percentage && !voltage) {
+            return { text: 'Unknown', class: 'unknown', icon: '🔋' };
+        }
+
+        const pct = parseInt(percentage) || 0;
+        let batteryClass = 'good';
+        let icon = '🔋';
+
+        if (pct <= 10) {
+            batteryClass = 'critical';
+            icon = '🪫';
+        } else if (pct <= 25) {
+            batteryClass = 'low';
+            icon = '🔋';
+        } else if (pct <= 50) {
+            batteryClass = 'medium';
+            icon = '🔋';
+        }
+
+        const voltageText = voltage ? ` (${parseFloat(voltage).toFixed(2)}V)` : '';
+        return {
+            text: `${pct}%${voltageText}`,
+            class: batteryClass,
+            icon: icon
+        };
     }
 
     async refreshBuzzerStatus() {

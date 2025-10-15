@@ -28,6 +28,8 @@ typedef struct {
   bool isPressed;
   unsigned long lastHeartbeat;
   bool isOnline;
+  uint8_t batteryPercentage;  // Battery percentage (0-100)
+  float batteryVoltage;       // Battery voltage (V)
 } DeviceState;
 
 // Message structures (must match group buzzer firmware)
@@ -394,6 +396,8 @@ void setup() {
     devices[i].isPressed = false;
     devices[i].deviceId = 0;
     devices[i].lastHeartbeat = 0;
+    devices[i].batteryPercentage = 0;
+    devices[i].batteryVoltage = 0.0;
   }
   
   // Initialize WiFi in station mode
@@ -567,7 +571,7 @@ void handleBuzzerPress(Message msg) {
 
 void handleHeartbeat(Message msg) {
   Serial.printf("Heartbeat from device %d\n", msg.deviceId);
-  
+
   // Update device state
   for (int i = 0; i < registeredDeviceCount; i++) {
     if (devices[i].deviceId == msg.deviceId) {
@@ -575,7 +579,14 @@ void handleHeartbeat(Message msg) {
       devices[i].isOnline = true;
       devices[i].isArmed = (msg.data[0] == 1);
       devices[i].isPressed = (msg.data[1] == 1);
-      
+
+      // Parse battery data (added in group buzzer firmware)
+      devices[i].batteryPercentage = msg.data[2];
+
+      // Reconstruct battery voltage from two bytes
+      uint16_t voltageInt = msg.data[3] | (msg.data[4] << 8);
+      devices[i].batteryVoltage = voltageInt / 100.0; // Convert back to float
+
       // Flash comm LED
       digitalWrite(COMM_LED_PIN, HIGH);
       delay(10);
@@ -591,7 +602,38 @@ void handleHeartbeat(Message msg) {
 }
 
 void handleStatusUpdate(Message msg) {
-  handleHeartbeat(msg); // Same logic for now
+  Serial.printf("Status update from device %d\n", msg.deviceId);
+
+  // Update device state
+  for (int i = 0; i < registeredDeviceCount; i++) {
+    if (devices[i].deviceId == msg.deviceId) {
+      devices[i].lastHeartbeat = millis();
+      devices[i].isOnline = true;
+      devices[i].isArmed = (msg.data[0] == 1);
+      devices[i].isPressed = (msg.data[1] == 1);
+
+      // Parse battery data from status update (uses data[3] and data[4], data[5] for battery)
+      devices[i].batteryPercentage = msg.data[3];
+
+      // Reconstruct battery voltage from two bytes
+      uint16_t voltageInt = msg.data[4] | (msg.data[5] << 8);
+      devices[i].batteryVoltage = voltageInt / 100.0; // Convert back to float
+
+      // Flash comm LED
+      digitalWrite(COMM_LED_PIN, HIGH);
+      delay(10);
+      digitalWrite(COMM_LED_PIN, LOW);
+
+      // Send status update to Pi
+      if (BINARY_PROTOCOL_ENABLED) {
+        sendBinaryStatus();
+      } else {
+        sendTextStatus();
+      }
+
+      break;
+    }
+  }
 }
 
 void updateDeviceHeartbeat(const uint8_t *mac, uint8_t deviceId) {
@@ -1200,6 +1242,10 @@ void sendStatusToSerial() {
     Serial.print(devices[i].isArmed);
     Serial.print(",pressed=");
     Serial.print(devices[i].isPressed);
+    Serial.print(",battery_percentage=");
+    Serial.print(devices[i].batteryPercentage);
+    Serial.print(",battery_voltage=");
+    Serial.print(devices[i].batteryVoltage, 2); // 2 decimal places
     Serial.print(",mac=");
     for (int j = 0; j < 6; j++) {
       if (devices[i].macAddress[j] < 16) Serial.print("0");

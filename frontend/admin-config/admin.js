@@ -1438,7 +1438,7 @@ class AdminConfig {
             const timeSinceLastSeen = now - device.last_seen;
             const isRecent = timeSinceLastSeen < staleThreshold;
             const isOnlineReported = device.online === true;
-            
+
             // Device is online ONLY if ESP32 reported online=true AND data is recent
             if (isOnlineReported && isRecent) {
                 onlineBuzzers.push(device);
@@ -1446,10 +1446,14 @@ class AdminConfig {
                 offlineBuzzers.push(device);
             }
         });
-        
+
+        // Sort both lists by device_id in ascending order (Team 1, Team 2, etc.)
+        onlineBuzzers.sort((a, b) => parseInt(a.device_id) - parseInt(b.device_id));
+        offlineBuzzers.sort((a, b) => parseInt(a.device_id) - parseInt(b.device_id));
+
         // Update online buzzers
         this.renderBuzzerList(this.elements.onlineBuzzers, onlineBuzzers, true);
-        
+
         // Update offline buzzers
         this.renderBuzzerList(this.elements.offlineBuzzers, offlineBuzzers, false);
         

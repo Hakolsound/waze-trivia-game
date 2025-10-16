@@ -16,7 +16,7 @@
 #define BRIGHTNESS 128     // 0-255, adjust for desired brightness
 
 // Device Configuration
-#define DEVICE_ID 3  // Change this for each group buzzer (1, 2, 3, etc.)
+#define DEVICE_ID 4  // Change this for each group buzzer (1, 2, 3, etc.)
 #define MAX_GROUPS 15
 
 // Battery Monitoring Configuration
@@ -876,6 +876,14 @@ float readBatteryVoltage() {
   // Account for voltage divider
   float batteryVoltage = adcVoltage * BATTERY_VOLTAGE_DIVIDER;
 
+  // Debug output (only occasionally to avoid spam)
+  static unsigned long lastDebugPrint = 0;
+  if (millis() - lastDebugPrint > 10000) { // Print every 10 seconds
+    Serial.printf("[BATTERY] ADC raw: %lu, ADC voltage: %.2fV, Battery voltage: %.2fV\n",
+                  adcAverage, adcVoltage, batteryVoltage);
+    lastDebugPrint = millis();
+  }
+
   return batteryVoltage;
 }
 
@@ -918,6 +926,10 @@ void checkBatteryLevel() {
 }
 
 void sendHeartbeat() {
+  // Update battery reading before sending heartbeat for real-time monitoring
+  batteryVoltage = readBatteryVoltage();
+  batteryPercentage = voltageToPercentage(batteryVoltage);
+
   Message msg;
   msg.messageType = 2; // heartbeat
   msg.deviceId = DEVICE_ID;
@@ -934,8 +946,8 @@ void sendHeartbeat() {
   msg.data[4] = (voltageInt >> 8) & 0xFF; // High byte
 
   esp_err_t result = esp_now_send(coordinatorMAC, (uint8_t*)&msg, sizeof(msg));
-  Serial.print("Heartbeat sent to coordinator - Result: ");
-  Serial.println(result == ESP_OK ? "SUCCESS" : "FAILED");
+  Serial.printf("Heartbeat sent to coordinator - Result: %s (Battery: %.2fV, %d%%)\n",
+                result == ESP_OK ? "SUCCESS" : "FAILED", batteryVoltage, batteryPercentage);
 
   if (result != ESP_OK) {
     Serial.print("Error code: ");

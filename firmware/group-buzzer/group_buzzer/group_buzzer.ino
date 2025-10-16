@@ -16,7 +16,7 @@
 #define BRIGHTNESS 128     // 0-255, adjust for desired brightness
 
 // Device Configuration
-#define DEVICE_ID 6  // Change this for each group buzzer (1, 2, 3, etc.)
+#define DEVICE_ID 3  // Change this for each group buzzer (1, 2, 3, etc.)
 #define MAX_GROUPS 15
 
 // Battery Monitoring Configuration
@@ -1052,12 +1052,15 @@ void displayBatteryLevel() {
     static bool pulseBright = true;
 
     if (millis() - lastPulse > 500) { // Pulse every 500ms
-      uint8_t brightness = pulseBright ? 255 : 100;
-      for (int i = 0; i < ledCount; i++) {
-        leds[i] = leds[i].fadeTo(brightness);
-      }
       pulseBright = !pulseBright;
       lastPulse = millis();
+    }
+
+    // Apply brightness scaling to LEDs for pulsing effect
+    if (!pulseBright) {
+      for (int i = 0; i < ledCount; i++) {
+        leds[i].nscale8(100);  // Dim to ~40% brightness
+      }
     }
   }
 

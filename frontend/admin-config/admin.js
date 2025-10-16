@@ -1500,32 +1500,29 @@ class AdminConfig {
         }
     }
 
-    formatBatteryStatus(percentage, voltage) {
-        if (!percentage && !voltage) {
-            return { text: 'Unknown', class: 'unknown', icon: '🔋' };
+    formatBatteryStatus(batteryPercentage, batteryVoltage) {
+        // Handle undefined or null values
+        if (batteryPercentage === undefined || batteryPercentage === null || batteryVoltage === undefined || batteryVoltage === null) {
+            return '<div class="battery-status unknown"><span class="battery-icon">🔋</span><span>---</span></div>';
         }
 
-        const pct = parseInt(percentage) || 0;
-        let batteryClass = 'good';
-        let icon = '🔋';
+        let statusClass, icon;
 
-        if (pct <= 10) {
-            batteryClass = 'critical';
-            icon = '🪫';
-        } else if (pct <= 25) {
-            batteryClass = 'low';
+        if (batteryPercentage <= 10) {
+            statusClass = 'critical';
             icon = '🔋';
-        } else if (pct <= 50) {
-            batteryClass = 'medium';
+        } else if (batteryPercentage <= 25) {
+            statusClass = 'low';
+            icon = '🔋';
+        } else if (batteryPercentage <= 50) {
+            statusClass = 'medium';
+            icon = '🔋';
+        } else {
+            statusClass = 'good';
             icon = '🔋';
         }
 
-        const voltageText = voltage ? ` (${parseFloat(voltage).toFixed(2)}V)` : '';
-        return {
-            text: `${pct}%${voltageText}`,
-            class: batteryClass,
-            icon: icon
-        };
+        return `<div class="battery-status ${statusClass}"><span class="battery-icon">${icon}</span><span>${batteryPercentage}% (${batteryVoltage.toFixed(2)}V)</span></div>`;
     }
 
     async refreshBuzzerStatus() {

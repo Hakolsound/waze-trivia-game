@@ -236,14 +236,12 @@ void sendBinaryStatus() {
 
   // Send battery data as text after binary status (for per-device details)
   for (int i = 0; i < registeredDeviceCount; i++) {
-    if (devices[i].isOnline) {
-      Serial.print("DEVICE:");
-      Serial.print(devices[i].deviceId);
-      Serial.print(",battery_percentage=");
-      Serial.print(devices[i].batteryPercentage);
-      Serial.print(",battery_voltage=");
-      Serial.println(devices[i].batteryVoltage, 2); // 2 decimal places
-    }
+    Serial.print("DEVICE:");
+    Serial.print(devices[i].deviceId);
+    Serial.print(",battery_percentage=");
+    Serial.print(devices[i].batteryPercentage);
+    Serial.print(",battery_voltage=");
+    Serial.println(devices[i].batteryVoltage, 2); // 2 decimal places
   }
 }
 

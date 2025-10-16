@@ -16,7 +16,7 @@
 #define BRIGHTNESS 128     // 0-255, adjust for desired brightness
 
 // Device Configuration
-#define DEVICE_ID 4  // Change this for each group buzzer (1, 2, 3, etc.)
+#define DEVICE_ID 3  // Change this for each group buzzer (1, 2, 3, etc.)
 #define MAX_GROUPS 15
 
 // Battery Monitoring Configuration
@@ -155,7 +155,15 @@ void setup() {
   // Initialize battery monitoring ADC
   pinMode(BATTERY_ADC_PIN, INPUT);
   analogReadResolution(12); // Set ADC to 12-bit resolution
-  analogSetAttenuation(ADC_11db); // Set ADC attenuation for 0-3.3V range
+  analogSetPinAttenuation(BATTERY_ADC_PIN, ADC_11db); // Set pin-specific attenuation for 0-3.6V range
+
+  // Test ADC immediately after configuration
+  delay(100);
+  uint32_t testADC = analogRead(BATTERY_ADC_PIN);
+  Serial.print("ADC Test immediately after setup - Raw: ");
+  Serial.print(testADC);
+  Serial.print(", Voltage: ");
+  Serial.println((float)testADC / 4095.0 * 3.3);
 
   // Initialize FastLED
   FastLED.addLeds<LED_TYPE, RGB_DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
@@ -863,12 +871,20 @@ float readBatteryVoltage() {
   uint32_t adcSum = 0;
   const int numReadings = 10;
 
+  // Debug: Print each reading
+  Serial.print("[BATTERY DEBUG] Individual ADC readings: ");
   for (int i = 0; i < numReadings; i++) {
-    adcSum += analogRead(BATTERY_ADC_PIN);
+    uint32_t reading = analogRead(BATTERY_ADC_PIN);
+    Serial.print(reading);
+    Serial.print(" ");
+    adcSum += reading;
     delay(10);
   }
+  Serial.println();
 
   uint32_t adcAverage = adcSum / numReadings;
+  Serial.print("[BATTERY DEBUG] ADC average: ");
+  Serial.println(adcAverage);
 
   // Convert ADC reading to voltage
   float adcVoltage = (float)adcAverage / ADC_RESOLUTION * ADC_REFERENCE_VOLTAGE;
@@ -888,13 +904,47 @@ float readBatteryVoltage() {
 }
 
 uint8_t voltageToPercentage(float voltage) {
-  // LiPo discharge curve approximation
-  if (voltage >= BATTERY_MAX_VOLTAGE) return 100;
-  if (voltage <= BATTERY_MIN_VOLTAGE) return 0;
+  // Detailed LiPo discharge curve for 1-2% precision
+  // Based on typical single-cell LiPo discharge characteristics under moderate load
+  // Format: {voltage, percentage}
+  const float dischargeCurve[][2] = {
+    {4.20, 100}, {4.19, 99}, {4.18, 98}, {4.17, 97}, {4.16, 96},
+    {4.15, 95}, {4.14, 94}, {4.13, 93}, {4.12, 92}, {4.11, 91},
+    {4.10, 90}, {4.09, 89}, {4.08, 88}, {4.07, 87}, {4.06, 86},
+    {4.05, 85}, {4.04, 84}, {4.03, 83}, {4.02, 82}, {4.01, 81},
+    {4.00, 80}, {3.99, 79}, {3.98, 78}, {3.97, 77}, {3.96, 76},
+    {3.95, 75}, {3.94, 74}, {3.93, 73}, {3.92, 72}, {3.91, 71},
+    {3.90, 70}, {3.89, 68}, {3.88, 66}, {3.87, 64}, {3.86, 62},
+    {3.85, 60}, {3.84, 58}, {3.83, 56}, {3.82, 54}, {3.81, 52},
+    {3.80, 50}, {3.79, 48}, {3.78, 46}, {3.77, 44}, {3.76, 42},
+    {3.75, 40}, {3.74, 38}, {3.73, 36}, {3.72, 34}, {3.71, 32},
+    {3.70, 30}, {3.69, 28}, {3.68, 26}, {3.67, 24}, {3.66, 22},
+    {3.65, 20}, {3.64, 18}, {3.63, 16}, {3.62, 14}, {3.61, 12},
+    {3.60, 10}, {3.55, 8}, {3.50, 6}, {3.45, 4}, {3.40, 2},
+    {3.30, 1}, {3.00, 0}
+  };
 
-  // Linear approximation for simplicity
-  float percentage = ((voltage - BATTERY_MIN_VOLTAGE) / (BATTERY_MAX_VOLTAGE - BATTERY_MIN_VOLTAGE)) * 100.0;
-  return constrain((uint8_t)percentage, 0, 100);
+  const int curveSize = sizeof(dischargeCurve) / sizeof(dischargeCurve[0]);
+
+  // Handle edge cases
+  if (voltage >= dischargeCurve[0][0]) return 100;
+  if (voltage <= dischargeCurve[curveSize - 1][0]) return 0;
+
+  // Linear interpolation between curve points
+  for (int i = 0; i < curveSize - 1; i++) {
+    if (voltage >= dischargeCurve[i + 1][0]) {
+      float v1 = dischargeCurve[i][0];
+      float v2 = dischargeCurve[i + 1][0];
+      float p1 = dischargeCurve[i][1];
+      float p2 = dischargeCurve[i + 1][1];
+
+      // Linear interpolation between two points
+      float percentage = p1 + (voltage - v1) * (p2 - p1) / (v2 - v1);
+      return constrain((uint8_t)percentage, 0, 100);
+    }
+  }
+
+  return 0;
 }
 
 void updateBatteryCheckInterval() {

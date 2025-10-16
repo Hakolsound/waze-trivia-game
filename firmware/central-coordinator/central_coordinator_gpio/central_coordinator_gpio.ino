@@ -640,7 +640,7 @@ void handleStatusUpdate(Message msg) {
       if (BINARY_PROTOCOL_ENABLED) {
         sendBinaryStatus();
       } else {
-        sendTextStatus();
+        sendStatusToSerial();
       }
 
       break;

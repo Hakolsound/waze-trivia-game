@@ -622,9 +622,6 @@ class ESP32Service extends EventEmitter {
       if (!devicePart.startsWith('DEVICE:')) return;
       const deviceId = devicePart.split(':')[1];
 
-      // Debug logging
-      console.log('[BATTERY DEBUG] Parsing device data:', deviceString);
-      
       if (!deviceId || !/^\d+$/.test(deviceId)) return;
       
       // Get existing state to preserve values
@@ -652,11 +649,9 @@ class ESP32Service extends EventEmitter {
           } else if (key === 'battery_percentage') {
             // Parse battery percentage as integer
             params[key] = parseInt(value) || 0;
-            console.log('[BATTERY DEBUG] Parsed battery_percentage:', params[key]);
           } else if (key === 'battery_voltage') {
             // Parse battery voltage as float
             params[key] = parseFloat(value) || 0.0;
-            console.log('[BATTERY DEBUG] Parsed battery_voltage:', params[key]);
           } else {
             // Keep as string for other values (like MAC addresses)
             params[key] = value;
@@ -674,7 +669,6 @@ class ESP32Service extends EventEmitter {
 
       // Store device state
       this.buzzerStates.set(deviceId, params);
-      console.log(`Updated device ${deviceId}:`, params);
 
       // Emit heartbeat for admin interface (always emit battery updates)
       this.io.emit('buzzer-heartbeat', {

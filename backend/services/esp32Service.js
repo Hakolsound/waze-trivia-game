@@ -600,11 +600,14 @@ class ESP32Service extends EventEmitter {
     try {
       const parts = deviceString.split(',');
       if (parts.length < 2) return;
-      
+
       // Extract device ID
       const devicePart = parts[0];
       if (!devicePart.startsWith('DEVICE:')) return;
       const deviceId = devicePart.split(':')[1];
+
+      // Debug logging
+      console.log('[BATTERY DEBUG] Parsing device data:', deviceString);
       
       if (!deviceId || !/^\d+$/.test(deviceId)) return;
       
@@ -633,9 +636,11 @@ class ESP32Service extends EventEmitter {
           } else if (key === 'battery_percentage') {
             // Parse battery percentage as integer
             params[key] = parseInt(value) || 0;
+            console.log('[BATTERY DEBUG] Parsed battery_percentage:', params[key]);
           } else if (key === 'battery_voltage') {
             // Parse battery voltage as float
             params[key] = parseFloat(value) || 0.0;
+            console.log('[BATTERY DEBUG] Parsed battery_voltage:', params[key]);
           } else {
             // Keep as string for other values (like MAC addresses)
             params[key] = value;

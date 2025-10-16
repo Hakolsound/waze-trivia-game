@@ -201,6 +201,22 @@ class ESP32Service extends EventEmitter {
             // Unknown message type, skip this byte
             this.binaryBuffer = this.binaryBuffer.slice(1);
           }
+        } else if (header === 0x44) { // 'D' - Check if this is a text "DEVICE:" line
+          // Look for newline to extract complete text line
+          const newlineIndex = this.binaryBuffer.indexOf(0x0A); // '\n'
+          if (newlineIndex !== -1) {
+            // Extract and process text line
+            const textLine = this.binaryBuffer.slice(0, newlineIndex).toString('utf8').trim();
+            this.binaryBuffer = this.binaryBuffer.slice(newlineIndex + 1);
+
+            // Process as text data
+            if (textLine.startsWith('DEVICE:')) {
+              this.handleSerialData(textLine);
+            }
+          } else {
+            // Wait for complete line
+            break;
+          }
         } else {
           // Invalid header, skip this byte
           this.binaryBuffer = this.binaryBuffer.slice(1);

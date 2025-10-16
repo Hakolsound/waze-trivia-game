@@ -1845,7 +1845,7 @@ class HostControl {
     updateBuzzerHeartbeat(data) {
         const deviceId = data.device_id || data.id;
         const now = Date.now();
-        
+
         if (this.buzzerDevices.has(deviceId)) {
             const device = this.buzzerDevices.get(deviceId);
             device.last_seen = now;
@@ -1854,6 +1854,13 @@ class HostControl {
             // Only update last_online if device is actually online
             if (data.online === true || device.online === true) {
                 device.last_online = device.last_online || now; // Keep existing or set to now
+            }
+            // Update battery data from heartbeat
+            if (data.battery_percentage !== undefined) {
+                device.battery_percentage = data.battery_percentage;
+            }
+            if (data.battery_voltage !== undefined) {
+                device.battery_voltage = data.battery_voltage;
             }
             this.buzzerDevices.set(deviceId, device);
         } else {
@@ -1867,7 +1874,7 @@ class HostControl {
                 ...data
             });
         }
-        
+
         this.updateModalBuzzerStatusDisplay();
     }
 

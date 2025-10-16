@@ -671,7 +671,7 @@ class ESP32Service extends EventEmitter {
         // Preserve existing last_online when going offline
         params.last_online = existingState.last_online;
       }
-      
+
       // Store device state
       this.buzzerStates.set(deviceId, params);
       console.log(`Updated device ${deviceId}:`, params);

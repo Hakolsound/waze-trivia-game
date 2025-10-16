@@ -1297,6 +1297,13 @@ class AdminConfig {
             device.last_seen = now;
             device.status = 'online'; // Heartbeat means online
             device.online = true;
+            // Update battery data from heartbeat
+            if (data.battery_percentage !== undefined) {
+                device.battery_percentage = data.battery_percentage;
+            }
+            if (data.battery_voltage !== undefined) {
+                device.battery_voltage = data.battery_voltage;
+            }
             this.buzzerDevices.set(deviceId, device);
         } else {
             // Create new device entry from heartbeat - heartbeat means online
@@ -1310,7 +1317,7 @@ class AdminConfig {
                 ...data
             });
         }
-        
+
         this.updateBuzzerSidebar();
     }
 

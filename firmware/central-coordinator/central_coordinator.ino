@@ -23,6 +23,8 @@ typedef struct {
   unsigned long lastHeartbeat;
   unsigned long lastResponse;
   bool isOnline;
+  uint8_t batteryPercentage;  // Battery percentage (0-100)
+  float batteryVoltage;       // Battery voltage (V)
 } DeviceState;
 
 // Message structures (must match group buzzer firmware)
@@ -126,6 +128,8 @@ void setup() {
     devices[i].deviceId = 0;
     devices[i].lastHeartbeat = 0;
     devices[i].lastResponse = 0;
+    devices[i].batteryPercentage = 0;
+    devices[i].batteryVoltage = 0.0;
   }
   
   // Initialize WiFi in station mode
@@ -270,6 +274,14 @@ void handleHeartbeat(Message msg) {
       devices[i].isOnline = true;
       devices[i].isArmed = (msg.data[0] == 1);
       devices[i].isPressed = (msg.data[1] == 1);
+
+      // Parse battery data (added in group buzzer firmware)
+      devices[i].batteryPercentage = msg.data[2];
+
+      // Reconstruct battery voltage from two bytes
+      uint16_t voltageInt = msg.data[3] | (msg.data[4] << 8);
+      devices[i].batteryVoltage = voltageInt / 100.0; // Convert back to float
+
       break;
     }
   }
@@ -283,6 +295,14 @@ void handleStatusUpdate(Message msg) {
       devices[i].isOnline = true;
       devices[i].isArmed = (msg.data[0] == 1);
       devices[i].isPressed = (msg.data[1] == 1);
+
+      // Parse battery data from status update (uses data[3] and data[4], data[5] for battery)
+      devices[i].batteryPercentage = msg.data[3];
+
+      // Reconstruct battery voltage from two bytes
+      uint16_t voltageInt = msg.data[4] | (msg.data[5] << 8);
+      devices[i].batteryVoltage = voltageInt / 100.0; // Convert back to float
+
       break;
     }
   }
@@ -540,7 +560,11 @@ void sendStatusToSerial() {
     device["armed"] = devices[i].isArmed;
     device["pressed"] = devices[i].isPressed;
     device["last_heartbeat"] = devices[i].lastHeartbeat;
-    
+
+    // Add battery data to JSON status
+    device["battery_percentage"] = devices[i].batteryPercentage;
+    device["battery_voltage"] = devices[i].batteryVoltage;
+
     String macStr = "";
     for (int j = 0; j < 6; j++) {
       macStr += String(devices[i].macAddress[j], HEX);

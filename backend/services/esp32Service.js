@@ -603,8 +603,8 @@ class ESP32Service extends EventEmitter {
         mac: state.mac || '',
         time_since_last_seen: timeSinceLastSeen,
         time_since_last_online: timeSinceLastOnline,
-        battery_percentage: state.battery_percentage || 0,
-        battery_voltage: state.battery_voltage || 0.0
+        battery_percentage: state.battery_percentage !== undefined ? state.battery_percentage : null,
+        battery_voltage: state.battery_voltage !== undefined ? state.battery_voltage : null
       });
     }
     
@@ -635,10 +635,10 @@ class ESP32Service extends EventEmitter {
         last_seen: Date.now(), // Always update when we receive data
         last_online: existingState.last_online || Date.now(),
         online: existingState.online !== undefined ? existingState.online : false,
-        armed: existingState.armed || false,
-        pressed: existingState.pressed || false,
-        battery_percentage: existingState.battery_percentage || 0,
-        battery_voltage: existingState.battery_voltage || 0.0
+        armed: existingState.armed === true,
+        pressed: existingState.pressed === true,
+        battery_percentage: existingState.battery_percentage !== undefined ? existingState.battery_percentage : undefined,
+        battery_voltage: existingState.battery_voltage !== undefined ? existingState.battery_voltage : undefined
       };
       
       for (let i = 1; i < parts.length; i++) {

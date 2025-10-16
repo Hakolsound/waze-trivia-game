@@ -611,18 +611,18 @@ class ESP32Service extends EventEmitter {
       
       if (!deviceId || !/^\d+$/.test(deviceId)) return;
       
-      // Get existing state to preserve last_online timestamp
+      // Get existing state to preserve values
       const existingState = this.buzzerStates.get(deviceId) || {};
-      
-      // Parse parameters - default to offline
+
+      // Parse parameters - preserve existing state, only update what's in the message
       const params = {
         last_seen: Date.now(), // Always update when we receive data
-        last_online: existingState.last_online, // Preserve existing last_online
-        online: false, // Default offline
-        armed: false,
-        pressed: false,
-        battery_percentage: 0,  // Default battery percentage
-        battery_voltage: 0.0    // Default battery voltage
+        last_online: existingState.last_online || Date.now(),
+        online: existingState.online !== undefined ? existingState.online : false,
+        armed: existingState.armed || false,
+        pressed: existingState.pressed || false,
+        battery_percentage: existingState.battery_percentage || 0,
+        battery_voltage: existingState.battery_voltage || 0.0
       };
       
       for (let i = 1; i < parts.length; i++) {
@@ -660,18 +660,16 @@ class ESP32Service extends EventEmitter {
       this.buzzerStates.set(deviceId, params);
       console.log(`Updated device ${deviceId}:`, params);
 
-      // Emit heartbeat for admin interface if device is online
-      if (params.online) {
-        this.io.emit('buzzer-heartbeat', {
-          device_id: deviceId,
-          status: 'online',
-          armed: params.armed,
-          pressed: params.pressed,
-          battery_percentage: params.battery_percentage,
-          battery_voltage: params.battery_voltage,
-          timestamp: Date.now()
-        });
-      }
+      // Emit heartbeat for admin interface (always emit battery updates)
+      this.io.emit('buzzer-heartbeat', {
+        device_id: deviceId,
+        status: params.online ? 'online' : 'offline',
+        armed: params.armed,
+        pressed: params.pressed,
+        battery_percentage: params.battery_percentage,
+        battery_voltage: params.battery_voltage,
+        timestamp: Date.now()
+      });
       
     } catch (error) {
       console.error('Error parsing device data:', error);

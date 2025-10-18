@@ -16,7 +16,7 @@
 #define BRIGHTNESS 128     // 0-255, adjust for desired brightness
 
 // Device Configuration
-#define DEVICE_ID 3  // Change this for each group buzzer (1, 2, 3, etc.)
+#define DEVICE_ID 13  // Change this for each group buzzer (1, 2, 3, etc.)
 #define MAX_GROUPS 15
 
 // Battery Monitoring Configuration
@@ -26,6 +26,12 @@
 #define BATTERY_MAX_VOLTAGE 4.2   // Maximum battery voltage (100%)
 #define ADC_RESOLUTION 4095       // 12-bit ADC resolution
 #define ADC_REFERENCE_VOLTAGE 3.3 // ESP32 ADC reference voltage
+
+// Calibration factors (adjust these to match actual readings)
+// To calibrate: measure battery voltage with multimeter, compare to reading, adjust factor
+// Formula: CALIBRATION_FACTOR = actual_voltage / measured_voltage
+// Example: multimeter=3.91V, device=3.56V -> factor=3.91/3.56=1.098
+#define BATTERY_CALIBRATION_FACTOR 1.098  // Adjust this value per device if needed
 
 // Central coordinator MAC address
 uint8_t coordinatorMAC[] = {0x78, 0xE3, 0x6D, 0x1B, 0x13, 0x28};
@@ -892,10 +898,13 @@ float readBatteryVoltage() {
   // Account for voltage divider
   float batteryVoltage = adcVoltage * BATTERY_VOLTAGE_DIVIDER;
 
+  // Apply calibration factor to correct for resistor tolerances and ADC variations
+  batteryVoltage *= BATTERY_CALIBRATION_FACTOR;
+
   // Debug output (only occasionally to avoid spam)
   static unsigned long lastDebugPrint = 0;
   if (millis() - lastDebugPrint > 10000) { // Print every 10 seconds
-    Serial.printf("[BATTERY] ADC raw: %lu, ADC voltage: %.2fV, Battery voltage: %.2fV\n",
+    Serial.printf("[BATTERY] ADC raw: %lu, ADC voltage: %.2fV, Battery voltage (calibrated): %.2fV\n",
                   adcAverage, adcVoltage, batteryVoltage);
     lastDebugPrint = millis();
   }

@@ -16,7 +16,7 @@
 #define BRIGHTNESS 128     // 0-255, adjust for desired brightness
 
 // Device Configuration
-#define DEVICE_ID 13  // Change this for each group buzzer (1, 2, 3, etc.)
+#define DEVICE_ID 10  // Change this for each group buzzer (1, 2, 3, etc.)
 #define MAX_GROUPS 15
 
 // Battery Monitoring Configuration
@@ -927,10 +927,10 @@ uint8_t voltageToPercentage(float voltage) {
     {3.85, 60}, {3.84, 58}, {3.83, 56}, {3.82, 54}, {3.81, 52},
     {3.80, 50}, {3.79, 48}, {3.78, 46}, {3.77, 44}, {3.76, 42},
     {3.75, 40}, {3.74, 38}, {3.73, 36}, {3.72, 34}, {3.71, 32},
-    {3.70, 30}, {3.69, 28}, {3.68, 26}, {3.67, 24}, {3.66, 22},
-    {3.65, 20}, {3.64, 18}, {3.63, 16}, {3.62, 14}, {3.61, 12},
-    {3.60, 10}, {3.55, 8}, {3.50, 6}, {3.45, 4}, {3.40, 2},
-    {3.30, 1}, {3.00, 0}
+    {3.70, 30}, {3.69, 29}, {3.68, 28}, {3.67, 27}, {3.66, 26},
+    {3.65, 25}, {3.64, 24}, {3.63, 23}, {3.62, 22}, {3.61, 21},
+    {3.60, 20}, {3.58, 18}, {3.56, 16}, {3.54, 14}, {3.52, 12},
+    {3.50, 10}, {3.45, 7}, {3.40, 4}, {3.30, 2}, {3.00, 0}
   };
 
   const int curveSize = sizeof(dischargeCurve) / sizeof(dischargeCurve[0]);

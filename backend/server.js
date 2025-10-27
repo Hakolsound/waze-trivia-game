@@ -233,7 +233,7 @@ io.on('connection', (socket) => {
   socket.on('hide-leaderboard', () => {
     // Broadcast leaderboard hide to all display clients
     io.to('game-display').emit('hide-leaderboard');
-    console.log('Leaderboard hide broadcasted to display clients');
+    // console.log('Leaderboard hide broadcasted to display clients');  // Too verbose
   });
   
   socket.on('disconnect', () => {

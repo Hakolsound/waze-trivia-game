@@ -41,7 +41,8 @@ class ESP32Service extends EventEmitter {
       STATUS_REQUEST: 0x04,
       CORRECT_ANSWER: 0x05,
       WRONG_ANSWER: 0x06,
-      END_ROUND: 0x07
+      END_ROUND: 0x07,
+      ARM_SPECIFIC: 0x08
     };
 
     this.MESSAGE_SIZES = {
@@ -259,7 +260,7 @@ class ESP32Service extends EventEmitter {
     const timestamp = buffer.readUInt32LE(8);
     const gameId = buffer.readUInt32LE(12);
 
-    console.log(`Binary Status: devices=0x${deviceMask.toString(16)}, armed=0x${armedMask.toString(16)}, pressed=0x${pressedMask.toString(16)}`);
+    // console.log(`Binary Status: devices=0x${deviceMask.toString(16)}, armed=0x${armedMask.toString(16)}, pressed=0x${pressedMask.toString(16)}`);  // Too verbose
 
     // Update device states from bitmasks
     this.updateDeviceStatesFromMasks(deviceMask, armedMask, pressedMask);
@@ -383,16 +384,20 @@ class ESP32Service extends EventEmitter {
       const deviceId = parseInt(command.substring(5)) || 0;
       return this.sendBinaryCommand(this.COMMAND_TYPES.TEST, deviceId, 0);
     } else if (command.startsWith('ARM_SPECIFIC:')) {
-      // ARM_SPECIFIC is not supported in binary protocol yet, send as text
-      if (this.isConnectedFlag && this.serialPort) {
-        console.log('Sending ESP32 text command:', command);
-        this.serialPort.write(command + '\n');
-        return true;
-      } else {
-        console.log('ESP32 not connected, simulating command:', command);
-        this.simulateCommand(command);
-        return false;
-      }
+      // Parse device list and encode as bitmask
+      const deviceList = command.substring(13);
+      const deviceIds = deviceList.split(',').map(id => parseInt(id.trim())).filter(id => id >= 1 && id <= 15);
+
+      // Create 16-bit bitmask (bit 0 unused, bits 1-15 for devices 1-15)
+      let bitmask = 0;
+      deviceIds.forEach(id => {
+        bitmask |= (1 << id);
+      });
+
+      console.log(`[ARM_SPECIFIC] Arming devices: [${deviceIds.join(', ')}]`);
+      console.log(`[ARM_SPECIFIC] Bitmask: 0x${bitmask.toString(16).padStart(4, '0')}`);
+
+      return this.sendBinaryArmSpecific(bitmask, parseInt(this.currentGameId) || 0);
     } else {
       console.warn('Unknown command for binary protocol:', command);
       return false;
@@ -419,6 +424,31 @@ class ESP32Service extends EventEmitter {
     buffer[7] = checksum;
 
     console.log(`Sending binary command: type=${command}, target=${targetDevice}, gameId=${gameId}`);
+    this.serialPort.write(buffer);
+    return true;
+  }
+
+  sendBinaryArmSpecific(bitmask, gameId = 0) {
+    if (!this.isConnectedFlag || !this.serialPort) {
+      console.log('ESP32 not connected, simulating ARM_SPECIFIC command');
+      return false;
+    }
+
+    const buffer = Buffer.alloc(this.MESSAGE_SIZES.COMMAND_MESSAGE);
+    buffer[0] = 0xBB; // Command header
+    buffer[1] = this.COMMAND_TYPES.ARM_SPECIFIC; // 0x08
+    buffer.writeUInt16LE(bitmask, 2); // Bitmask in bytes 2-3
+    buffer.writeUInt32LE(gameId, 4); // GameId in bytes 4-7 (only using 3 bytes)
+
+    // Calculate checksum (XOR of first 7 bytes)
+    let checksum = 0;
+    for (let i = 0; i < 7; i++) {
+      checksum ^= buffer[i];
+    }
+    buffer[7] = checksum;
+
+    console.log(`[ARM_SPECIFIC] Sending binary: bitmask=0x${bitmask.toString(16)}, gameId=${gameId}`);
+    console.log(`[ARM_SPECIFIC] Binary data: ${buffer.toString('hex')}`);
     this.serialPort.write(buffer);
     return true;
   }

@@ -16,7 +16,7 @@
 #define BRIGHTNESS 128     // 0-255, adjust for desired brightness
 
 // Device Configuration
-#define DEVICE_ID 10  // Change this for each group buzzer (1, 2, 3, etc.)
+#define DEVICE_ID 15  // Change this for each group buzzer (1, 2, 3, etc.)
 #define MAX_GROUPS 15
 
 // Battery Monitoring Configuration
@@ -78,6 +78,13 @@ uint8_t chaserPosition = 0;
 unsigned long answerFeedbackTimeout = 0;
 bool waitingForAnswerFeedback = false;
 
+// Buzzer press ACK tracking
+bool waitingForPressAck = false;
+unsigned long pressAckTimeout = 0;
+uint8_t pressRetryCount = 0;
+#define PRESS_ACK_TIMEOUT_MS 100  // 100ms timeout - faster retry in race scenarios
+#define MAX_PRESS_RETRIES 3
+
 // Battery monitoring variables
 float batteryVoltage = 0.0;
 uint8_t batteryPercentage = 0;
@@ -129,19 +136,44 @@ void OnDataSent(const wifi_tx_info_t *tx_info, esp_now_send_status_t status) {
 void OnDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *incomingData, int len) {
   Serial.printf("ESP-NOW received %d bytes\n", len);
 
+  // Check first byte to determine message type
+  // If it's >= 5, it's likely a Message type (press ACK = type 5)
+  // If it's 1-4 or 7, it's a Command
+  uint8_t firstByte = incomingData[0];
+
+  if (firstByte == 5) {
+    // This is a buzzer press ACK message
+    Serial.println("[PRESS] ACK received from coordinator - press confirmed!");
+    waitingForPressAck = false;
+    pressRetryCount = 0;
+
+    // NOW change state to PRESSED (white flashing) - press is confirmed registered
+    buzzerPressed = true;
+    currentState = STATE_ANSWERING_NOW;
+    updateLedState();
+
+    // Start waiting for answer feedback with 30 second timeout
+    waitingForAnswerFeedback = true;
+    answerFeedbackTimeout = millis() + 30000;
+
+    Serial.println("[PRESS] State changed to ANSWERING_NOW (white) - press confirmed on server");
+    return;
+  }
+
+  // Otherwise treat as Command
   Command cmd;
   memcpy(&cmd, incomingData, sizeof(cmd));
 
   Serial.printf("Command data: cmd=%d, target=%d, timestamp=%lu\n",
                 cmd.command, cmd.targetDevice, cmd.timestamp);
-  
+
   char macStr[18];
   snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
            recv_info->src_addr[0], recv_info->src_addr[1], recv_info->src_addr[2],
            recv_info->src_addr[3], recv_info->src_addr[4], recv_info->src_addr[5]);
 
   Serial.printf("Received %d bytes from %s\n", len, macStr);
-  
+
   if (cmd.targetDevice == 0 || cmd.targetDevice == DEVICE_ID) {
     handleCommand(cmd);
   }
@@ -184,6 +216,10 @@ void setup() {
   // Initialize WiFi in station mode
   WiFi.mode(WIFI_STA);
   Serial.println("WiFi set to Station mode");
+
+  // Set WiFi channel to 13 (must match coordinator - optimal for European venues)
+  esp_wifi_set_channel(13, WIFI_SECOND_CHAN_NONE);
+  Serial.println("WiFi channel set to 13");
   
   // Wait for WiFi to initialize and get MAC
   delay(500);
@@ -444,6 +480,19 @@ void loop() {
     Serial.println("[BATTERY] Battery display mode timeout - exiting");
   }
   
+  // Handle buzzer press ACK timeout and retry
+  if (waitingForPressAck && currentTime > pressAckTimeout) {
+    pressRetryCount++;
+    if (pressRetryCount < MAX_PRESS_RETRIES) {
+      Serial.printf("[PRESS] ACK timeout, retrying (%d/%d)\n", pressRetryCount + 1, MAX_PRESS_RETRIES);
+      sendBuzzerPressWithRetry();
+    } else {
+      Serial.println("[PRESS] ACK timeout after max retries, giving up");
+      waitingForPressAck = false;
+      pressRetryCount = 0;
+    }
+  }
+
   // Handle answer feedback timeout (fallback for older coordinator)
   if (waitingForAnswerFeedback && currentTime > answerFeedbackTimeout) {
     waitingForAnswerFeedback = false;
@@ -522,34 +571,49 @@ void checkBuzzerButton() {
 }
 
 void handleBuzzerPress() {
-  buzzerPressed = true;
+  // DON'T change state yet - only change when ACK received
+  // This allows player to press again if first attempt fails
   buzzerPressTime = millis();
-  currentState = STATE_ANSWERING_NOW; // Change to flashing white state immediately
-
-  // Update LEDs immediately to show white flashing
-  updateLedState();
-
-  // Start waiting for answer feedback with 30 second timeout
-  waitingForAnswerFeedback = true;
-  answerFeedbackTimeout = millis() + 30000;
 
   Serial.print("BUZZER PRESSED! Device: ");
   Serial.print(DEVICE_ID);
   Serial.print(" Time: ");
   Serial.println(buzzerPressTime);
+  Serial.println("[PRESS] Staying in ARMED state until ACK - player can press again to help retry");
 
-  // Send buzzer press message
+  // Send buzzer press message with ACK tracking
+  sendBuzzerPressWithRetry();
+
+  // Play buzzer sound to give feedback, but keep LED blue (armed)
+  playBuzzerPattern();
+}
+
+void sendBuzzerPressWithRetry() {
   Message msg;
   msg.messageType = 1; // buzzer_press
   msg.deviceId = DEVICE_ID;
   msg.timestamp = buzzerPressTime;
-  memset(msg.data, 0, sizeof(msg.data)); // Clear data array
+  memset(msg.data, 0, sizeof(msg.data));
 
   esp_err_t result = esp_now_send(coordinatorMAC, (uint8_t*)&msg, sizeof(msg));
-  Serial.printf("Buzzer press message send result: %s\n", result == ESP_OK ? "SUCCESS" : "FAILED");
 
-  // Play buzzer pattern simultaneously with LED feedback
-  playBuzzerPattern();
+  if (result == ESP_OK) {
+    Serial.printf("[PRESS] Sent (attempt %d/%d)\n", pressRetryCount + 1, MAX_PRESS_RETRIES);
+    waitingForPressAck = true;
+    pressAckTimeout = millis() + PRESS_ACK_TIMEOUT_MS;
+  } else {
+    Serial.printf("[PRESS] Send FAILED (attempt %d/%d)\n", pressRetryCount + 1, MAX_PRESS_RETRIES);
+    // Retry immediately if send failed
+    pressRetryCount++;
+    if (pressRetryCount < MAX_PRESS_RETRIES) {
+      delay(20); // Small delay before retry
+      sendBuzzerPressWithRetry();
+    } else {
+      Serial.println("[PRESS] Max retries reached, giving up");
+      waitingForPressAck = false;
+      pressRetryCount = 0;
+    }
+  }
 }
 
 void sendCommandAck(uint16_t sequenceId) {

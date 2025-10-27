@@ -101,7 +101,7 @@ int buzzerPressCount = 0;
 
 // Acknowledgment system configuration
 #define MAX_PENDING_COMMANDS 20
-#define ACK_TIMEOUT_MS 500
+#define ACK_TIMEOUT_MS 300  // Reduced from 500ms for faster retry in race scenarios
 #define MAX_RETRIES 3
 #define RETRY_DELAY_MS 100
 
@@ -239,7 +239,7 @@ void sendBinaryStatus() {
     if (devices[i].isOnline) {
       Serial.print("DEVICE:");
       Serial.print(devices[i].deviceId);
-      Serial.print(",battery_percentage=");
+      Serial.print(",online=1,battery_percentage=");
       Serial.print(devices[i].batteryPercentage);
       Serial.print(",battery_voltage=");
       Serial.println(devices[i].batteryVoltage, 2); // 2 decimal places
@@ -248,7 +248,9 @@ void sendBinaryStatus() {
 }
 
 void processBinaryCommands() {
-  Serial.println("Processing binary commands...");
+  if (TEXT_DEBUG_ENABLED) {
+    Serial.println("Processing binary commands...");
+  }
 
   // Check if first byte is text (ARM_SPECIFIC starts with 'A' = 0x41)
   if (Serial.available() > 0) {
@@ -263,7 +265,9 @@ void processBinaryCommands() {
 
   while (Serial.available()) {
     uint8_t byte = Serial.read();
-    Serial.printf("Read byte: 0x%02X (pos=%d)\n", byte, commandBufferPos);
+    if (TEXT_DEBUG_ENABLED) {
+      Serial.printf("Read byte: 0x%02X (pos=%d)\n", byte, commandBufferPos);
+    }
 
     // Wait for command header
     if (commandBufferPos == 0 && byte != 0xBB) {
@@ -324,6 +328,17 @@ void handleBinaryCommand(CommandMessage cmd) {
     case 7: // END_ROUND
       endRoundReset(cmd.targetDevice);
       break;
+    case 8: // ARM_SPECIFIC
+      {
+        // Extract bitmask from bytes 2-3
+        uint16_t bitmask = cmd.targetDevice | (cmd.gameId & 0xFF) << 8;
+        uint32_t gameId = cmd.gameId >> 8;
+        currentGameId = String(gameId);
+
+        Serial.printf("[ARM_SPECIFIC] Binary command received: bitmask=0x%04X, gameId=%lu\n", bitmask, gameId);
+        armSpecificBuzzersByBitmask(bitmask);
+      }
+      break;
     default:
       if (TEXT_DEBUG_ENABLED) {
         Serial.print("ERROR:Unknown binary command ");
@@ -346,19 +361,24 @@ void OnDataSent(const wifi_tx_info_t *tx_info, esp_now_send_status_t status) {
 
 // Handle incoming messages
 void OnDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len) {
-  char macStr[18];
-  snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
-           recv_info->src_addr[0], recv_info->src_addr[1], recv_info->src_addr[2],
-           recv_info->src_addr[3], recv_info->src_addr[4], recv_info->src_addr[5]);
-  
-  Serial.printf("Received %d bytes from: %s\n", len, macStr);
-  
+  // Reduced verbose logging to prevent coordinator overload
+  // Only log for debugging when TEXT_DEBUG_ENABLED is true
+  if (TEXT_DEBUG_ENABLED) {
+    char macStr[18];
+    snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
+             recv_info->src_addr[0], recv_info->src_addr[1], recv_info->src_addr[2],
+             recv_info->src_addr[3], recv_info->src_addr[4], recv_info->src_addr[5]);
+    Serial.printf("Received %d bytes from: %s\n", len, macStr);
+  }
+
   // Parse the message
   if (len == sizeof(Message)) {
     Message msg;
     memcpy(&msg, data, sizeof(msg));
-    
-    Serial.printf("Message type: %d, Device ID: %d\n", msg.messageType, msg.deviceId);
+
+    if (TEXT_DEBUG_ENABLED) {
+      Serial.printf("Message type: %d, Device ID: %d\n", msg.messageType, msg.deviceId);
+    }
     
     // Update device heartbeat first (registers device if new)
     updateDeviceHeartbeat(recv_info->src_addr, msg.deviceId);
@@ -415,6 +435,11 @@ void setup() {
   // Initialize WiFi in station mode
   WiFi.mode(WIFI_STA);
   delay(500);
+
+  // Set WiFi channel to 13 (optimal for European ballroom with multiple APs)
+  // Channel 13: Legal in Greece (ETSI), rarely used by venue WiFi, minimal Bluetooth overlap
+  esp_wifi_set_channel(13, WIFI_SECOND_CHAN_NONE);
+  Serial.println("WiFi channel set to 13");
   
   // Print coordinator MAC address
   Serial.println("=== ESP32 Central Coordinator ===");
@@ -447,7 +472,9 @@ void loop() {
 
   // Check for serial commands from Raspberry Pi
   if (Serial.available()) {
-    Serial.printf("Serial data available: %d bytes\n", Serial.available());
+    if (TEXT_DEBUG_ENABLED) {
+      Serial.printf("Serial data available: %d bytes\n", Serial.available());
+    }
     if (BINARY_PROTOCOL_ENABLED) {
       processBinaryCommands();
     } else {
@@ -463,7 +490,7 @@ void loop() {
 
   // Send periodic status updates
   static unsigned long lastStatusUpdate = 0;
-  if (currentTime - lastStatusUpdate > 5000) {
+  if (currentTime - lastStatusUpdate > 10000) {  // Increased from 5000ms to 10000ms to reduce overhead
     if (BINARY_PROTOCOL_ENABLED) {
       sendBinaryStatus();
     } else {
@@ -471,11 +498,11 @@ void loop() {
     }
     lastStatusUpdate = currentTime;
   }
-  
+
   // Handle system LED status
   updateStatusLED();
-  
-  delay(10);
+
+  delay(1);  // Minimal delay - reduced from 10ms to prevent coordinator overload
 }
 
 void handleSerialCommand() {
@@ -524,21 +551,27 @@ void handleBuzzerPress(Message msg) {
   Serial.printf("Buzzer press received from device %d (gameActive=%s, systemArmed=%s)\n",
                 msg.deviceId, gameActive ? "true" : "false", systemArmed ? "true" : "false");
 
+  // Always send ACK first to stop retry loop
+  sendBuzzerPressAck(msg.deviceId);
+
   if (!gameActive && !systemArmed) {
-    Serial.println("ERROR:Game not active and system not armed");
+    Serial.printf("[LATE_PRESS] Buzzer %d pressed after disarm - sending DISARM to sync state\n", msg.deviceId);
+    // Send DISARM command to sync buzzer state (it thinks it's armed but game ended)
+    sendCommandWithAck(msg.deviceId, CMD_DISARM);
     return;
   }
 
   // Check if already pressed
   for (int i = 0; i < buzzerPressCount; i++) {
     if (buzzerOrder[i].deviceId == msg.deviceId) {
-      return; // Already recorded
+      Serial.printf("[DUPLICATE] Buzzer %d already pressed, ignoring\n", msg.deviceId);
+      return; // Already recorded, but ACK was already sent above
     }
   }
-  
+
   // Calculate delta time
   uint32_t deltaMs = msg.timestamp - gameStartTime;
-  
+
   // Record buzzer press
   if (buzzerPressCount < MAX_GROUPS) {
     buzzerOrder[buzzerPressCount].deviceId = msg.deviceId;
@@ -547,7 +580,7 @@ void handleBuzzerPress(Message msg) {
     buzzerOrder[buzzerPressCount].position = buzzerPressCount + 1;
     buzzerPressCount++;
   }
-  
+
   // Update device state
   for (int i = 0; i < registeredDeviceCount; i++) {
     if (devices[i].deviceId == msg.deviceId) {
@@ -555,7 +588,7 @@ void handleBuzzerPress(Message msg) {
       break;
     }
   }
-  
+
   // Send to Pi using binary or text protocol
   if (BINARY_PROTOCOL_ENABLED) {
     sendBinaryBuzzerPress(msg.deviceId, msg.timestamp, deltaMs, buzzerPressCount);
@@ -640,7 +673,7 @@ void handleStatusUpdate(Message msg) {
       if (BINARY_PROTOCOL_ENABLED) {
         sendBinaryStatus();
       } else {
-        sendTextStatus();
+        sendStatusToSerial();
       }
 
       break;
@@ -970,7 +1003,7 @@ void armAllBuzzers() {
       } else {
         failed++;
       }
-      delay(10); // Small delay between sends
+      delay(20); // Increased delay to reduce RF congestion with 15 buzzers
     }
   }
 
@@ -996,7 +1029,7 @@ void disarmAllBuzzers() {
       } else {
         failed++;
       }
-      delay(10);
+      delay(20); // Increased delay to reduce RF congestion with 15 buzzers
     }
   }
 
@@ -1074,7 +1107,7 @@ void armSpecificBuzzers(String deviceList) {
             Serial.println(deviceId);
           }
           found = true;
-          delay(10);
+          delay(20); // Increased delay to reduce RF congestion with 15 buzzers
           break;
         }
       }
@@ -1093,6 +1126,60 @@ void armSpecificBuzzers(String deviceList) {
 
   Serial.print("ACK:ARM_SPECIFIC:");
   Serial.println(armedCount);
+  Serial.printf("Specific buzzers armed with ACK - Success: %d, Failed: %d\n", sent, failed);
+}
+
+void armSpecificBuzzersByBitmask(uint16_t bitmask) {
+  Serial.printf("[ARM_SPECIFIC] Bitmask function called: 0x%04X\n", bitmask);
+
+  systemArmed = true;
+  buzzerPressCount = 0;
+  gameStartTime = millis();
+
+  // Clear previous buzzer presses
+  for (int i = 0; i < MAX_GROUPS; i++) {
+    buzzerOrder[i] = {0, 0, 0, 0};
+    if (devices[i].isRegistered) {
+      devices[i].isPressed = false;
+    }
+  }
+
+  int sent = 0;
+  int failed = 0;
+  int armedCount = 0;
+
+  // Loop through all possible device IDs (1-15)
+  for (uint8_t deviceId = 1; deviceId <= 15; deviceId++) {
+    // Check if this device's bit is set in the bitmask
+    if (bitmask & (1 << deviceId)) {
+      Serial.printf("[ARM_SPECIFIC] Bitmask bit %d set, looking for device %d\n", deviceId, deviceId);
+
+      // Find device by ID and send ARM command
+      bool found = false;
+      for (int i = 0; i < registeredDeviceCount; i++) {
+        if (devices[i].deviceId == deviceId && devices[i].isOnline) {
+          Serial.printf("[ARM_SPECIFIC] Found device %d online, sending ARM\n", deviceId);
+
+          if (sendCommandWithAck(deviceId, CMD_ARM)) {
+            armedCount++;
+            sent++;
+          } else {
+            failed++;
+            Serial.printf("[ARM_SPECIFIC] Failed to arm device %d\n", deviceId);
+          }
+          found = true;
+          delay(20); // Increased delay to reduce RF congestion with 15 buzzers
+          break;
+        }
+      }
+      if (!found) {
+        Serial.printf("[ARM_SPECIFIC] Device %d not found in registered/online devices\n", deviceId);
+      }
+    }
+  }
+
+  Serial.printf("[ACK] ARM_SPECIFIC sent to %d devices (%d successful, %d failed)\n",
+                armedCount, sent, failed);
   Serial.printf("Specific buzzers armed with ACK - Success: %d, Failed: %d\n", sent, failed);
 }
 
@@ -1126,6 +1213,34 @@ void testBuzzer(uint8_t deviceId) {
     }
     Serial.print("ERROR:Device not found ");
     Serial.println(deviceId);
+  }
+}
+
+void sendBuzzerPressAck(uint8_t deviceId) {
+  // Send immediate ACK for buzzer press (fire-and-forget, no retry needed)
+  // Find device MAC address
+  uint8_t* targetMAC = nullptr;
+  for (int i = 0; i < registeredDeviceCount; i++) {
+    if (devices[i].deviceId == deviceId) {
+      targetMAC = devices[i].macAddress;
+      break;
+    }
+  }
+
+  if (targetMAC) {
+    // Create a simple ACK message (type 5 = buzzer_press_ack)
+    Message ackMsg;
+    ackMsg.messageType = 5; // buzzer_press_ack
+    ackMsg.deviceId = deviceId;
+    ackMsg.timestamp = millis();
+    memset(ackMsg.data, 0, sizeof(ackMsg.data));
+
+    esp_err_t result = esp_now_send(targetMAC, (uint8_t*)&ackMsg, sizeof(ackMsg));
+    if (result == ESP_OK) {
+      Serial.printf("[PRESS_ACK] Sent to buzzer %d\n", deviceId);
+    } else {
+      Serial.printf("[PRESS_ACK] Failed to send to buzzer %d\n", deviceId);
+    }
   }
 }
 

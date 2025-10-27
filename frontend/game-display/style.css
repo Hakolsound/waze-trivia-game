@@ -569,7 +569,7 @@ h1.question-text,
   position: fixed;
   top: 0;
   left: 0;
-  right: 0;
+  right: 400px; /* Leave space for buzzer sidebar */
   bottom: 0;
   display: flex;
   flex-direction: column;

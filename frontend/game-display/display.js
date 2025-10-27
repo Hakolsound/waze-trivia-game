@@ -780,7 +780,7 @@ class GameDisplay {
         // Hide after longer delay to let people appreciate the enhanced display
         setTimeout(() => {
             feedback.classList.remove('show');
-        }, 4000);
+        }, 2500);
     }
 
     // Utility Methods

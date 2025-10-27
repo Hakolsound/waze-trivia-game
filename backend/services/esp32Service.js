@@ -124,8 +124,8 @@ class ESP32Service extends EventEmitter {
 
   handleSerialData(data) {
     try {
-      console.log('ESP32 Data:', data);
-      
+      // console.log('ESP32 Data:', data);  // Too verbose with 15 buzzers
+
       if (data.startsWith('BUZZER:')) {
         const buzzerData = data.substring(7);
         const [buzzerId, timestamp, deltaMs, position] = buzzerData.split(',');
@@ -146,7 +146,7 @@ class ESP32Service extends EventEmitter {
         this.updateBuzzerStates(statusData);
       } else if (data.startsWith('DEVICE:')) {
         // Parse DEVICE:1,online=1,armed=0,pressed=0,mac=EC:62:60:1D:E8:D4 format
-        console.log('ESP32 Device Data:', data);
+        // console.log('ESP32 Device Data:', data);  // Too verbose with 15 buzzers
         this.parseDeviceData(data);
         
         // Emit to Socket.io clients

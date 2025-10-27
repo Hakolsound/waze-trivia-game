@@ -259,7 +259,7 @@ esp32Service.on('device-data', (data) => {
     if (deviceMatch) {
       const deviceId = deviceMatch[1];
       const isOnline = deviceMatch[2] === '1';
-      console.log(`Updating buzzer ${deviceId} status: ${isOnline ? 'online' : 'offline'}`);
+      // console.log(`Updating buzzer ${deviceId} status: ${isOnline ? 'online' : 'offline'}`);  // Too verbose
       gameService.updateBuzzerOnlineStatus(deviceId, isOnline);
     }
   }

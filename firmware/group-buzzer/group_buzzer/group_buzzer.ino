@@ -232,7 +232,12 @@ void setup() {
   // Set WiFi channel to 13 (must match coordinator - optimal for European venues)
   esp_wifi_set_channel(13, WIFI_SECOND_CHAN_NONE);
   Serial.println("WiFi channel set to 13");
-  
+
+  // Set maximum TX power for better range in crowded ballroom (170 people)
+  // Value 84 = 21 dBm (maximum allowed, default is ~78 = 19.5 dBm)
+  esp_wifi_set_max_tx_power(84);
+  Serial.println("WiFi TX power set to maximum (21 dBm)");
+
   // Wait for WiFi to initialize and get MAC
   delay(500);
   

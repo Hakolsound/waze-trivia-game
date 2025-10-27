@@ -160,6 +160,18 @@ void OnDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *incomingDat
     return;
   }
 
+  if (firstByte == 8) {
+    // This is an END_ROUND ACK request - coordinator wants confirmation we reset
+    Serial.println("[END_ROUND] ACK request received - sending confirmation");
+    Message ackMsg;
+    ackMsg.messageType = 8; // END_ROUND_ACK
+    ackMsg.deviceId = DEVICE_ID;
+    ackMsg.timestamp = millis();
+    memset(ackMsg.data, 0, sizeof(ackMsg.data));
+    esp_now_send(coordinatorMAC, (uint8_t*)&ackMsg, sizeof(ackMsg));
+    return;
+  }
+
   // Otherwise treat as Command
   Command cmd;
   memcpy(&cmd, incomingData, sizeof(cmd));
@@ -697,10 +709,10 @@ void handleCommand(Command cmd) {
 }
 
 void armBuzzer() {
-  // Don't arm buzzers that are in wrong answer state - they should stay red until round ends
+  // Force-reset if in wrong answer state (missed END_ROUND) - prevents stuck state
   if (currentState == STATE_WRONG_ANSWER) {
-    Serial.println("Buzzer in wrong answer state - ignoring ARM command until round ends");
-    return;
+    Serial.println("[ARM] Buzzer in wrong answer state - forcing reset before arming (missed END_ROUND?)");
+    endRoundReset(); // Force reset to clear wrong state
   }
 
   if (!isArmed) {
@@ -818,14 +830,20 @@ void wrongAnswerFeedback() {
 }
 
 void endRoundReset() {
-  Serial.println("End round - returning to armed state");
+  Serial.println("[END_ROUND] Resetting buzzer state");
+
+  // Clear all pending states
   buzzerPressed = false;
-  waitingForAnswerFeedback = false; // Clear timeout
-  if (isArmed) {
-    currentState = STATE_ARMED;
-  } else {
-    currentState = STATE_DISARMED;
-  }
+  waitingForAnswerFeedback = false;
+  waitingForPressAck = false;
+  pressRetryCount = 0;
+
+  // Force state to disarmed regardless of previous state
+  // This ensures wrong answer state is cleared even if buzzer wasn't armed
+  isArmed = false;
+  currentState = STATE_DISARMED;
+
+  Serial.printf("[END_ROUND] Device %d reset to DISARMED (ready for next question)\n", DEVICE_ID);
 }
 
 void playBuzzerPattern() {

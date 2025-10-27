@@ -99,6 +99,20 @@ typedef struct {
 BuzzerPress buzzerOrder[MAX_GROUPS];
 int buzzerPressCount = 0;
 
+// END_ROUND reset tracking
+typedef struct {
+  uint8_t deviceId;
+  bool confirmed;
+  uint8_t retryCount;
+  unsigned long lastAttempt;
+} EndRoundStatus;
+
+EndRoundStatus endRoundTracking[MAX_GROUPS];
+bool endRoundInProgress = false;
+unsigned long endRoundStartTime = 0;
+#define END_ROUND_RETRY_INTERVAL_MS 200  // Retry every 200ms
+#define END_ROUND_MAX_RETRIES 5          // Up to 5 retries (1 second total)
+
 // Acknowledgment system configuration
 #define MAX_PENDING_COMMANDS 20
 #define ACK_TIMEOUT_MS 300  // Reduced from 500ms for faster retry in race scenarios
@@ -398,6 +412,9 @@ void OnDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *data, int l
       case 4: // command_ack
         handleCommandAck(msg.data[0], msg.deviceId); // data[0] contains sequenceId
         break;
+      case 8: // END_ROUND_ACK
+        handleEndRoundAck(msg.deviceId);
+        break;
       default:
         Serial.printf("Unknown message type: %d\n", msg.messageType);
         break;
@@ -487,6 +504,9 @@ void loop() {
 
   // Process pending acknowledgment commands
   processPendingCommands();
+
+  // Process background END_ROUND retries
+  processEndRoundRetries();
 
   // Send periodic status updates
   static unsigned long lastStatusUpdate = 0;
@@ -1275,32 +1295,155 @@ void sendWrongAnswerFeedback(uint8_t deviceId) {
 }
 
 void endRoundReset(uint8_t deviceId) {
-  Command cmd;
-  cmd.command = 7; // END_ROUND
-  cmd.targetDevice = deviceId;
-  cmd.timestamp = millis();
-
   if (deviceId == 0) {
-    // End round for all devices
+    // End round for all devices - start background retry tracking
+    Serial.println("[END_ROUND] Starting END_ROUND broadcast with ACK tracking");
+
+    endRoundInProgress = true;
+    endRoundStartTime = millis();
+
+    // Initialize tracking for all online devices
+    int trackingCount = 0;
     for (int i = 0; i < registeredDeviceCount; i++) {
-      if (devices[i].isOnline) {
+      if (devices[i].isOnline && trackingCount < MAX_GROUPS) {
+        endRoundTracking[trackingCount].deviceId = devices[i].deviceId;
+        endRoundTracking[trackingCount].confirmed = false;
+        endRoundTracking[trackingCount].retryCount = 0;
+        endRoundTracking[trackingCount].lastAttempt = 0;
+        trackingCount++;
+
         devices[i].isPressed = false; // Reset pressed state
-        esp_now_send(devices[i].macAddress, (uint8_t*)&cmd, sizeof(cmd));
-        delay(10);
       }
     }
-    Serial.println("End round reset sent to all buzzers");
+
+    // Send first attempt to all devices
+    sendEndRoundCommand(0); // Will be picked up by background retry loop
+
+    Serial.printf("[END_ROUND] Tracking %d devices for reset confirmation\n", trackingCount);
   } else {
-    // End round for specific device
+    // End round for specific device - simple fire-and-forget
     for (int i = 0; i < registeredDeviceCount; i++) {
       if (devices[i].deviceId == deviceId && devices[i].isOnline) {
         devices[i].isPressed = false; // Reset pressed state
-        esp_now_send(devices[i].macAddress, (uint8_t*)&cmd, sizeof(cmd));
-        Serial.printf("End round reset sent to buzzer %d\n", deviceId);
+        sendEndRoundCommand(deviceId);
+        Serial.printf("[END_ROUND] Sent to buzzer %d (no tracking for single device)\n", deviceId);
         return;
       }
     }
     Serial.printf("ERROR:Device %d not found for end round reset\n", deviceId);
+  }
+}
+
+void sendEndRoundCommand(uint8_t deviceId) {
+  // Send END_ROUND as Message type 8 (not Command struct)
+  // Buzzers will respond with Message type 8 (END_ROUND_ACK)
+  Message msg;
+  msg.messageType = 8; // END_ROUND request
+  msg.deviceId = 0;    // From coordinator
+  msg.timestamp = millis();
+  memset(msg.data, 0, sizeof(msg.data));
+
+  if (deviceId == 0) {
+    // Broadcast to all devices
+    for (int i = 0; i < registeredDeviceCount; i++) {
+      if (devices[i].isOnline) {
+        esp_now_send(devices[i].macAddress, (uint8_t*)&msg, sizeof(msg));
+        delay(20); // Increased delay to reduce RF congestion
+      }
+    }
+  } else {
+    // Send to specific device
+    for (int i = 0; i < registeredDeviceCount; i++) {
+      if (devices[i].deviceId == deviceId && devices[i].isOnline) {
+        esp_now_send(devices[i].macAddress, (uint8_t*)&msg, sizeof(msg));
+        break;
+      }
+    }
+  }
+}
+
+void handleEndRoundAck(uint8_t deviceId) {
+  if (!endRoundInProgress) {
+    return; // Not tracking END_ROUND, ignore
+  }
+
+  // Mark device as confirmed
+  for (int i = 0; i < MAX_GROUPS; i++) {
+    if (endRoundTracking[i].deviceId == deviceId && !endRoundTracking[i].confirmed) {
+      endRoundTracking[i].confirmed = true;
+      Serial.printf("[END_ROUND] ACK received from device %d\n", deviceId);
+
+      // Check if all devices confirmed
+      bool allConfirmed = true;
+      int confirmedCount = 0;
+      int totalCount = 0;
+      for (int j = 0; j < MAX_GROUPS; j++) {
+        if (endRoundTracking[j].deviceId != 0) {
+          totalCount++;
+          if (endRoundTracking[j].confirmed) {
+            confirmedCount++;
+          } else {
+            allConfirmed = false;
+          }
+        }
+      }
+
+      if (allConfirmed) {
+        Serial.printf("[END_ROUND] All %d devices confirmed reset!\n", totalCount);
+        endRoundInProgress = false;
+      } else {
+        Serial.printf("[END_ROUND] Progress: %d/%d devices confirmed\n", confirmedCount, totalCount);
+      }
+      return;
+    }
+  }
+}
+
+void processEndRoundRetries() {
+  if (!endRoundInProgress) {
+    return;
+  }
+
+  unsigned long now = millis();
+
+  // Check for unconfirmed devices and retry
+  for (int i = 0; i < MAX_GROUPS; i++) {
+    if (endRoundTracking[i].deviceId != 0 && !endRoundTracking[i].confirmed) {
+      // Check if it's time to retry
+      if (now - endRoundTracking[i].lastAttempt >= END_ROUND_RETRY_INTERVAL_MS) {
+        if (endRoundTracking[i].retryCount < END_ROUND_MAX_RETRIES) {
+          // Retry sending END_ROUND to this specific device
+          Serial.printf("[END_ROUND] Retry %d/%d for device %d\n",
+                        endRoundTracking[i].retryCount + 1,
+                        END_ROUND_MAX_RETRIES,
+                        endRoundTracking[i].deviceId);
+
+          sendEndRoundCommand(endRoundTracking[i].deviceId);
+          endRoundTracking[i].lastAttempt = now;
+          endRoundTracking[i].retryCount++;
+        } else {
+          // Max retries reached - mark as "confirmed" to stop retrying
+          Serial.printf("[END_ROUND] WARNING: Device %d failed to ACK after %d retries - giving up\n",
+                        endRoundTracking[i].deviceId, END_ROUND_MAX_RETRIES);
+          endRoundTracking[i].confirmed = true; // Give up, but log warning
+        }
+      }
+    }
+  }
+
+  // Check if all devices are now confirmed (or gave up)
+  bool allDone = true;
+  for (int i = 0; i < MAX_GROUPS; i++) {
+    if (endRoundTracking[i].deviceId != 0 && !endRoundTracking[i].confirmed) {
+      allDone = false;
+      break;
+    }
+  }
+
+  if (allDone && (now - endRoundStartTime > 500)) {
+    // All done (either confirmed or gave up) and at least 500ms passed
+    Serial.println("[END_ROUND] Reset process complete (with possible failures)");
+    endRoundInProgress = false;
   }
 }
 

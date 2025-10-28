@@ -1055,17 +1055,20 @@ void armBuzzer() {
 void disarmBuzzer() {
   isArmed = false;
 
-  // IMPORTANT: Don't clear buzzerPressed if we're in answer feedback states
-  // The validation logic needs buzzerPressed=true to keep the answer states valid
-  if (currentState != STATE_WRONG_ANSWER && currentState != STATE_CORRECT_ANSWER) {
+  // If in answer feedback states, DISARM should still reset to black (DISARMED)
+  // This allows host to manually clear stuck red/green states
+  if (currentState == STATE_WRONG_ANSWER || currentState == STATE_CORRECT_ANSWER) {
+    Serial.printf("[DISARM] Clearing answer feedback state %d -> DISARMED\n", currentState);
+    buzzerPressed = false;
+    setBuzzerState(STATE_DISARMED);
+  } else if (currentState != STATE_DISARMED) {
     buzzerPressed = false;
     setBuzzerState(STATE_DISARMED);
   }
-  // else: Keep buzzerPressed=true to maintain answer state validity
 
   digitalWrite(BUZZER_PIN, LOW);
 
-  Serial.printf("Buzzer DISARMED - Device %d preserving state %d, buzzerPressed=%d\n", DEVICE_ID, currentState, buzzerPressed);
+  Serial.printf("Buzzer DISARMED - Device %d now in state %d, buzzerPressed=%d\n", DEVICE_ID, currentState, buzzerPressed);
 }
 
 void testBuzzer() {

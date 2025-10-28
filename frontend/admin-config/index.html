@@ -47,6 +47,7 @@
                     <button class="config-tab" data-tab="questions">❓ Questions</button>
                     <button class="config-tab" data-tab="system">⚙️ Settings</button>
                     <button class="config-tab" data-tab="branding">🎨 Branding</button>
+                    <button class="config-tab" data-tab="console">📋 Console</button>
                 </div>
 
                 <div class="config-content">
@@ -251,6 +252,70 @@
                             </div>
                             <div class="panel-actions">
                                 <button id="save-branding-btn" class="btn btn-primary">💾 Save Branding</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Console Monitor Configuration -->
+                    <div id="console-config" class="config-panel">
+                        <div class="panel">
+                            <h3>📋 System Console Monitor</h3>
+                            <div class="console-controls">
+                                <div class="console-filter-buttons">
+                                    <button id="console-filter-all" class="console-filter-btn active" data-filter="all">All</button>
+                                    <button id="console-filter-hardware" class="console-filter-btn" data-filter="hardware">Hardware</button>
+                                    <button id="console-filter-game" class="console-filter-btn" data-filter="game">Game</button>
+                                    <button id="console-filter-error" class="console-filter-btn" data-filter="error">Errors</button>
+                                </div>
+                                <button id="console-clear-btn" class="btn btn-small btn-secondary console-clear-btn" title="Clear Console">
+                                    🗑️ Clear
+                                </button>
+                            </div>
+
+                            <!-- System Management Section -->
+                            <div class="system-management">
+                                <div class="system-status-grid">
+                                    <div class="status-item">
+                                        <span class="status-label">ESP32:</span>
+                                        <span id="esp32-status-indicator" class="status-indicator">Unknown</span>
+                                    </div>
+                                    <div class="status-item">
+                                        <span class="status-label">GameService:</span>
+                                        <span id="gameservice-status-indicator" class="status-indicator">Unknown</span>
+                                    </div>
+                                    <div class="status-item">
+                                        <span class="status-label">PM2:</span>
+                                        <span id="pm2-status-indicator" class="status-indicator">Unknown</span>
+                                    </div>
+                                </div>
+                                <div class="system-actions">
+                                    <div class="action-buttons">
+                                        <button id="restart-esp32-btn" class="btn btn-small btn-warning system-action-btn" title="Restart ESP32 Service">
+                                            🔄 ESP32
+                                        </button>
+                                        <button id="restart-gameservice-btn" class="btn btn-small btn-warning system-action-btn" title="Restart Game Service">
+                                            🔄 GameSvc
+                                        </button>
+                                        <button id="restart-pm2-btn" class="btn btn-small btn-danger system-action-btn" title="Restart PM2 Process">
+                                            🚀 PM2
+                                        </button>
+                                    </div>
+                                    <button id="refresh-system-status-btn" class="btn btn-small btn-secondary refresh-status-btn" title="Refresh System Status">
+                                        🔍 Status
+                                    </button>
+                                </div>
+                                <div id="system-operation-status" class="system-operation-status hidden">
+                                    <div class="operation-spinner"></div>
+                                    <span id="operation-status-text">Operation in progress...</span>
+                                </div>
+                            </div>
+
+                            <div id="console-monitor" class="console-monitor" role="log" aria-label="System Console Monitor">
+                                <div class="console-placeholder">Console logs will appear here...</div>
+                            </div>
+                            <div class="console-stats">
+                                <span id="console-entry-count" class="console-entry-count">0 entries</span>
+                                <span id="console-last-update" class="console-last-update">No activity</span>
                             </div>
                         </div>
                     </div>

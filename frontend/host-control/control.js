@@ -27,11 +27,19 @@ class HostControl {
         this.setupSocketListeners();
         this.setupEventListeners();
         this.refreshSystemStatus();
+
+        // Manually check for current game after a short delay
+        setTimeout(() => {
+            this.checkAndLoadCurrentGame();
+        }, 500);
         this.currentBuzzerPosition = 0;
         this.evaluationHistory = [];
         this.questionTimer = null;
         this.questionStartTime = null;
         this.questionTimeLimit = 30;
+
+        // Game actions state
+        this.pendingAction = null;
         
         // Initialize buzzer sidebar
         this.loadThresholdSetting();
@@ -43,6 +51,9 @@ class HostControl {
         setInterval(() => {
             this.updateBuzzerSidebar(); // Check for stale devices based on timestamps
         }, 5000); // Check every 5 seconds
+
+        // Initialize WiFi section
+        this.initializeWifiSection();
     }
 
     initializeGameSelector() {
@@ -66,12 +77,16 @@ class HostControl {
 
     onGameChanged(game) {
         console.log('Game changed in host control:', game);
-        
+        console.log('Teams in game:', game?.groups?.length || 0);
+        console.log('Questions in game:', game?.questions?.length || 0);
+
         if (game) {
             // Load game data
             this.questions = game.questions || [];
             this.teams = game.groups || [];
             this.currentQuestionIndex = game.current_question_index || 0;
+
+            console.log('Loaded teams:', this.teams.length, 'questions:', this.questions.length);
             
             // Synchronize with server game state
             this.synchronizeGameState(game);
@@ -119,6 +134,12 @@ class HostControl {
         if (!game.played_questions) {
             game.played_questions = [];
         }
+
+        // Sync local played questions with server data
+        this.playedQuestions.clear();
+        game.played_questions.forEach(index => {
+            this.playedQuestions.add(index);
+        });
         
         // Reset local state first
         this.isQuestionActive = false;
@@ -139,8 +160,46 @@ class HostControl {
         console.log(`After sync - Current index: ${this.currentQuestionIndex}, Active question: ${this.activeQuestionIndex}, Is active: ${this.isQuestionActive}`);
     }
 
+    getGameState() {
+        return {
+            id: this.currentGame?.id,
+            status: this.isQuestionActive ? 'question_active' : 'question_ended',
+            current_question_index: this.activeQuestionIndex >= 0 ? this.activeQuestionIndex : this.currentQuestionIndex,
+            played_questions: Array.from(this.playedQuestions),
+            groups: this.teams,
+            questions: this.questions
+        };
+    }
+
     onGamesLoaded(games) {
         console.log('Games loaded in host control:', games.length);
+    }
+
+    async checkAndLoadCurrentGame() {
+        try {
+            // Check if we already have a game loaded
+            if (this.currentGame && this.teams.length > 0 && this.questions.length > 0) {
+                console.log('Game already loaded, skipping manual load');
+                return;
+            }
+
+            console.log('Checking for current game...');
+
+            // Fetch current game from API
+            const response = await fetch('/api/games/global/current');
+            const status = await response.json();
+
+            if (status.gameId && status.game) {
+                console.log('Found current game, loading:', status.game.name);
+                this.onGameChanged(status.game);
+            } else {
+                console.log('No current game found');
+                this.showToast('No active game. Please select a game to continue.', 'info');
+            }
+        } catch (error) {
+            console.error('Failed to check current game:', error);
+            this.showToast('Failed to load game data', 'error');
+        }
     }
 
     initializeElements() {
@@ -215,7 +274,6 @@ class HostControl {
             endGameBtn: document.getElementById('end-game-btn'),
             
             // Floating action buttons
-            showBuzzerStatusBtn: document.getElementById('show-buzzer-status-btn'),
             awardPointsBtn: document.getElementById('award-points-btn'),
             
             // Answer evaluation modal
@@ -236,13 +294,21 @@ class HostControl {
             evaluationHistorySection: document.getElementById('evaluation-history-section'),
             evaluationList: document.getElementById('evaluation-list'),
             
-            // Buzzer status modal
-            buzzerStatusModal: document.getElementById('buzzer-status-modal'),
-            closeBuzzerModalBtn: document.getElementById('close-buzzer-modal-btn'),
-            modalBuzzerStatusList: document.getElementById('modal-buzzer-status-list'),
-            modalRefreshBuzzersBtn: document.getElementById('modal-refresh-buzzers-btn'),
-            modalArmAllBuzzersBtn: document.getElementById('modal-arm-all-buzzers-btn'),
-            modalDisarmAllBuzzersBtn: document.getElementById('modal-disarm-all-buzzers-btn'),
+            // Game actions modal
+            gameActionsModal: document.getElementById('game-actions-modal'),
+            closeGameActionsModalBtn: document.getElementById('close-game-actions-modal-btn'),
+            pauseGameBtn: document.getElementById('pause-game-btn'),
+            resumeGameBtn: document.getElementById('resume-game-btn'),
+            exportGameDataBtn: document.getElementById('export-game-data-btn'),
+            clearGameHistoryBtn: document.getElementById('clear-game-history-btn'),
+            gameActionStatus: document.getElementById('game-action-status'),
+            statusMessage: document.getElementById('status-message'),
+            gameActionConfirmation: document.getElementById('game-action-confirmation'),
+            confirmationIcon: document.getElementById('confirmation-icon'),
+            confirmationTitle: document.getElementById('confirmation-title'),
+            confirmationMessage: document.getElementById('confirmation-message'),
+            confirmActionBtn: document.getElementById('confirm-action-btn'),
+            cancelActionBtn: document.getElementById('cancel-action-btn'),
             
             // Manual points modal
             manualPointsModal: document.getElementById('manual-points-modal'),
@@ -274,7 +340,19 @@ class HostControl {
             onlineBuzzers: document.getElementById('online-buzzers'),
             virtualBuzzersSection: document.getElementById('virtual-buzzers-section'),
             virtualBuzzers: document.getElementById('virtual-buzzers'),
-            offlineBuzzers: document.getElementById('offline-buzzers')
+            offlineBuzzers: document.getElementById('offline-buzzers'),
+
+            // WiFi Channel Optimization
+            wifiSection: document.querySelector('.wifi-section'),
+            toggleWifiSectionBtn: document.getElementById('toggle-wifi-section'),
+            scanWifiChannelsBtn: document.getElementById('scan-wifi-channels-btn'),
+            wifiScanStatus: document.getElementById('wifi-scan-status'),
+            wifiResults: document.getElementById('wifi-results'),
+            currentChannelDisplay: document.getElementById('current-channel-display'),
+            applyBestChannelBtn: document.getElementById('apply-best-channel-btn'),
+            channelQualityList: document.getElementById('channel-quality-list'),
+            wifiScanError: document.getElementById('wifi-scan-error'),
+            wifiErrorMessage: document.getElementById('wifi-error-message')
         };
     }
 
@@ -462,9 +540,9 @@ class HostControl {
         if (this.elements.prevQuestionBtn) this.elements.prevQuestionBtn.addEventListener('click', () => this.prevQuestion());
         if (this.elements.questionSelect) this.elements.questionSelect.addEventListener('change', (e) => this.jumpToQuestion(e.target.value));
         if (this.elements.showQuestionSelectBtn) this.elements.showQuestionSelectBtn.addEventListener('click', () => this.showQuestionSelectModal());
-        if (this.elements.resetScoresBtn) this.elements.resetScoresBtn.addEventListener('click', () => this.resetAllScores());
-        if (this.elements.resetQuestionsBtn) this.elements.resetQuestionsBtn.addEventListener('click', () => this.resetQuestions());
-        if (this.elements.resetGameBtn) this.elements.resetGameBtn.addEventListener('click', () => this.resetGame());
+        if (this.elements.resetScoresBtn) this.elements.resetScoresBtn.addEventListener('click', () => this.confirmAction('reset-scores'));
+        if (this.elements.resetQuestionsBtn) this.elements.resetQuestionsBtn.addEventListener('click', () => this.confirmAction('reset-questions'));
+        if (this.elements.resetGameBtn) this.elements.resetGameBtn.addEventListener('click', () => this.confirmAction('reset-game'));
         if (this.elements.showLeaderboardBtn) this.elements.showLeaderboardBtn.addEventListener('click', () => this.toggleLeaderboard());
         if (this.elements.leaderboardViewSelect) this.elements.leaderboardViewSelect.addEventListener('change', (e) => this.changeLeaderboardView(e.target.value));
         if (this.elements.endGameBtn) this.elements.endGameBtn.addEventListener('click', () => this.endGame());
@@ -474,20 +552,29 @@ class HostControl {
         if (this.elements.disarmBuzzersBtn) this.elements.disarmBuzzersBtn.addEventListener('click', () => this.disarmBuzzers());
         
         
-        // Floating action buttons
-        if (this.elements.showBuzzerStatusBtn) this.elements.showBuzzerStatusBtn.addEventListener('click', () => this.showBuzzerStatusModal());
-        
         // Answer evaluation modal
         if (this.elements.closeEvaluationBtn) this.elements.closeEvaluationBtn.addEventListener('click', () => this.hideAnswerEvaluationModal());
         if (this.elements.markCorrectBtn) this.elements.markCorrectBtn.addEventListener('click', () => this.markAnswer(true));
         if (this.elements.markIncorrectBtn) this.elements.markIncorrectBtn.addEventListener('click', () => this.markAnswer(false));
         if (this.elements.giveUpBtn) this.elements.giveUpBtn.addEventListener('click', () => this.giveUpQuestion());
-        
-        // Buzzer status modal
-        if (this.elements.closeBuzzerModalBtn) this.elements.closeBuzzerModalBtn.addEventListener('click', () => this.hideBuzzerStatusModal());
-        if (this.elements.modalRefreshBuzzersBtn) this.elements.modalRefreshBuzzersBtn.addEventListener('click', () => this.refreshModalBuzzerStatus());
-        if (this.elements.modalArmAllBuzzersBtn) this.elements.modalArmAllBuzzersBtn.addEventListener('click', () => this.modalArmAllBuzzers());
-        if (this.elements.modalDisarmAllBuzzersBtn) this.elements.modalDisarmAllBuzzersBtn.addEventListener('click', () => this.modalDisarmAllBuzzers());
+
+        // Game actions modal
+        if (this.elements.closeGameActionsModalBtn) this.elements.closeGameActionsModalBtn.addEventListener('click', () => this.hideGameActionsModal());
+        if (this.elements.resetScoresBtn) this.elements.resetScoresBtn.addEventListener('click', () => this.confirmAction('reset-scores'));
+        if (this.elements.resetQuestionsBtn) this.elements.resetQuestionsBtn.addEventListener('click', () => this.confirmAction('reset-questions'));
+        if (this.elements.resetGameBtn) this.elements.resetGameBtn.addEventListener('click', () => this.confirmAction('reset-game'));
+        if (this.elements.exportGameDataBtn) this.elements.exportGameDataBtn.addEventListener('click', () => this.exportGameData());
+        if (this.elements.clearGameHistoryBtn) this.elements.clearGameHistoryBtn.addEventListener('click', () => this.confirmAction('clear-history'));
+        if (this.elements.confirmActionBtn) this.elements.confirmActionBtn.addEventListener('click', () => this.executeConfirmedAction());
+        if (this.elements.cancelActionBtn) this.elements.cancelActionBtn.addEventListener('click', () => this.hideConfirmationDialog());
+        // Game actions modal click outside to close
+        if (this.elements.gameActionsModal) {
+            this.elements.gameActionsModal.addEventListener('click', (e) => {
+                if (e.target === this.elements.gameActionsModal) {
+                    this.hideGameActionsModal();
+                }
+            });
+        }
         
         // Manual points modal
         if (this.elements.closePointsModalBtn) this.elements.closePointsModalBtn.addEventListener('click', () => this.hideManualPointsModal());
@@ -512,11 +599,6 @@ class HostControl {
             }
         });
         
-        this.elements.buzzerStatusModal.addEventListener('click', (e) => {
-            if (e.target === this.elements.buzzerStatusModal) {
-                this.hideBuzzerStatusModal();
-            }
-        });
         
         this.elements.manualPointsModal.addEventListener('click', (e) => {
             if (e.target === this.elements.manualPointsModal) {
@@ -551,6 +633,26 @@ class HostControl {
                 this.saveThresholdSetting();
             });
         }
+
+        // WiFi Channel Optimization
+        if (this.elements.toggleWifiSectionBtn) {
+            this.elements.toggleWifiSectionBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleWifiSection();
+            });
+        }
+
+        // Make the entire header clickable
+        const wifiSectionHeader = document.querySelector('.wifi-section-header');
+        if (wifiSectionHeader) {
+            wifiSectionHeader.addEventListener('click', () => this.toggleWifiSection());
+        }
+        if (this.elements.scanWifiChannelsBtn) {
+            this.elements.scanWifiChannelsBtn.addEventListener('click', () => this.scanWifiChannels());
+        }
+        if (this.elements.applyBestChannelBtn) {
+            this.elements.applyBestChannelBtn.addEventListener('click', () => this.confirmChannelChange());
+        }
         
         // Keyboard shortcuts
         this.setupKeyboardShortcuts();
@@ -564,10 +666,13 @@ class HostControl {
             }
             
             // Don't trigger shortcuts if a modal is open (except for Escape)
-            const modalOpen = !document.getElementById('answer-evaluation-modal').classList.contains('hidden') ||
-                            !document.getElementById('buzzer-status-modal').classList.contains('hidden') ||
-                            !document.getElementById('manual-points-modal').classList.contains('hidden') ||
-                            !document.getElementById('game-actions-modal').classList.contains('hidden');
+            const answerModal = document.getElementById('answer-evaluation-modal');
+            const pointsModal = document.getElementById('manual-points-modal');
+            const actionsModal = document.getElementById('game-actions-modal');
+
+            const modalOpen = (answerModal && !answerModal.classList.contains('hidden')) ||
+                            (pointsModal && !pointsModal.classList.contains('hidden')) ||
+                            (actionsModal && !actionsModal.classList.contains('hidden'));
                             
             if (modalOpen && e.key !== 'Escape') {
                 return;
@@ -597,7 +702,6 @@ class HostControl {
                     e.preventDefault();
                     if (modalOpen) {
                         this.hideAnswerEvaluationModal();
-                        this.hideBuzzerStatusModal();
                         this.hideManualPointsModal();
                         this.hideGameActionsModal();
                     } else if (this.isLeaderboardVisible) {
@@ -924,7 +1028,7 @@ class HostControl {
         this.questions.forEach((question, index) => {
             const option = document.createElement('option');
             option.value = index;
-            
+
             // Mark played questions in the dropdown
             if (this.isQuestionPlayed(index)) {
                 option.textContent = `${index + 1}. ${question.text.substring(0, 50)}... [PLAYED]`;
@@ -933,7 +1037,7 @@ class HostControl {
             } else {
                 option.textContent = `${index + 1}. ${question.text.substring(0, 50)}...`;
             }
-            
+
             this.elements.questionSelect.appendChild(option);
         });
         this.elements.questionSelect.disabled = false;
@@ -1138,7 +1242,16 @@ class HostControl {
             });
             this.buzzerOrder = [];
             this.updateBuzzerResults();
-            
+
+            // Mark question as played locally
+            this.playedQuestions.add(this.currentQuestionIndex);
+            if (this.currentGame && !this.currentGame.played_questions) {
+                this.currentGame.played_questions = [];
+            }
+            if (this.currentGame && !this.currentGame.played_questions.includes(this.currentQuestionIndex)) {
+                this.currentGame.played_questions.push(this.currentQuestionIndex);
+            }
+
             // Update tab state for active question
             this.isQuestionActive = true;
             this.activeQuestionIndex = this.currentQuestionIndex; // Set which question is on-air
@@ -1146,7 +1259,8 @@ class HostControl {
             this.questionTimeLimit = this.questions[this.currentQuestionIndex]?.time_limit || 30;
             this.updateQuestionTabsState();
             this.startTabProgressUpdates();
-            
+            this.updateQuestionSelector(); // Update dropdown to reflect played status
+
             this.showToast('Question started', 'success');
         } catch (error) {
             this.showToast('Failed to start question', 'error');
@@ -1448,168 +1562,8 @@ class HostControl {
         }
     }
 
-    async resetGame() {
-        if (!this.currentGame || !confirm('Are you sure you want to reset the game? This will clear all scores, question progress, answers, and buzzer history.')) {
-            return;
-        }
 
-        try {
-            // Disarm buzzers before resetting
-            if (this.isBuzzersArmed) {
-                await this.disarmBuzzers(true, 'game-action');
-            }
-            
-            // Stop any active timers
-            this.stopTimer();
-            this.stopTabProgressUpdates();
-            
-            // Reset all local state
-            this.currentQuestionIndex = 0;
-            this.isQuestionActive = false;
-            this.activeQuestionIndex = -1;
-            this.questionStartTime = null;
-            this.evaluationHistory = [];
-            this.buzzerOrder = [];
-            this.currentBuzzerPosition = 0;
-            this.playedQuestions.clear(); // Clear played questions on reset
-            
-            // Clear UI elements
-            this.updateBuzzerResults();
-            this.hideAnswerEvaluationModal();
-            this.hideCurrentAnswererHighlight();
-            
-            // Hide correct answer display
-            if (this.elements.correctAnswerDisplay) {
-                this.elements.correctAnswerDisplay.classList.add('hidden');
-            }
-            
-            // Reset question tabs to initial state
-            this.initializeQuestionTabs();
-            
-            // Call backend reset
-            const response = await fetch(`/api/games/${this.currentGame.id}/reset`, {
-                method: 'POST'
-            });
-            
-            if (response.ok) {
-                // Update current game's server state for consistency
-                if (this.currentGame) {
-                    this.currentGame.current_question_index = 0;
-                    this.currentGame.played_questions = [];
-                }
-                
-                // Reset local team scores to match backend reset
-                this.teams.forEach(team => {
-                    team.score = 0;
-                });
-                
-                // Update displays after successful reset
-                this.updateQuestionDisplay();
-                this.updateQuestionControls();
-                this.updateQuestionTabsState();
-                this.updateTeamDisplay(false);
-                
-                this.showToast('Game has been completely reset', 'success');
-            } else {
-                throw new Error('Failed to reset game on server');
-            }
-            
-        } catch (error) {
-            console.error('Failed to reset game:', error);
-            this.showToast('Failed to reset game', 'error');
-        }
-    }
 
-    async resetAllScores() {
-        if (!this.currentGame || !confirm('Are you sure you want to reset all team scores to 0? This cannot be undone.')) {
-            return;
-        }
-
-        try {
-            const response = await fetch(`/api/games/${this.currentGame.id}/reset-scores`, {
-                method: 'POST'
-            });
-            
-            if (response.ok) {
-                // Update local teams data
-                this.teams.forEach(team => {
-                    team.score = 0;
-                });
-                
-                // Refresh the scoreboard
-                this.updateTeamDisplay(false);
-                
-                this.showToast('All team scores have been reset to 0', 'success');
-            } else {
-                throw new Error('Failed to reset scores');
-            }
-        } catch (error) {
-            console.error('Failed to reset scores:', error);
-            this.showToast('Failed to reset scores', 'error');
-        }
-    }
-
-    async resetQuestions() {
-        if (!this.currentGame || !confirm('Are you sure you want to reset all question progress? This will clear all answers, feedback, and question history but keep team scores intact.')) {
-            return;
-        }
-
-        try {
-            // Stop any active question timers
-            this.stopTimer();
-            this.stopTabProgressUpdates();
-            
-            // Reset question state
-            this.currentQuestionIndex = 0;
-            this.isQuestionActive = false;
-            this.activeQuestionIndex = -1;
-            this.questionStartTime = null;
-            
-            // Clear evaluation history
-            this.evaluationHistory = [];
-            this.playedQuestions.clear(); // Clear played questions on reset
-            
-            // Clear buzzer results
-            this.updateBuzzerResults();
-            this.hideAnswerEvaluationModal();
-            this.hideCurrentAnswererHighlight();
-            
-            // Reset question tabs to initial state
-            this.initializeQuestionTabs();
-            
-            // Call backend reset questions
-            const response = await fetch(`/api/games/${this.currentGame.id}/reset-questions`, {
-                method: 'POST'
-            });
-            
-            if (response.ok) {
-                // Update current game's server state for consistency
-                if (this.currentGame) {
-                    this.currentGame.current_question_index = 0;
-                    this.currentGame.played_questions = [];
-                }
-                
-                // Update all displays after successful reset
-                this.updateQuestionDisplay();
-                this.updateQuestionControls();
-                this.updateQuestionTabsState();
-                
-                // Hide correct answer display
-                if (this.elements.correctAnswerDisplay) {
-                    this.elements.correctAnswerDisplay.classList.add('hidden');
-                }
-                
-                this.showToast('Question progress has been reset', 'success');
-            } else {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to reset questions on server');
-            }
-            
-        } catch (error) {
-            console.error('Failed to reset questions:', error);
-            this.showToast('Failed to reset question progress', 'error');
-        }
-    }
 
     async endGame() {
         if (!this.currentGame || !confirm('Are you sure you want to end the game?')) {
@@ -1820,14 +1774,6 @@ class HostControl {
     }
 
     // Buzzer Status Modal Methods
-    showBuzzerStatusModal() {
-        this.elements.buzzerStatusModal.classList.remove('hidden');
-        this.refreshModalBuzzerStatus();
-    }
-
-    hideBuzzerStatusModal() {
-        this.elements.buzzerStatusModal.classList.add('hidden');
-    }
 
     updateBuzzerDevice(data) {
         const deviceId = data.device_id || data.id;
@@ -1838,8 +1784,6 @@ class HostControl {
             last_seen: now,
             status: 'online'
         });
-        
-        this.updateModalBuzzerStatusDisplay();
     }
 
     updateBuzzerHeartbeat(data) {
@@ -1874,8 +1818,6 @@ class HostControl {
                 ...data
             });
         }
-
-        this.updateModalBuzzerStatusDisplay();
     }
 
     updateESP32Status(data) {
@@ -1890,145 +1832,15 @@ class HostControl {
         return team ? team.name : null;
     }
 
-    updateModalBuzzerStatusDisplay() {
-        const container = this.elements.modalBuzzerStatusList;
-        if (!container) return;
-        
-        const now = Date.now();
-        const staleMaxLength = 60000; // 60 seconds
-        
-        if (this.buzzerDevices.size === 0) {
-            container.innerHTML = '<div class="no-buzzers">No buzzers detected</div>';
-            return;
-        }
-        
-        container.innerHTML = '';
-        
-        // Sort devices by last seen (most recent first)
-        const sortedDevices = Array.from(this.buzzerDevices.values()).sort((a, b) => b.last_seen - a.last_seen);
-        
-        sortedDevices.forEach(device => {
-            const timeSinceLastSeen = now - device.last_seen;
-            let status = 'offline';
-            let statusText = 'Offline';
-            
-            if (timeSinceLastSeen < staleMaxLength) {
-                status = 'online';
-                statusText = 'Online';
-            } else if (timeSinceLastSeen < staleMaxLength * 2) {
-                status = 'stale';
-                statusText = 'Stale';
-            }
-            
-            const buzzerElement = document.createElement('div');
-            buzzerElement.className = `buzzer-item ${status}`;
-            
-            const lastSeenText = this.formatLastSeen(timeSinceLastSeen);
-            const teamName = this.getTeamNameByBuzzerId(device.device_id);
-            
-            buzzerElement.innerHTML = `
-                <div class="buzzer-info">
-                    <div class="buzzer-name">${device.name || `Buzzer ${device.device_id}`}</div>
-                    <div class="buzzer-meta">
-                        <span>ID: ${device.device_id}</span>
-                        <span class="last-seen">Last seen: ${lastSeenText}</span>
-                        ${teamName ? `<span class="team-name-display">Team: ${teamName}</span>` : '<span>No team assigned</span>'}
-                        ${device.armed !== undefined ? `<span>Armed: ${device.armed ? 'Yes' : 'No'}</span>` : ''}
-                    </div>
-                </div>
-                <div class="buzzer-status">
-                    <div class="buzzer-status-dot"></div>
-                    <span>${statusText}</span>
-                </div>
-            `;
-            
-            container.appendChild(buzzerElement);
-        });
-    }
-
     formatLastSeen(milliseconds) {
         const seconds = Math.floor(milliseconds / 1000);
-        
+
         if (seconds < 60) {
             return `${seconds}s ago`;
         } else if (seconds < 3600) {
             return `${Math.floor(seconds / 60)}m ago`;
         } else {
             return `${Math.floor(seconds / 3600)}h ago`;
-        }
-    }
-
-    async refreshModalBuzzerStatus() {
-        try {
-            const response = await fetch('/api/buzzers/devices');
-            if (response.ok) {
-                const devices = await response.json();
-                const now = Date.now();
-                
-                // Don't clear the map - instead update existing entries or add new ones
-                // Mark all existing devices as potentially offline first
-                this.buzzerDevices.forEach(device => {
-                    device.server_reported = false;
-                });
-
-                devices.forEach(device => {
-                    const deviceId = device.device_id;
-                    // Only accept numeric device IDs (1, 2, 3, 4) not text ones (buzzer_1, etc)
-                    if (deviceId && /^\d+$/.test(deviceId.toString())) {
-                        const existingDevice = this.buzzerDevices.get(deviceId);
-                        this.buzzerDevices.set(deviceId, {
-                            // Default to offline
-                            status: 'offline',
-                            online: false,
-                            ...existingDevice, // Keep existing data (like last_seen from socket events)
-                            ...device, // Overlay server data
-                            server_reported: true,
-                            last_online: device.last_online // Preserve last_online from backend
-                        });
-                    }
-                });
-                
-                this.updateModalBuzzerStatusDisplay();
-            }
-        } catch (error) {
-            console.error('Failed to refresh buzzer status:', error);
-            this.showToast('Failed to refresh buzzer status', 'error');
-        }
-    }
-
-    async modalArmAllBuzzers() {
-        try {
-            const response = await fetch('/api/buzzers/arm', {
-                method: 'POST'
-            });
-            
-            if (response.ok) {
-                this.showToast('All buzzers armed successfully', 'success');
-                this.refreshModalBuzzerStatus();
-            } else {
-                throw new Error('Failed to arm buzzers');
-            }
-        } catch (error) {
-            console.error('Failed to arm buzzers:', error);
-            this.showToast('Failed to arm all buzzers', 'error');
-        }
-    }
-
-    async modalDisarmAllBuzzers() {
-        try {
-            const response = await fetch('/api/buzzers/disarm', {
-                method: 'POST'
-            });
-            
-            if (response.ok) {
-                this.showToast('All buzzers disarmed successfully', 'success');
-                this.refreshModalBuzzerStatus();
-            } else {
-                throw new Error('Failed to disarm buzzers');
-            }
-        } catch (error) {
-            console.error('Failed to disarm buzzers:', error);
-            this.showToast('Failed to disarm all buzzers', 'error');
         }
     }
 
@@ -2202,78 +2014,93 @@ class HostControl {
     }
 
     updateAnswerEvaluationModal() {
+        // Early return for invalid state to avoid unnecessary DOM operations
         if (!this.currentGame || !this.isQuestionActive || this.buzzerOrder.length === 0) {
-            this.elements.noBuzzerContent.classList.remove('hidden');
-            this.elements.currentAnswererContent.classList.add('hidden');
-            this.elements.evaluationHistorySection.classList.add('hidden');
+            requestAnimationFrame(() => {
+                this.elements.noBuzzerContent.classList.remove('hidden');
+                this.elements.currentAnswererContent.classList.add('hidden');
+                this.elements.evaluationHistorySection.classList.add('hidden');
+            });
             return;
         }
 
-        // Find the first unevaluated buzzer
-        const currentBuzzer = this.buzzerOrder.find(b => !b.evaluated);
+        // Use for loop instead of find for better performance
+        let currentBuzzer = null;
+        for (let i = 0; i < this.buzzerOrder.length; i++) {
+            if (!this.buzzerOrder[i].evaluated) {
+                currentBuzzer = this.buzzerOrder[i];
+                this.currentBuzzerPosition = i;
+                break;
+            }
+        }
+
         if (!currentBuzzer) {
-            this.elements.noBuzzerContent.classList.remove('hidden');
-            this.elements.currentAnswererContent.classList.add('hidden');
+            requestAnimationFrame(() => {
+                this.elements.noBuzzerContent.classList.remove('hidden');
+                this.elements.currentAnswererContent.classList.add('hidden');
+            });
             return;
         }
-
-        // Update currentBuzzerPosition to point to the first unevaluated buzzer
-        this.currentBuzzerPosition = this.buzzerOrder.indexOf(currentBuzzer);
 
         this.showCurrentAnswererInModal(currentBuzzer);
         this.showNextInLineInModal();
-        
+
         // Show evaluation history if there is any
         if (this.evaluationHistory.length > 0) {
-            this.elements.evaluationHistorySection.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                this.elements.evaluationHistorySection.classList.remove('hidden');
+            });
         }
     }
 
     showCurrentAnswererInModal(buzzer) {
-        console.log(`[MODAL DEBUG] showCurrentAnswererInModal called with buzzer:`, buzzer);
-        this.elements.noBuzzerContent.classList.add('hidden');
-        this.elements.currentAnswererContent.classList.remove('hidden');
+        // Batch DOM updates using requestAnimationFrame for better performance
+        requestAnimationFrame(() => {
+            this.elements.noBuzzerContent.classList.add('hidden');
+            this.elements.currentAnswererContent.classList.remove('hidden');
 
-        const position = this.buzzerOrder.findIndex(b => b === buzzer) + 1;
-        const teamName = this.getTeamName(buzzer.groupId);
-        const deltaTime = (buzzer.deltaMs / 1000).toFixed(2);
-        const currentQuestion = this.questions[this.currentQuestionIndex];
+            const position = this.buzzerOrder.indexOf(buzzer) + 1;
+            const teamName = this.getTeamName(buzzer.groupId);
+            const deltaTime = (buzzer.deltaMs / 1000).toFixed(2);
+            const actualPoints = this.getActualPointsForBuzzer(buzzer);
 
-        // Update position indicator
-        const positionText = position === 1 ? '1st' : position === 2 ? '2nd' : position === 3 ? '3rd' : `${position}th`;
-        this.elements.currentPosition.textContent = positionText;
+            // Pre-calculate position text to avoid conditionals
+            const positionTexts = ['1st', '2nd', '3rd'];
+            const positionText = positionTexts[position - 1] || `${position}th`;
 
-        // Update team info
-        this.elements.currentTeamName.textContent = teamName;
-        this.elements.currentBuzzerTime.textContent = `Buzzed in at ${deltaTime}s`;
+            // Batch all text content updates
+            this.elements.currentPosition.textContent = positionText;
+            this.elements.currentTeamName.textContent = teamName;
+            this.elements.currentBuzzerTime.textContent = `Buzzed in at ${deltaTime}s`;
+            this.elements.questionPoints.textContent = `+${actualPoints}`;
 
-        // Update points - show actual time-based points if applicable
-        const actualPoints = this.getActualPointsForBuzzer(buzzer);
-        console.log(`[MODAL DEBUG] Updating modal points for ${teamName}: ${actualPoints} (questionStartTime: ${this.questionStartTime}, buzzer.timestamp: ${buzzer.timestamp})`);
-        console.log(`[MODAL DEBUG] Question points element:`, this.elements.questionPoints);
-        console.log(`[MODAL DEBUG] Setting textContent to: +${actualPoints}`);
-        this.elements.questionPoints.textContent = `+${actualPoints}`;
-        console.log(`[MODAL DEBUG] After update, element textContent:`, this.elements.questionPoints.textContent);
-
-        // Store current buzzer position for evaluation
-        this.currentBuzzerPosition = this.buzzerOrder.indexOf(buzzer);
+            // Store current buzzer position for evaluation
+            this.currentBuzzerPosition = position - 1; // 0-based index
+        });
     }
 
     showNextInLineInModal() {
-        const nextBuzzer = this.buzzerOrder.find((b, index) => 
-            index > this.currentBuzzerPosition && !b.evaluated
-        );
-
-        if (nextBuzzer) {
-            const nextTeamName = this.getTeamName(nextBuzzer.groupId);
-            const nextDeltaTime = (nextBuzzer.deltaMs / 1000).toFixed(2);
-            
-            this.elements.nextTeamName.textContent = nextTeamName;
-            this.elements.nextBuzzerTime.textContent = `${nextDeltaTime}s`;
-            this.elements.nextInLineCard.classList.remove('hidden');
-        } else {
-            this.elements.nextInLineCard.classList.add('hidden');
+        // Use for loop instead of find for better performance with small arrays
+        let nextBuzzer = null;
+        for (let i = this.currentBuzzerPosition + 1; i < this.buzzerOrder.length; i++) {
+            if (!this.buzzerOrder[i].evaluated) {
+                nextBuzzer = this.buzzerOrder[i];
+                break;
+            }
         }
+
+        requestAnimationFrame(() => {
+            if (nextBuzzer) {
+                const nextTeamName = this.getTeamName(nextBuzzer.groupId);
+                const nextDeltaTime = (nextBuzzer.deltaMs / 1000).toFixed(2);
+
+                this.elements.nextTeamName.textContent = nextTeamName;
+                this.elements.nextBuzzerTime.textContent = `${nextDeltaTime}s`;
+                this.elements.nextInLineCard.classList.remove('hidden');
+            } else {
+                this.elements.nextInLineCard.classList.add('hidden');
+            }
+        });
     }
 
     showManualPointsModal() {
@@ -2768,16 +2595,18 @@ class HostControl {
     // Buzzer Sidebar Methods
     toggleBuzzerSidebar() {
         if (!this.elements.buzzerSidebar) return;
-        
+
         const isCollapsed = this.elements.buzzerSidebar.classList.contains('collapsed');
-        
+
         if (isCollapsed) {
+            // Expand the sidebar
             this.elements.buzzerSidebar.classList.remove('collapsed');
-            this.elements.toggleBuzzerSidebarBtn.textContent = '◀';
+            this.elements.toggleBuzzerSidebarBtn.textContent = '◀'; // Left arrow means "collapse"
             this.refreshBuzzerStatus();
         } else {
+            // Collapse the sidebar
             this.elements.buzzerSidebar.classList.add('collapsed');
-            this.elements.toggleBuzzerSidebarBtn.textContent = '▶';
+            this.elements.toggleBuzzerSidebarBtn.textContent = '▶'; // Right arrow means "expand"
         }
     }
 
@@ -3661,8 +3490,519 @@ class HostControl {
             this.showToast('Failed to increase font size', 'error');
         }
     }
+
+    // =========================================
+    // WiFi Channel Optimization Methods
+    // =========================================
+
+    initializeWifiSection() {
+        // Restore collapsed state from localStorage
+        const isCollapsed = localStorage.getItem('wifiSectionCollapsed') === 'true';
+        if (isCollapsed && this.elements.wifiSection) {
+            this.elements.wifiSection.classList.add('collapsed');
+        }
+    }
+
+    toggleWifiSection() {
+        if (!this.elements.wifiSection) return;
+
+        const isCollapsed = this.elements.wifiSection.classList.contains('collapsed');
+        if (isCollapsed) {
+            this.elements.wifiSection.classList.remove('collapsed');
+            localStorage.setItem('wifiSectionCollapsed', 'false');
+        } else {
+            this.elements.wifiSection.classList.add('collapsed');
+            localStorage.setItem('wifiSectionCollapsed', 'true');
+        }
+    }
+
+    async scanWifiChannels() {
+        if (!this.elements.scanWifiChannelsBtn || !this.elements.wifiScanStatus) return;
+
+        try {
+            // Show scanning state
+            this.elements.scanWifiChannelsBtn.disabled = true;
+            this.elements.scanWifiChannelsBtn.textContent = '🔄 Scanning...';
+            this.elements.wifiScanStatus.classList.remove('hidden');
+            this.elements.wifiResults.classList.add('hidden');
+            this.elements.wifiScanError.classList.add('hidden');
+
+            // Make API call
+            const response = await fetch('/api/wifi/scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                this.displayChannelResults(result);
+                this.showToast('WiFi scan completed successfully', 'success');
+            } else {
+                const error = await response.json();
+                this.showWifiScanError(error.message || 'Scan failed');
+            }
+        } catch (error) {
+            console.error('WiFi scan failed:', error);
+            this.showWifiScanError('Network error during scan');
+        } finally {
+            // Reset UI state
+            this.elements.scanWifiChannelsBtn.disabled = false;
+            this.elements.scanWifiChannelsBtn.innerHTML = '🔍 Scan Channels';
+            this.elements.wifiScanStatus.classList.add('hidden');
+        }
+    }
+
+    displayChannelResults(results) {
+        if (!this.elements.channelQualityList || !this.elements.wifiResults) return;
+
+        // Show results section
+        this.elements.wifiResults.classList.remove('hidden');
+        this.elements.channelQualityList.innerHTML = '';
+
+        // Find best channel
+        let bestChannel = null;
+        let bestSignal = -100;
+
+        results.channels.forEach(channel => {
+            if (channel.signal > bestSignal) {
+                bestSignal = channel.signal;
+                bestChannel = channel;
+            }
+        });
+
+        // Display each channel
+        results.channels.forEach(channel => {
+            const channelBar = document.createElement('div');
+            channelBar.className = `channel-bar ${channel.channel === bestChannel?.channel ? 'best-channel' : ''}`;
+
+            // Calculate signal strength percentage (signal is in dBm, typically -30 to -90)
+            const signalPercent = Math.max(0, Math.min(100, ((channel.signal + 30) / 60) * 100));
+
+            channelBar.innerHTML = `
+                <div class="channel-number">${channel.channel}</div>
+                <div class="channel-bar-fill">
+                    <div class="channel-bar-progress" style="width: ${signalPercent}%"></div>
+                </div>
+                <div class="channel-signal">${channel.signal}dBm</div>
+            `;
+
+            this.elements.channelQualityList.appendChild(channelBar);
+        });
+
+        // Update current channel display
+        if (this.elements.currentChannelDisplay) {
+            this.elements.currentChannelDisplay.textContent = `CH ${results.currentChannel}`;
+        }
+
+        // Show apply button if we have results
+        if (this.elements.applyBestChannelBtn) {
+            this.elements.applyBestChannelBtn.classList.remove('hidden');
+        }
+    }
+
+    showWifiScanError(message) {
+        if (this.elements.wifiScanError && this.elements.wifiErrorMessage) {
+            this.elements.wifiScanError.classList.remove('hidden');
+            this.elements.wifiErrorMessage.textContent = message;
+            this.elements.wifiResults.classList.add('hidden');
+        }
+        this.showToast('WiFi scan failed: ' + message, 'error');
+    }
+
+    confirmChannelChange() {
+        // Get the best channel info
+        const bestChannelBar = this.elements.channelQualityList?.querySelector('.best-channel');
+        if (!bestChannelBar) {
+            this.showToast('No channel data available', 'warning');
+            return;
+        }
+
+        const channelNumber = bestChannelBar.querySelector('.channel-number')?.textContent;
+        const signalStrength = bestChannelBar.querySelector('.channel-signal')?.textContent;
+
+        if (!channelNumber || !signalStrength) {
+            this.showToast('Unable to determine best channel', 'warning');
+            return;
+        }
+
+        const currentChannel = this.elements.currentChannelDisplay?.textContent?.replace('CH ', '') || 'Unknown';
+
+        // Determine quality badge
+        const signalValue = parseInt(signalStrength);
+        let qualityClass = 'poor';
+        let qualityText = 'Poor';
+
+        if (signalValue > -50) {
+            qualityClass = 'excellent';
+            qualityText = 'Excellent';
+        } else if (signalValue > -65) {
+            qualityClass = 'good';
+            qualityText = 'Good';
+        }
+
+        // Create confirmation modal
+        const modal = document.createElement('div');
+        modal.className = 'wifi-confirmation-modal';
+        modal.innerHTML = `
+            <div class="wifi-confirmation-content">
+                <div class="wifi-confirmation-header">
+                    <span class="wifi-confirmation-icon">📡</span>
+                    <h3 class="wifi-confirmation-title">Change WiFi Channel</h3>
+                </div>
+
+                <p class="wifi-confirmation-message">
+                    Are you sure you want to change the WiFi channel? This will affect all connected buzzers and may temporarily disconnect devices.
+                </p>
+
+                <div class="wifi-channel-details">
+                    <div class="channel-change-summary">
+                        <span class="channel-change-label">Current Channel:</span>
+                        <span class="channel-change-value">${currentChannel}</span>
+                    </div>
+                    <div class="channel-change-summary">
+                        <span class="channel-change-label">New Channel:</span>
+                        <span class="channel-change-value">${channelNumber}</span>
+                    </div>
+                    <div class="channel-quality-indicator">
+                        <span class="channel-change-label">Signal Quality:</span>
+                        <span class="quality-badge ${qualityClass}">${qualityText} (${signalStrength})</span>
+                    </div>
+                </div>
+
+                <div class="wifi-confirmation-actions">
+                    <button class="wifi-cancel-btn" onclick="this.closest('.wifi-confirmation-modal').remove()">Cancel</button>
+                    <button class="wifi-confirm-btn" onclick="window.hostControl.applyBestChannel('${channelNumber}')">Change Channel</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+    }
+
+    async applyBestChannel(channelNumber) {
+        // Remove confirmation modal
+        const modal = document.querySelector('.wifi-confirmation-modal');
+        if (modal) modal.remove();
+
+        try {
+            const response = await fetch('/api/wifi/channel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ channel: parseInt(channelNumber) })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                this.showToast(`WiFi channel changed to ${channelNumber}`, 'success');
+
+                // Update current channel display
+                if (this.elements.currentChannelDisplay) {
+                    this.elements.currentChannelDisplay.textContent = `CH ${channelNumber}`;
+                }
+            } else {
+                const error = await response.json();
+                this.showToast(`Failed to change channel: ${error.message}`, 'error');
+            }
+        } catch (error) {
+            console.error('Failed to change WiFi channel:', error);
+            this.showToast('Failed to change WiFi channel', 'error');
+        }
+    }
+
+    // =========================================
+    // Game Actions Modal Methods
+    // =========================================
+
+    showGameActionsModal() {
+        if (this.elements.gameActionsModal) {
+            this.elements.gameActionsModal.classList.remove('hidden');
+            this.updateGameActionsState();
+        }
+    }
+
+    hideGameActionsModal() {
+        if (this.elements.gameActionsModal) {
+            this.elements.gameActionsModal.classList.add('hidden');
+            this.hideConfirmationDialog();
+            this.hideActionStatus();
+        }
+    }
+
+    updateGameActionsState() {
+        // No longer needed since we removed pause/resume buttons
+    }
+
+    async confirmAction(actionType) {
+        let title, message, icon;
+
+        switch (actionType) {
+            case 'reset-scores':
+                title = 'Reset All Scores';
+                message = 'This will reset all team scores to zero. This action cannot be undone.';
+                icon = 'restart_alt';
+                // Note: resetAllScores is called in executeConfirmedAction
+                break;
+            case 'reset-questions':
+                title = 'Reset Questions';
+                message = 'This will reset the question progress but keep scores. This action cannot be undone.';
+                icon = 'restore';
+                break;
+            case 'reset-game':
+                title = 'Reset Game';
+                message = 'This will reset the entire game, clearing all scores and progress. This action cannot be undone.';
+                icon = 'delete_forever';
+                // Special handling: reset scores before confirming
+                try {
+                    await this.resetAllScores();
+                } catch (error) {
+                    // If score reset fails, don't show confirmation dialog
+                    return;
+                }
+                break;
+            case 'clear-history':
+                title = 'Clear Game History';
+                message = 'This will clear all game history and logs. This action cannot be undone.';
+                icon = 'clear_all';
+                break;
+            default:
+                return;
+        }
+
+        this.pendingAction = actionType;
+        this.showConfirmationDialog(title, message, icon);
+    }
+
+    showConfirmationDialog(title, message, icon) {
+        if (!this.elements.gameActionConfirmation ||
+            !this.elements.confirmationTitle ||
+            !this.elements.confirmationMessage ||
+            !this.elements.confirmationIcon) return;
+
+        this.elements.confirmationTitle.textContent = title;
+        this.elements.confirmationMessage.textContent = message;
+        this.elements.confirmationIcon.textContent = icon;
+        this.elements.gameActionConfirmation.classList.remove('hidden');
+    }
+
+    hideConfirmationDialog() {
+        if (this.elements.gameActionConfirmation) {
+            this.elements.gameActionConfirmation.classList.add('hidden');
+        }
+        this.pendingAction = null;
+    }
+
+    async executeConfirmedAction() {
+        if (!this.pendingAction) return;
+
+        this.hideConfirmationDialog();
+        this.showActionStatus('Processing...');
+
+        try {
+            switch (this.pendingAction) {
+                case 'reset-scores':
+                    await this.resetAllScores();
+                    this.showToast('All scores have been reset to zero', 'success');
+                    break;
+                case 'reset-questions':
+                    await this.resetQuestions();
+                    this.showToast('Question progress has been reset', 'success');
+                    break;
+                case 'reset-game':
+                    await this.resetGame();
+                    this.showToast('Game has been completely reset', 'success');
+                    break;
+                case 'clear-history':
+                    await this.clearGameHistory();
+                    this.showToast('Game history has been cleared', 'success');
+                    break;
+            }
+        } catch (error) {
+            console.error('Action failed:', error);
+            this.showToast(`Action failed: ${error.message}`, 'error');
+        } finally {
+            this.hideActionStatus();
+            this.pendingAction = null;
+        }
+    }
+
+    showActionStatus(message) {
+        if (this.elements.gameActionStatus && this.elements.statusMessage) {
+            this.elements.statusMessage.textContent = message;
+            this.elements.gameActionStatus.classList.remove('hidden');
+        }
+    }
+
+    hideActionStatus() {
+        if (this.elements.gameActionStatus) {
+            this.elements.gameActionStatus.classList.add('hidden');
+        }
+    }
+
+    async resetAllScores() {
+        if (!this.currentGame || !this.teams.length) {
+            this.showToast('No active game or teams to reset', 'warning');
+            return;
+        }
+
+        try {
+            // Reset each team's score in the database
+            const resetPromises = this.teams.map(async (team) => {
+                if (team.score !== 0) {
+                    const pointsDifference = -team.score; // Negative of current score to bring to 0
+                    await fetch(`/api/games/${this.currentGame.id}/award-points`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ groupId: team.id, points: pointsDifference })
+                    });
+                }
+            });
+
+            await Promise.all(resetPromises);
+
+            // Update local state
+            this.teams.forEach(team => {
+                team.score = 0;
+            });
+
+            // Emit to display clients
+            this.socket.emit('update-teams', this.teams);
+            this.updateTeamDisplay();
+
+            // Note: Toast will be shown after confirmation in executeConfirmedAction
+        } catch (error) {
+            console.error('Failed to reset scores:', error);
+            this.showToast('Failed to reset scores in database', 'error');
+            throw error; // Re-throw so calling function knows it failed
+        }
+    }
+
+    async resetQuestions() {
+        if (!this.currentGame) {
+            this.showToast('No active game to reset', 'warning');
+            return;
+        }
+
+        try {
+            // Call server API to reset questions
+            const response = await fetch(`/api/games/${this.currentGame.id}/reset-questions`, {
+                method: 'POST'
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to reset questions on server');
+            }
+
+            // Fetch updated game data from server to ensure we're in sync
+            const gameResponse = await fetch(`/api/games/${this.currentGame.id}`);
+            const updatedGame = await gameResponse.json();
+
+            // Update local game state with server data
+            this.onGameChanged(updatedGame);
+
+            // Reset additional local state
+            this.activeQuestionIndex = -1;
+            this.isQuestionActive = false;
+            this.buzzerOrder.length = 0;
+
+            // Emit to display clients
+            this.socket.emit('game-state', this.getGameState());
+
+            // Update UI controls
+            this.updateQuestionControls();
+            this.updateQuestionTabsState(); // Ensure tabs reflect reset state
+
+            // Note: Toast will be shown after confirmation in executeConfirmedAction
+        } catch (error) {
+            console.error('Failed to reset questions:', error);
+            this.showToast('Failed to reset questions', 'error');
+        }
+    }
+
+    async resetGame() {
+        // Full game reset (scores already reset before confirmation)
+        await this.resetQuestions();
+
+        // Call server reset endpoint to ensure server state consistency
+        try {
+            const response = await fetch(`/api/games/${this.currentGame.id}/reset`, {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                // Fetch the fully reset game data from server
+                const gameResponse = await fetch(`/api/games/${this.currentGame.id}`);
+                const updatedGame = await gameResponse.json();
+
+                // Update local game state with fully reset server data
+                this.onGameChanged(updatedGame);
+
+                // Reset additional local state
+                this.currentQuestionIndex = 0;
+                this.activeQuestionIndex = -1;
+                this.isQuestionActive = false;
+                this.buzzerOrder.length = 0;
+
+                // Emit to display clients
+                this.socket.emit('game-state', this.getGameState());
+                this.socket.emit('update-teams', this.teams);
+
+                // Additional UI updates to ensure everything is refreshed
+                this.updateQuestionControls();
+                this.updateQuestionTabsState();
+            }
+        } catch (error) {
+            console.error('Failed to call server reset:', error);
+            // Show error to user since full reset failed
+            this.showToast('Failed to complete full game reset', 'error');
+            return;
+        }
+
+        // Note: Toast will be shown after confirmation in executeConfirmedAction
+    }
+
+
+    async exportGameData() {
+        try {
+            const gameData = {
+                gameId: this.currentGame?.id,
+                teams: this.teams,
+                questions: this.questions,
+                playedQuestions: Array.from(this.playedQuestions),
+                buzzerOrder: this.buzzerOrder,
+                timestamp: new Date().toISOString()
+            };
+
+            const dataStr = JSON.stringify(gameData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `trivia-game-${this.currentGame?.id || 'export'}-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            this.showToast('Game data exported successfully', 'success');
+        } catch (error) {
+            console.error('Export failed:', error);
+            this.showToast('Failed to export game data', 'error');
+        }
+    }
+
+    async clearGameHistory() {
+        // Clear evaluation history and logs
+        this.evaluationHistory.length = 0;
+        this.keyPressCount = { 'A': 0, lastTime: 0 };
+
+        // Clear evaluation display
+        if (this.elements.evaluationList) {
+            this.elements.evaluationList.innerHTML = '';
+        }
+
+        // Note: Toast will be shown after confirmation in executeConfirmedAction
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    new HostControl();
+    window.hostControl = new HostControl();
 });

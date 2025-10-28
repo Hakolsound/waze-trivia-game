@@ -12,27 +12,16 @@ class GameDisplay {
         this.teamNames = new Map();
         this.sidebarExpanded = true;
         this.answerWasShown = false; // Track if answer was shown for current question
-        this.showingAllTeams = false; // Track if we're showing all teams in leaderboard
         
         // Performance optimization caches
         this.lastTimerPercentage = -1;
         this.lastDisplayedSeconds = -1;
         this.lastDisplayedPoints = -1;
-        this.timerAnimationFrame = null;
-        this.lastTimerUpdate = 0;
-        this.mediaObserver = null; // Intersection observer for media lazy loading
-        this.animationObserver = null; // Intersection observer for animations
-        this.loadedMedia = new Set(); // Track loaded media to prevent duplicates
-        this.eventListeners = new Map(); // Track event listeners for cleanup
-        this.timers = new Set(); // Track timers for cleanup
-        this.animatedElements = new WeakSet(); // Track elements that have been animated
-
+        
         this.initializeGameSelector();
         this.initializeElements();
         this.setupSocketListeners();
         this.setupUI();
-        this.setupMediaObserver();
-        this.setupAnimationObserver();
     }
 
     initializeGameSelector() {
@@ -640,26 +629,7 @@ class GameDisplay {
     updateTimer(timeRemaining, totalTime) {
         this.timeRemaining = timeRemaining;
         this.totalTime = totalTime;
-
-        // Throttle updates to 30fps for better performance
-        const now = performance.now();
-        if (now - this.lastTimerUpdate < 33) { // ~30fps
-            return;
-        }
-        this.lastTimerUpdate = now;
-
-        // Use requestAnimationFrame for smooth updates
-        if (this.timerAnimationFrame) {
-            cancelAnimationFrame(this.timerAnimationFrame);
-        }
-
-        this.timerAnimationFrame = requestAnimationFrame(() => {
-            this.performTimerUpdate(timeRemaining, totalTime);
-            this.timerAnimationFrame = null;
-        });
-    }
-
-    performTimerUpdate(timeRemaining, totalTime) {
+        
         // Ensure timer bar is completely empty when time is up
         let percentage;
         if (timeRemaining <= 0 || totalTime <= 0) {
@@ -667,14 +637,14 @@ class GameDisplay {
         } else {
             percentage = Math.max(0, (timeRemaining / totalTime) * 100);
         }
-
+        
         // Only update timer progress if it changed significantly (avoid micro-updates)
         const roundedPercentage = Math.round(percentage * 10) / 10; // Round to 1 decimal
         if (this.lastTimerPercentage !== roundedPercentage) {
             this.elements.timerProgress.style.width = `${roundedPercentage}%`;
             this.lastTimerPercentage = roundedPercentage;
         }
-
+        
         const seconds = Math.max(0, Math.floor(timeRemaining)); // Round down to show accurate seconds
         if (seconds > 0) {
             // Only update timer text if seconds changed
@@ -682,7 +652,7 @@ class GameDisplay {
                 this.elements.timerText.textContent = `${seconds}s`;
                 this.lastDisplayedSeconds = seconds;
             }
-
+            
             // Update points display for time-based scoring (only when points change)
             if (this.currentGame && this.currentGame.time_based_scoring && this.basePoints && this.currentState === 'question') {
                 const currentPoints = this.calculateTimeBasedPoints(this.basePoints, timeRemaining, totalTime);
@@ -695,7 +665,7 @@ class GameDisplay {
             this.elements.timerText.textContent = 'Time up!';
             // Force timer to 0% when showing "Time up!"
             this.elements.timerProgress.style.width = '0%';
-
+            
             // Show 0 points when time is up for time-based scoring
             if (this.currentGame && this.currentGame.time_based_scoring) {
                 this.elements.questionPoints.textContent = '0 Points';
@@ -706,49 +676,29 @@ class GameDisplay {
     // Buzzer Queue Methods
     updateBuzzerQueue() {
         const container = this.elements.buzzerQueue;
-
-        // Use document fragment for better performance
-        const fragment = document.createDocumentFragment();
-
+        
         if (this.buzzerQueue.length === 0) {
-            const emptyItem = document.createElement('div');
-            emptyItem.className = 'buzzer-item';
-            emptyItem.innerHTML = `
-                <div class="buzzer-team"></div>
-                <div class="buzzer-details">
-                    <span class="buzzer-order">-</span>
-                    <span class="buzzer-time">-</span>
+            container.innerHTML = `
+                <div class="buzzer-item">
+                    <div class="buzzer-team"></div>
+                    <div class="buzzer-details">
+                        <span class="buzzer-order">-</span>
+                        <span class="buzzer-time">-</span>
+                    </div>
                 </div>
             `;
-            fragment.appendChild(emptyItem);
-        } else {
-            // Create items efficiently with object pooling
-            this.buzzerQueue.forEach((item, index) => {
-                const buzzerItem = this.createOrReuseBuzzerItem(item, index);
-                fragment.appendChild(buzzerItem);
-            });
+            return;
         }
-
-        // Batch DOM update
-        container.innerHTML = '';
-        container.appendChild(fragment);
-    }
-
-    createOrReuseBuzzerItem(item, index) {
-        const buzzerItem = document.createElement('div');
-        buzzerItem.className = `buzzer-item ${index === 0 ? 'fastest' : 'active'}`;
-        buzzerItem.dataset.buzzerId = item.buzzerId;
-
-        // Use textContent for better performance than innerHTML
-        buzzerItem.innerHTML = `
-            <div class="buzzer-team">${item.teamName}</div>
-            <div class="buzzer-details">
-                <span class="buzzer-order">${item.order}</span>
-                <span class="buzzer-time">${item.deltaTime.toFixed(2)}s</span>
+        
+        container.innerHTML = this.buzzerQueue.map((item, index) => `
+            <div class="buzzer-item ${index === 0 ? 'fastest' : 'active'}" data-buzzer-id="${item.buzzerId}">
+                <div class="buzzer-team">${item.teamName}</div>
+                <div class="buzzer-details">
+                    <span class="buzzer-order">${item.order}</span>
+                    <span class="buzzer-time">${item.deltaTime.toFixed(2)}s</span>
+                </div>
             </div>
-        `;
-
-        return buzzerItem;
+        `).join('');
     }
 
     highlightFastestBuzzer(buzzerItem) {
@@ -830,7 +780,7 @@ class GameDisplay {
         // Hide after longer delay to let people appreciate the enhanced display
         setTimeout(() => {
             feedback.classList.remove('show');
-        }, 2500);
+        }, 4000);
     }
 
     // Utility Methods
@@ -986,7 +936,6 @@ class GameDisplay {
         
         // Filter teams based on view
         let teamsToShow = allTeams;
-        let hasMoreTeams = false;
         switch (view) {
             case 'top3':
                 teamsToShow = allTeams.slice(0, 3);
@@ -996,18 +945,7 @@ class GameDisplay {
                 break;
             case 'all':
             default:
-                // For performance, limit to 20 teams initially with option to show more
-                // But if this is called from showAllTeams, show everything
-                const MAX_INITIAL_TEAMS = 20;
-                const showAllRequested = this.showingAllTeams;
-                if (allTeams.length > MAX_INITIAL_TEAMS && !showAllRequested) {
-                    teamsToShow = allTeams.slice(0, MAX_INITIAL_TEAMS);
-                    hasMoreTeams = true;
-                } else {
-                    teamsToShow = allTeams;
-                    hasMoreTeams = false;
-                    this.showingAllTeams = true; // Mark that we're showing all teams now
-                }
+                teamsToShow = allTeams;
                 break;
         }
         
@@ -1024,7 +962,7 @@ class GameDisplay {
         } else {
             // Apply dynamic sizing based on team count for 'all' view
             this.applyDynamicSizing(teamCount);
-            this.updateRankedTeamsList(teamsToShow, hasMoreTeams, allTeams);
+            this.updateRankedTeamsList(teamsToShow);
         }
         
         // Show the leaderboard overlay
@@ -1176,7 +1114,7 @@ class GameDisplay {
         }
     }
 
-    updateRankedTeamsList(teams, hasMoreTeams = false, allTeams = []) {
+    updateRankedTeamsList(teams) {
         const container = this.elements.rankedTeamsList;
         
         if (!teams || teams.length === 0) {
@@ -1231,26 +1169,6 @@ class GameDisplay {
                 </div>
             `;
         }).join('');
-
-        // Add "Show More" button if there are more teams
-        if (hasMoreTeams) {
-            const remainingCount = allTeams.length - teams.length;
-            teamsHtml += `
-                <div class="show-more-container" style="animation-delay: ${teams.length * 100}ms">
-                    <button class="show-more-btn" onclick="window.gameDisplay.showAllTeams()">
-                        Show ${remainingCount} More Team${remainingCount > 1 ? 's' : ''}
-                        <span class="show-more-icon">▼</span>
-                    </button>
-                </div>
-            `;
-        }
-
-        container.innerHTML = teamsHtml;
-    }
-
-    showAllTeams() {
-        // Re-show leaderboard with all teams
-        this.showLeaderboard('all');
     }
 
     applyDynamicSizing(teamCount) {
@@ -1570,198 +1488,9 @@ class GameDisplay {
             }
         }
     }
-
-    // Media Lazy Loading Methods
-    setupMediaObserver() {
-        if (!('IntersectionObserver' in window)) {
-            console.log('IntersectionObserver not supported, falling back to immediate loading');
-            return;
-        }
-
-        this.mediaObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    this.loadMedia(entry.target);
-                    this.mediaObserver.unobserve(entry.target);
-                }
-            });
-        }, {
-            rootMargin: '50px', // Start loading 50px before element enters viewport
-            threshold: 0.1
-        });
-    }
-
-    setupAnimationObserver() {
-        if (!('IntersectionObserver' in window)) {
-            console.log('IntersectionObserver not supported for animations, animations will play normally');
-            return;
-        }
-
-        this.animationObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting && !this.animatedElements.has(entry.target)) {
-                    this.triggerElementAnimation(entry.target);
-                    this.animatedElements.add(entry.target);
-                    // Keep observing to handle re-entry if needed
-                }
-            });
-        }, {
-            rootMargin: '100px', // Trigger animations 100px before entering viewport
-            threshold: 0.1
-        });
-    }
-
-    triggerElementAnimation(element) {
-        // Add animation trigger class if element has animation capabilities
-        if (element.classList.contains('ranked-team-item') ||
-            element.classList.contains('buzzer-item') ||
-            element.classList.contains('question-card')) {
-            element.classList.add('animate-in');
-        }
-    }
-
-    loadMedia(mediaElement) {
-        const src = mediaElement.dataset.src;
-        if (!src || this.loadedMedia.has(src)) {
-            return;
-        }
-
-        this.loadedMedia.add(src);
-
-        if (mediaElement.tagName === 'IMG') {
-            mediaElement.src = src;
-            mediaElement.classList.add('loaded');
-        } else if (mediaElement.tagName === 'VIDEO') {
-            mediaElement.src = src;
-            mediaElement.load();
-            mediaElement.classList.add('loaded');
-        } else if (mediaElement.tagName === 'IFRAME') {
-            mediaElement.src = src;
-            mediaElement.classList.add('loaded');
-        }
-    }
-
-    observeMedia(mediaElement) {
-        if (this.mediaObserver && mediaElement) {
-            this.mediaObserver.observe(mediaElement);
-        } else {
-            // Fallback: load immediately
-            this.loadMedia(mediaElement);
-        }
-    }
-
-    unloadMedia() {
-        // Clear loaded media cache when switching questions
-        this.loadedMedia.clear();
-
-        // Pause and clean up any playing videos
-        const videos = this.elements.questionMedia?.querySelectorAll('video');
-        if (videos) {
-            videos.forEach(video => {
-                video.pause();
-                video.currentTime = 0;
-                video.src = ''; // Clear source to free memory
-                video.load(); // Reset video element
-            });
-        }
-
-        // Clean up images
-        const images = this.elements.questionMedia?.querySelectorAll('img');
-        if (images) {
-            images.forEach(img => {
-                img.src = ''; // Clear source to free memory
-            });
-        }
-
-        // Clean up iframes
-        const iframes = this.elements.questionMedia?.querySelectorAll('iframe');
-        if (iframes) {
-            iframes.forEach(iframe => {
-                iframe.src = 'about:blank'; // Clear source safely
-            });
-        }
-    }
-
-    // Memory Management Methods
-    addTrackedTimer(timerId) {
-        this.timers.add(timerId);
-    }
-
-    clearTrackedTimer(timerId) {
-        if (this.timers.has(timerId)) {
-            clearTimeout(timerId);
-            clearInterval(timerId);
-            this.timers.delete(timerId);
-        }
-    }
-
-    clearAllTimers() {
-        this.timers.forEach(timerId => {
-            clearTimeout(timerId);
-            clearInterval(timerId);
-        });
-        this.timers.clear();
-
-        // Clear animation frames
-        if (this.timerAnimationFrame) {
-            cancelAnimationFrame(this.timerAnimationFrame);
-            this.timerAnimationFrame = null;
-        }
-    }
-
-    cleanup() {
-        // Clear all tracked resources
-        this.clearAllTimers();
-
-        // Disconnect intersection observers
-        if (this.mediaObserver) {
-            this.mediaObserver.disconnect();
-            this.mediaObserver = null;
-        }
-
-        if (this.animationObserver) {
-            this.animationObserver.disconnect();
-            this.animationObserver = null;
-        }
-
-        // Clear media cache
-        this.unloadMedia();
-
-        // Clear caches
-        this.loadedMedia.clear();
-        this.teamNames.clear();
-        this.animatedElements = new WeakSet(); // Reset animation tracking
-
-        // Disconnect socket listeners
-        if (this.socket) {
-            this.socket.removeAllListeners();
-        }
-
-        console.log('GameDisplay cleanup completed');
-    }
 }
 
 // Initialize the display when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.gameDisplay = new GameDisplay();
-});
-
-// Cleanup on page unload
-window.addEventListener('beforeunload', () => {
-    if (window.gameDisplay && typeof window.gameDisplay.cleanup === 'function') {
-        window.gameDisplay.cleanup();
-    }
-});
-
-// Handle visibility change to pause/resume media
-document.addEventListener('visibilitychange', () => {
-    if (window.gameDisplay) {
-        if (document.hidden) {
-            // Page is hidden, pause media
-            window.gameDisplay.unloadMedia();
-        } else {
-            // Page is visible again, can resume if needed
-            console.log('Page became visible again');
-        }
-    }
 });

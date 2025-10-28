@@ -28,6 +28,17 @@ class ESP32Service extends EventEmitter {
     this.binaryProtocolEnabled = process.env.BINARY_PROTOCOL_ENABLED !== 'false'; // Default to true
     this.binaryBuffer = Buffer.alloc(0);
 
+    // Circuit breaker for hardware communication
+    this.circuitBreaker = {
+      failures: 0,
+      lastFailureTime: 0,
+      state: 'CLOSED', // CLOSED, OPEN, HALF_OPEN
+      successThreshold: 3,
+      failureThreshold: 5,
+      timeoutMs: 30000, // 30 seconds before trying again
+      nextAttemptTime: 0
+    };
+
     // Protocol constants
     this.MESSAGE_TYPES = {
       BUZZER_PRESS: 0x01,
@@ -60,7 +71,7 @@ class ESP32Service extends EventEmitter {
         return;
       }
 
-      console.log(`Attempting to connect to ESP32 on ${this.serialPortPath}`);
+      global.consoleLogger?.hardware(`Attempting to connect to ESP32 on ${this.serialPortPath}`);
       
       this.serialPort = new SerialPort({
         path: this.serialPortPath,
@@ -78,18 +89,18 @@ class ESP32Service extends EventEmitter {
       }
 
       this.serialPort.on('open', () => {
-        console.log('ESP32 Serial connection established');
+        global.consoleLogger?.hardware('ESP32 Serial connection established');
         this.isConnectedFlag = true;
         this.sendCommand('STATUS');
       });
 
       this.serialPort.on('error', (err) => {
-        console.warn('ESP32 Serial error (will continue without hardware):', err.message);
+        global.consoleLogger?.hardware(`ESP32 Serial error (continuing without hardware): ${err.message}`, 'warning');
         this.isConnectedFlag = false;
       });
 
       this.serialPort.on('close', () => {
-        console.log('ESP32 Serial connection closed');
+        global.consoleLogger?.hardware('ESP32 Serial connection closed', 'warning');
         this.isConnectedFlag = false;
       });
 
@@ -355,21 +366,47 @@ class ESP32Service extends EventEmitter {
   }
 
   sendCommand(command) {
-    if (this.binaryProtocolEnabled) {
-      // Parse text command and convert to binary
-      return this.sendBinaryCommandFromText(command);
-    } else {
-      // Send text command
-      if (this.isConnectedFlag && this.serialPort) {
-        console.log('Sending ESP32 command:', command);
-        this.serialPort.write(command + '\n');
-        return true;
-      } else {
-        console.log('ESP32 not connected, simulating command:', command);
-        this.simulateCommand(command);
-        return false;
-      }
+    // Check circuit breaker
+    if (!this.canAttemptCommunication()) {
+      global.consoleLogger?.hardware(`Circuit breaker OPEN: Skipping command "${command}"`, 'warning');
+      return false;
     }
+
+    let success = false;
+
+    try {
+      if (this.binaryProtocolEnabled) {
+        // Parse text command and convert to binary
+        success = this.sendBinaryCommandFromText(command);
+      } else {
+        // Send text command
+        if (this.isConnectedFlag && this.serialPort) {
+          global.consoleLogger?.hardware(`Sending ESP32 command: ${command}`);
+          this.serialPort.write(command + '\n');
+          success = true;
+        } else {
+          global.consoleLogger?.hardware(`ESP32 not connected, simulating command: ${command}`, 'warning');
+          this.simulateCommand(command);
+          success = false;
+        }
+      }
+
+      // Record success or failure
+      if (success) {
+        this.recordSuccess();
+        global.consoleLogger?.hardware(`Command "${command}" sent successfully`);
+      } else {
+        this.recordFailure();
+        global.consoleLogger?.hardware(`Command "${command}" failed to send`, 'warning');
+      }
+
+    } catch (error) {
+      global.consoleLogger?.error(`Error in sendCommand: ${error.message}`);
+      this.recordFailure();
+      success = false;
+    }
+
+    return success;
   }
 
   sendBinaryCommandFromText(command) {
@@ -581,13 +618,14 @@ class ESP32Service extends EventEmitter {
 
   async getStatus() {
     this.sendCommand('STATUS');
-    
+
     return {
       connected: this.isConnectedFlag,
       port: this.serialPortPath,
       baudRate: this.baudRate,
       currentGame: this.currentGameId,
       buzzerStates: Object.fromEntries(this.buzzerStates),
+      circuitBreaker: this.getCircuitBreakerStatus(),
       lastUpdate: Date.now()
     };
   }
@@ -601,15 +639,15 @@ class ESP32Service extends EventEmitter {
     const devices = [];
     const now = Date.now();
     const staleThreshold = 60000; // 60 seconds
-    
+
     for (const [deviceId, state] of this.buzzerStates) {
       // Only include numeric device IDs (filter out false entries)
       if (!/^\d+$/.test(deviceId.toString())) continue;
-      
+
       const timeSinceLastSeen = now - (state.last_seen || 0);
       // Device is online ONLY if ESP32 reported online=1 AND it's recent
       const isOnline = state.online === true && timeSinceLastSeen < staleThreshold;
-      
+
       // For last_online: if device is currently online, use last_online or fallback to last_seen
       let lastOnlineTimestamp = null;
       if (isOnline) {
@@ -620,7 +658,7 @@ class ESP32Service extends EventEmitter {
         lastOnlineTimestamp = state.last_online || null;
       }
       const timeSinceLastOnline = lastOnlineTimestamp ? now - lastOnlineTimestamp : null;
-      
+
       devices.push({
         device_id: deviceId,
         name: `Buzzer ${deviceId}`,
@@ -637,9 +675,41 @@ class ESP32Service extends EventEmitter {
         battery_voltage: state.battery_voltage !== undefined ? state.battery_voltage : null
       });
     }
-    
+
     // Don't create fake devices - only return actual ones from ESP32
     return devices;
+  }
+
+  // WiFi Channel Management Methods
+  async scanWifiChannels() {
+    const command = 'SCAN_CHANNELS';
+    return this.sendCommand(command);
+  }
+
+  async getChannelScanResults() {
+    // This would need to be implemented to parse channel scan results from coordinator
+    // For now, return placeholder
+    return {
+      success: true,
+      results: [],
+      recommended: 13,
+      timestamp: Date.now()
+    };
+  }
+
+  async getBestChannel() {
+    const command = 'GET_BEST_CHANNEL';
+    return this.sendCommand(command);
+  }
+
+  async setWifiChannel(channel) {
+    const command = `SET_CHANNEL:${channel}`;
+    return this.sendCommand(command);
+  }
+
+  async getCurrentChannel() {
+    const command = 'GET_CURRENT_CHANNEL';
+    return this.sendCommand(command);
   }
 
   parseDeviceData(deviceString) {
@@ -729,7 +799,64 @@ class ESP32Service extends EventEmitter {
     return this.isConnectedFlag;
   }
 
-  async close() {
+  // Circuit Breaker Methods
+  canAttemptCommunication() {
+    const now = Date.now();
+
+    switch (this.circuitBreaker.state) {
+      case 'CLOSED':
+        return true;
+
+      case 'OPEN':
+        if (now >= this.circuitBreaker.nextAttemptTime) {
+          console.log('Circuit breaker transitioning to HALF_OPEN');
+          this.circuitBreaker.state = 'HALF_OPEN';
+          return true;
+        }
+        return false;
+
+      case 'HALF_OPEN':
+        return true;
+
+      default:
+        return false;
+    }
+  }
+
+  recordSuccess() {
+    if (this.circuitBreaker.state === 'HALF_OPEN') {
+      this.circuitBreaker.failures = 0;
+      this.circuitBreaker.state = 'CLOSED';
+      console.log('Circuit breaker CLOSED after successful communication');
+    }
+  }
+
+  recordFailure() {
+    this.circuitBreaker.failures++;
+    this.circuitBreaker.lastFailureTime = Date.now();
+
+    if (this.circuitBreaker.state === 'HALF_OPEN') {
+      // Immediately go back to OPEN state
+      this.circuitBreaker.state = 'OPEN';
+      this.circuitBreaker.nextAttemptTime = Date.now() + this.circuitBreaker.timeoutMs;
+      console.log(`Circuit breaker back to OPEN after failure (${this.circuitBreaker.failures}/${this.circuitBreaker.failureThreshold})`);
+    } else if (this.circuitBreaker.failures >= this.circuitBreaker.failureThreshold) {
+      this.circuitBreaker.state = 'OPEN';
+      this.circuitBreaker.nextAttemptTime = Date.now() + this.circuitBreaker.timeoutMs;
+      console.log(`Circuit breaker OPEN after ${this.circuitBreaker.failures} failures`);
+    }
+  }
+
+  getCircuitBreakerStatus() {
+    return {
+      state: this.circuitBreaker.state,
+      failures: this.circuitBreaker.failures,
+      lastFailureTime: this.circuitBreaker.lastFailureTime,
+      nextAttemptTime: this.circuitBreaker.nextAttemptTime
+    };
+  }
+
+  close() {
     if (this.serialPort && this.serialPort.isOpen) {
       return new Promise((resolve) => {
         this.serialPort.close((err) => {

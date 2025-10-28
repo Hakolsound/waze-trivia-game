@@ -14,6 +14,8 @@ const gameRoutes = require('./routes/games');
 const groupRoutes = require('./routes/groups');
 const questionRoutes = require('./routes/questions');
 const buzzerRoutes = require('./routes/buzzers');
+const wifiRoutes = require('./routes/wifi');
+const systemRoutes = require('./routes/system');
 
 const app = express();
 const server = http.createServer(app);
@@ -23,6 +25,66 @@ const io = socketIo(server, {
     methods: ["GET", "POST"]
   }
 });
+
+// Make io available to routes
+app.set('io', io);
+
+// Handle favicon requests before any middleware
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end(); // Return no content for favicon
+});
+
+// Console logging utility for monitoring
+const consoleLogger = {
+  log: (category, message, level = 'info') => {
+    const timestamp = new Date().toISOString();
+    const logEntry = {
+      timestamp,
+      category,
+      message,
+      level
+    };
+
+    // Send to control panel via socket
+    io.to('control-panel').emit('console-log', logEntry);
+
+    // Also log to server console with category prefix
+    const prefix = `[${category.toUpperCase()}]`;
+    switch (level) {
+      case 'error':
+        console.error(`${prefix} ${message}`);
+        break;
+      case 'warning':
+        console.warn(`${prefix} ${message}`);
+        break;
+      default:
+        console.log(`${prefix} ${message}`);
+    }
+  },
+
+  hardware: (message, level = 'info') => {
+    consoleLogger.log('hardware', message, level);
+  },
+
+  game: (message, level = 'info') => {
+    consoleLogger.log('game', message, level);
+  },
+
+  error: (message) => {
+    consoleLogger.log('error', message, 'error');
+  },
+
+  warning: (message) => {
+    consoleLogger.log('warning', message, 'warning');
+  },
+
+  info: (message) => {
+    consoleLogger.log('info', message, 'info');
+  }
+};
+
+// Make console logger globally available
+global.consoleLogger = consoleLogger;
 
 const PORT = process.env.PORT || 3000;
 
@@ -60,10 +122,12 @@ app.use('/api/games', gameRoutes(gameService));
 app.use('/api/groups', groupRoutes(gameService));
 app.use('/api/questions', questionRoutes(gameService));
 app.use('/api/buzzers', buzzerRoutes(esp32Service));
+app.use('/api/wifi', wifiRoutes(esp32Service));
+app.use('/api/system', systemRoutes(io, esp32Service, gameService));
 
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'healthy', 
+  res.json({
+    status: 'healthy',
     timestamp: new Date().toISOString(),
     services: {
       database: db.isConnected(),

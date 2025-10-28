@@ -3,51 +3,11 @@
 #include <esp_wifi.h>
 #include <FastLED.h>
 
-// Hardware Configuration
-#define BUZZER_PIN 2
-#define LED_PIN 4
-#define BUZZER_BUTTON_PIN 5
-
-// WS2812B RGB LED Configuration
-#define NUM_LEDS 23        // Number of LEDs in the strip (adjust as needed)
-#define RGB_DATA_PIN 4    // Same pin as LED_PIN for WS2812B data
-#define LED_TYPE WS2812B
-#define COLOR_ORDER GRB
-#define BRIGHTNESS 128     // 0-255, adjust for desired brightness
-
-// Device Configuration
-#define DEVICE_ID 15  // Change this for each group buzzer (1, 2, 3, etc.)
-#define MAX_GROUPS 15
-
-// Battery Monitoring Configuration
-#define BATTERY_ADC_PIN 34        // ADC1_CH6 - GPIO34 for battery voltage reading
-#define BATTERY_VOLTAGE_DIVIDER 2.0  // 100k/100k voltage divider (50% division)
-#define BATTERY_MIN_VOLTAGE 3.0   // Minimum battery voltage (0%)
-#define BATTERY_MAX_VOLTAGE 4.2   // Maximum battery voltage (100%)
-#define ADC_RESOLUTION 4095       // 12-bit ADC resolution
-#define ADC_REFERENCE_VOLTAGE 3.3 // ESP32 ADC reference voltage
-
-// Calibration factors (adjust these to match actual readings)
-// To calibrate: measure battery voltage with multimeter, compare to reading, adjust factor
-// Formula: CALIBRATION_FACTOR = actual_voltage / measured_voltage
-// Example: multimeter=3.91V, device=3.56V -> factor=3.91/3.56=1.098
-#define BATTERY_CALIBRATION_FACTOR 1.098  // Adjust this value per device if needed
-
-// Central coordinator MAC address
-uint8_t coordinatorMAC[] = {0x78, 0xE3, 0x6D, 0x1B, 0x13, 0x28};
+// Hardware Configuration - MOVED TO BOTTOM FOR BETTER ORGANIZATION
+// See consolidated constants below
 
 // WS2812B LED Array
 CRGB leds[NUM_LEDS];
-
-// Color definitions
-#define COLOR_OFF CRGB::Black
-#define COLOR_ARMED CRGB::Blue
-#define COLOR_ANSWERING_NOW CRGB::White
-#define COLOR_CORRECT_ANSWER CRGB::Green
-#define COLOR_WRONG_ANSWER CRGB::Red
-#define COLOR_TEST CRGB::Yellow
-#define COLOR_ERROR CRGB::Red
-#define COLOR_STARTUP CRGB::Purple
 
 // Game states
 enum BuzzerState {
@@ -60,10 +20,154 @@ enum BuzzerState {
   STATE_BATTERY_DISPLAY
 };
 
+// State validation and consistency functions
+void setBuzzerState(BuzzerState newState) {
+  if (currentState != newState) {
+    previousState = currentState;
+    currentState = newState;
+    Serial.printf("[STATE] Device %d: %d -> %d\n", DEVICE_ID, previousState, currentState);
+
+    // Force immediate LED update for critical state changes
+    if (newState == STATE_ANSWERING_NOW || newState == STATE_CORRECT_ANSWER ||
+        newState == STATE_WRONG_ANSWER) {
+      updateLedState();
+      lastRgbUpdate = millis(); // Prevent immediate re-update in loop
+      lastLedState = newState; // Update tracking state
+    }
+  }
+}
+
+bool validateStateConsistency() {
+  bool isConsistent = true;
+
+  // Check for inconsistent state combinations
+  if (currentState == STATE_ARMED && !isArmed) {
+    Serial.printf("[STATE ERROR] Device %d: ARMED state but isArmed=false - fixing\n", DEVICE_ID);
+    isArmed = true;
+    isConsistent = false;
+  }
+
+  if ((currentState == STATE_ANSWERING_NOW || currentState == STATE_CORRECT_ANSWER ||
+       currentState == STATE_WRONG_ANSWER) && !buzzerPressed) {
+    Serial.printf("[STATE ERROR] Device %d: Answer state but buzzerPressed=false - fixing\n", DEVICE_ID);
+    buzzerPressed = true;
+    isConsistent = false;
+  }
+
+  if (currentState == STATE_DISARMED && isArmed) {
+    Serial.printf("[STATE WARNING] Device %d: DISARMED state but isArmed=true - checking context\n", DEVICE_ID);
+    // This is OK if we're in wrong answer state after disarm
+    if (previousState != STATE_WRONG_ANSWER) {
+      Serial.printf("[STATE ERROR] Device %d: DISARMED but isArmed=true - fixing\n", DEVICE_ID);
+      isArmed = false;
+      isConsistent = false;
+    }
+  }
+
+  return isConsistent;
+}
+
+bool validateCommandForState(Command cmd) {
+  // Command validation based on current state to prevent invalid transitions
+  switch (cmd.command) {
+    case 1: // ARM
+      // Can arm from disarmed or wrong answer states
+      return (currentState == STATE_DISARMED || currentState == STATE_WRONG_ANSWER);
+
+    case 2: // DISARM
+      // Can disarm from any armed state
+      return (currentState == STATE_ARMED || currentState == STATE_ANSWERING_NOW ||
+              currentState == STATE_CORRECT_ANSWER || currentState == STATE_WRONG_ANSWER);
+
+    case 3: // TEST
+      // Can test from any state
+      return true;
+
+    case 4: // RESET
+      // Can reset from any state
+      return true;
+
+    case 5: // CORRECT_ANSWER
+      // Must be in answering state
+      return (currentState == STATE_ANSWERING_NOW);
+
+    case 6: // WRONG_ANSWER
+      // Must be in answering state
+      return (currentState == STATE_ANSWERING_NOW);
+
+    case 7: // END_ROUND
+      // Can end round from any state
+      return true;
+
+    default:
+      return false;
+  }
+}
+
+bool setWifiChannel(uint8_t channel) {
+  if (channel < 1 || channel > 13) {
+    Serial.printf("[CHANNEL] ERROR: Invalid channel %d\n", channel);
+    return false;
+  }
+
+  if (channel == currentWifiChannel) {
+    Serial.printf("[CHANNEL] Already on channel %d\n", channel);
+    return true;
+  }
+
+  Serial.printf("[CHANNEL] Changing from %d to %d\n", currentWifiChannel, channel);
+
+  esp_err_t result = esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
+  if (result != ESP_OK) {
+    Serial.printf("[CHANNEL] ERROR: Failed to set channel %d (error %d)\n", channel, result);
+    return false;
+  }
+
+  currentWifiChannel = channel;
+  Serial.printf("[CHANNEL] Successfully set to channel %d\n", channel);
+  return true;
+}
+
+void forceStateRecovery() {
+  Serial.printf("[STATE RECOVERY] Device %d starting state recovery\n", DEVICE_ID);
+
+  // Clear all pending operations
+  waitingForPressAck = false;
+  waitingForAnswerFeedback = false;
+  pressRetryCount = 0;
+  batteryModeActivationPending = false;
+  buttonPressActive = false;
+
+  // Determine appropriate recovery state
+  if (isArmed && !buzzerPressed) {
+    setBuzzerState(STATE_ARMED);
+  } else if (isArmed && buzzerPressed) {
+    setBuzzerState(STATE_ANSWERING_NOW);
+    waitingForAnswerFeedback = true;
+    answerFeedbackTimeout = millis() + 30000;
+  } else {
+    setBuzzerState(STATE_DISARMED);
+  }
+
+  Serial.printf("[STATE RECOVERY] Device %d recovered to state %d\n", DEVICE_ID, currentState);
+}
+
+// Color definitions
+#define COLOR_OFF CRGB::Black
+#define COLOR_ARMED CRGB::Blue
+#define COLOR_ANSWERING_NOW CRGB::White
+#define COLOR_CORRECT_ANSWER CRGB::Green
+#define COLOR_WRONG_ANSWER CRGB::Red
+#define COLOR_TEST CRGB::Yellow
+#define COLOR_ERROR CRGB::Red
+#define COLOR_STARTUP CRGB::Purple
+
 // State management
 bool isArmed = false;
 bool buzzerPressed = false;
 BuzzerState currentState = STATE_DISARMED;
+BuzzerState previousState = STATE_DISARMED; // Track previous state for recovery
+BuzzerState lastLedState = STATE_DISARMED; // Track last LED update state
 unsigned long buzzerPressTime = 0;
 unsigned long lastHeartbeat = 0;
 unsigned long lastButtonCheck = 0;
@@ -82,8 +186,8 @@ bool waitingForAnswerFeedback = false;
 bool waitingForPressAck = false;
 unsigned long pressAckTimeout = 0;
 uint8_t pressRetryCount = 0;
-#define PRESS_ACK_TIMEOUT_MS 100  // 100ms timeout - faster retry in race scenarios
-#define MAX_PRESS_RETRIES 3
+#define PRESS_ACK_TIMEOUT_MS 300  // Increased from 100ms to 300ms for reliability in crowded environments
+#define MAX_PRESS_RETRIES 5       // Increased from 3 to 5 retries
 
 // Battery monitoring variables
 float batteryVoltage = 0.0;
@@ -97,12 +201,73 @@ bool buttonPressActive = false;
 bool batteryModeActivationPending = false;
 unsigned long batteryDisplayStartTime = 0;
 bool idDisplayShown = false;  // Track if ID has been displayed
-#define BATTERY_MODE_TIMEOUT 10000  // 10 seconds display timeout (for ID + battery display)
-#define BUTTON_HOLD_THRESHOLD 3000  // 3 seconds to activate battery mode
+BuzzerState stateBeforeBatteryMode = STATE_DISARMED; // Track state before battery mode
+// Keep old constants for backward compatibility but mark as deprecated
+#define BATTERY_MODE_TIMEOUT 10000  // 10 seconds display timeout (for ID + battery display) - DEPRECATED
+#define BUTTON_HOLD_THRESHOLD 3000  // 3 seconds to activate battery mode - DEPRECATED
 
 // Correct answer LED display timer (2 second decay)
 unsigned long correctAnswerStartTime = 0;
 #define CORRECT_ANSWER_DURATION 3000  // 2 seconds
+
+// Timing Configuration for non-blocking operations
+#define LOOP_DELAY_MS 10
+#define BUTTON_DEBOUNCE_MS 50
+#define LED_UPDATE_INTERVAL_MS 50
+#define BATTERY_CHECK_INTERVAL_MS 60000
+#define HEARTBEAT_INTERVAL_MS 5000
+#define STATE_CHECK_INTERVAL_MS 1000
+#define BATTERY_MODE_TIMEOUT_MS 10000
+#define BATTERY_MODE_HOLD_THRESHOLD_MS 3000
+#define ANSWER_FEEDBACK_TIMEOUT_MS 30000
+#define PRESS_ACK_TIMEOUT_MS 300
+#define MAX_PRESS_RETRIES 5
+
+// Power and hardware configuration
+#define WIFI_TX_POWER_RAW 84  // Raw value for ESP32 (21 dBm)
+#define ADC_ATTENUATION ADC_11db  // 0-3.6V range for battery monitoring
+#define FASTLED_CORRECTION TypicalLEDStrip
+
+// LED configuration
+#define LED_BRIGHTNESS 128
+#define NUM_LEDS 23
+#define LED_DATA_PIN 4
+#define LED_TYPE WS2812B
+#define LED_COLOR_ORDER GRB
+
+// Device configuration
+#define DEVICE_ID 15  // Change this for each group buzzer (1, 2, 3, etc.)
+#define MAX_GROUPS 15
+#define COORDINATOR_MAC {0x78, 0xE3, 0x6D, 0x1B, 0x13, 0x28}
+
+// Battery configuration
+#define BATTERY_ADC_PIN 34
+#define BATTERY_VOLTAGE_DIVIDER 2.0
+#define BATTERY_MIN_VOLTAGE 3.0
+#define BATTERY_MAX_VOLTAGE 4.2
+#define ADC_RESOLUTION 4095
+#define ADC_REFERENCE_VOLTAGE 3.3
+#define BATTERY_CALIBRATION_FACTOR 1.098
+
+// Safe timing functions to prevent millis() overflow
+inline bool isTimeElapsed(unsigned long startTime, unsigned long interval) {
+  unsigned long currentTime = millis();
+  return (currentTime - startTime) >= interval;
+}
+
+inline unsigned long getTimeSince(unsigned long startTime) {
+  return millis() - startTime;
+}
+
+// =========================================
+// HARDWARE CONFIGURATION CONSTANTS
+// =========================================
+#define BUZZER_PIN 2
+#define LED_PIN 4
+#define BUZZER_BUTTON_PIN 5
+
+// WiFi Channel Configuration
+uint8_t currentWifiChannel = 13; // Default channel (must match coordinator default)
 
 // Message structure for ESP-NOW communication
 typedef struct {
@@ -113,11 +278,11 @@ typedef struct {
 } Message;
 
 typedef struct {
-  uint8_t command;      // 1=arm, 2=disarm, 3=test, 4=reset, 5=correct_answer, 6=wrong_answer, 7=end_round
-  uint8_t targetDevice; // 0=all, or specific device ID
+  uint8_t command;      // 1=arm, 2=disarm, 3=test, 4=reset, 5=correct_answer, 6=wrong_answer, 7=end_round, 8=change_channel
+  uint8_t targetDevice; // 0=all, or specific device ID (for channel change: channel number)
   uint32_t timestamp;
-  uint16_t sequenceId;  // New: for tracking acknowledgments
-  uint8_t retryCount;   // New: retry attempt counter
+  uint16_t sequenceId;  // For tracking acknowledgments
+  uint8_t retryCount;   // Retry attempt counter
   uint8_t reserved;     // Padding to maintain alignment
 } Command;
 
@@ -143,14 +308,20 @@ void OnDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *incomingDat
 
   if (firstByte == 5) {
     // This is a buzzer press ACK message
+    // Protect against duplicate ACKs
+    if (!waitingForPressAck && currentState == STATE_ANSWERING_NOW) {
+      Serial.println("[PRESS] Ignoring duplicate ACK - already in ANSWERING_NOW state");
+      return;
+    }
+
     Serial.println("[PRESS] ACK received from coordinator - press confirmed!");
     waitingForPressAck = false;
     pressRetryCount = 0;
 
     // NOW change state to PRESSED (white flashing) - press is confirmed registered
     buzzerPressed = true;
-    currentState = STATE_ANSWERING_NOW;
-    updateLedState();
+    setBuzzerState(STATE_ANSWERING_NOW);
+    // Note: LED update is handled automatically by setBuzzerState()
 
     // Start waiting for answer feedback with 30 second timeout
     waitingForAnswerFeedback = true;
@@ -194,9 +365,9 @@ void OnDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *incomingDat
 void setup() {
   Serial.begin(115200);
   delay(1000);  // Give serial time to initialize
-  
+
   Serial.println("\n=== ESP32 Group Buzzer Starting ===");
-  
+
   // Initialize hardware pins
   pinMode(BUZZER_PIN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
@@ -205,7 +376,7 @@ void setup() {
   // Initialize battery monitoring ADC
   pinMode(BATTERY_ADC_PIN, INPUT);
   analogReadResolution(12); // Set ADC to 12-bit resolution
-  analogSetPinAttenuation(BATTERY_ADC_PIN, ADC_11db); // Set pin-specific attenuation for 0-3.6V range
+  analogSetPinAttenuation(BATTERY_ADC_PIN, ADC_ATTENUATION); // Set pin-specific attenuation for 0-3.6V range
 
   // Test ADC immediately after configuration
   delay(100);
@@ -213,11 +384,11 @@ void setup() {
   Serial.print("ADC Test immediately after setup - Raw: ");
   Serial.print(testADC);
   Serial.print(", Voltage: ");
-  Serial.println((float)testADC / 4095.0 * 3.3);
+  Serial.println((float)testADC / ADC_RESOLUTION * ADC_REFERENCE_VOLTAGE);
 
   // Initialize FastLED
-  FastLED.addLeds<LED_TYPE, RGB_DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
-  FastLED.setBrightness(BRIGHTNESS);
+  FastLED.addLeds<LED_TYPE, LED_DATA_PIN, LED_COLOR_ORDER>(leds, NUM_LEDS).setCorrection(FASTLED_CORRECTION);
+  FastLED.setBrightness(LED_BRIGHTNESS);
 
   // Initial LED state
   setAllLeds(COLOR_OFF);
@@ -229,34 +400,33 @@ void setup() {
   WiFi.mode(WIFI_STA);
   Serial.println("WiFi set to Station mode");
 
-  // Set WiFi channel to 13 (must match coordinator - optimal for European venues)
-  esp_wifi_set_channel(13, WIFI_SECOND_CHAN_NONE);
-  Serial.println("WiFi channel set to 13");
+  // Set WiFi channel (must match coordinator)
+  setWifiChannel(currentWifiChannel);
 
-  // Set maximum TX power for better range in crowded ballroom (170 people)
-  // Value 84 = 21 dBm (maximum allowed, default is ~78 = 19.5 dBm)
-  esp_wifi_set_max_tx_power(84);
-  Serial.println("WiFi TX power set to maximum (21 dBm)");
+  // Set maximum TX power for better range in crowded environments
+  esp_wifi_set_max_tx_power(WIFI_TX_POWER_RAW);
+  Serial.printf("WiFi TX power set to %d (21 dBm)\n", WIFI_TX_POWER_RAW);
 
   // Wait for WiFi to initialize and get MAC
   delay(500);
   
   // Print MAC address for coordinator registration
-  String macAddress = WiFi.macAddress();
+  char macAddress[18];
+  WiFi.macAddress().toCharArray(macAddress, sizeof(macAddress));
   Serial.print("Group Buzzer #");
   Serial.print(DEVICE_ID);
   Serial.print(" MAC Address: ");
   Serial.println(macAddress);
-  
+
   // Verify MAC is valid
-  if (macAddress == "00:00:00:00:00:00") {
+  if (strcmp(macAddress, "00:00:00:00:00:00") == 0) {
     Serial.println("WARNING: Invalid MAC address detected!");
     // Try restarting WiFi
     WiFi.disconnect();
     delay(100);
     WiFi.mode(WIFI_STA);
     delay(500);
-    macAddress = WiFi.macAddress();
+    WiFi.macAddress().toCharArray(macAddress, sizeof(macAddress));
     Serial.print("Retry MAC: ");
     Serial.println(macAddress);
   }
@@ -284,7 +454,8 @@ void setup() {
   // Add coordinator as peer
   esp_now_peer_info_t peerInfo;
   memset(&peerInfo, 0, sizeof(peerInfo)); // Clear the structure
-  memcpy(peerInfo.peer_addr, coordinatorMAC, 6);
+  uint8_t coordMAC[] = COORDINATOR_MAC; // Use constant
+  memcpy(peerInfo.peer_addr, coordMAC, 6);
   peerInfo.channel = 0;
   peerInfo.encrypt = false;
   peerInfo.ifidx = WIFI_IF_STA; // Set the interface
@@ -440,34 +611,64 @@ void sadRed() {
 }
 
 void updateLedState() {
-  switch (currentState) {
-    case STATE_DISARMED:
-      setAllLeds(COLOR_OFF);
-      break;
+  // Only update LEDs if state has changed
+  if (currentState != lastLedState) {
+    switch (currentState) {
+      case STATE_DISARMED:
+        setAllLeds(COLOR_OFF);
+        break;
 
-    case STATE_ARMED:
-      blueChaser();
-      break;
+      case STATE_ARMED:
+        setAllLeds(COLOR_ARMED);
+        break;
 
-    case STATE_ANSWERING_NOW:
-      flashingWhite();
-      break;
+      case STATE_ANSWERING_NOW:
+        setAllLeds(COLOR_ANSWERING_NOW);
+        break;
 
-    case STATE_CORRECT_ANSWER:
-      greenDecay();
-      break;
+      case STATE_CORRECT_ANSWER:
+        setAllLeds(COLOR_CORRECT_ANSWER);
+        break;
 
-    case STATE_WRONG_ANSWER:
-      sadRed();
-      break;
+      case STATE_WRONG_ANSWER:
+        setAllLeds(COLOR_WRONG_ANSWER);
+        break;
 
-    case STATE_TEST:
-      rainbowEffect();
-      break;
+      case STATE_TEST:
+        setAllLeds(COLOR_TEST);
+        break;
 
-    case STATE_BATTERY_DISPLAY:
-      displayBatteryLevel();
-      break;
+      case STATE_BATTERY_DISPLAY:
+        displayBatteryLevel();
+        break;
+    }
+
+    // Only call FastLED.show() when state changes
+    FastLED.show();
+    lastLedState = currentState;
+  } else {
+    // Handle animated effects that need continuous updates
+    switch (currentState) {
+      case STATE_ARMED:
+        blueChaser();
+        break;
+
+      case STATE_ANSWERING_NOW:
+        flashingWhite();
+        break;
+
+      case STATE_CORRECT_ANSWER:
+        greenDecay();
+        break;
+
+      case STATE_WRONG_ANSWER:
+        sadRed();
+        break;
+
+      case STATE_TEST:
+        rainbowEffect();
+        break;
+    }
   }
 }
 
@@ -475,28 +676,29 @@ void loop() {
   unsigned long currentTime = millis();
   
   // Check button state (debounced)
-  if (currentTime - lastButtonCheck > 50) {
+  if (currentTime - lastButtonCheck > BUTTON_DEBOUNCE_MS) {
     checkBuzzerButton();
     lastButtonCheck = currentTime;
   }
 
   // Handle battery mode activation
   if (batteryModeActivationPending && currentState != STATE_ARMED) {
-    currentState = STATE_BATTERY_DISPLAY;
+    stateBeforeBatteryMode = currentState; // Save current state for restoration
+    setBuzzerState(STATE_BATTERY_DISPLAY);
     idDisplayShown = false;  // Reset ID display flag
     playBatteryModeEntryAnimation();
     batteryModeActivationPending = false;
     batteryDisplayStartTime = currentTime;
-    Serial.println("[BATTERY] Battery display mode activated");
+    Serial.printf("[BATTERY] Battery display mode activated (was in state %d)\n", stateBeforeBatteryMode);
   }
 
   // Handle battery mode timeout
   if (currentState == STATE_BATTERY_DISPLAY &&
-      (currentTime - batteryDisplayStartTime > BATTERY_MODE_TIMEOUT)) {
+      (currentTime - batteryDisplayStartTime > BATTERY_MODE_TIMEOUT_MS)) {
     exitBatteryMode();
     Serial.println("[BATTERY] Battery display mode timeout - exiting");
   }
-  
+
   // Handle buzzer press ACK timeout and retry
   if (waitingForPressAck && currentTime > pressAckTimeout) {
     pressRetryCount++;
@@ -517,31 +719,38 @@ void loop() {
     // Don't override wrong answer state - keep buzzers that answered wrong in red state until round ends
     if (currentState != STATE_WRONG_ANSWER) {
       if (isArmed) {
-        currentState = STATE_ARMED; // Return to armed state if no feedback received
+        setBuzzerState(STATE_ARMED); // Return to armed state if no feedback received
       } else {
-        currentState = STATE_DISARMED;
+        setBuzzerState(STATE_DISARMED);
       }
     }
     Serial.printf("Answer feedback timeout - Device %d preserving state %d\n", DEVICE_ID, currentState);
   }
 
+  // Periodic state consistency check
+  static unsigned long lastStateCheck = 0;
+  if (currentTime - lastStateCheck > STATE_CHECK_INTERVAL_MS) {
+    validateStateConsistency();
+    lastStateCheck = currentTime;
+  }
+
   // Update LED state based on current game state
-  if (currentTime - lastRgbUpdate > 50) { // Faster updates for smooth effects
+  if (currentTime - lastRgbUpdate > LED_UPDATE_INTERVAL_MS) {
     updateLedState();
     lastRgbUpdate = currentTime;
   }
-  
+
   // Check battery level periodically
   checkBatteryLevel();
 
   // Send periodic heartbeat
-  if (currentTime - lastHeartbeat > 5000) {
+  if (currentTime - lastHeartbeat > HEARTBEAT_INTERVAL_MS) {
     sendHeartbeat();
     lastHeartbeat = currentTime;
   }
 
-  // Small delay to prevent watchdog issues
-  delay(10);
+  // Small yield to prevent watchdog issues (non-blocking)
+  yield();
 }
 
 void checkBuzzerButton() {
@@ -617,13 +826,18 @@ void sendBuzzerPressWithRetry() {
   if (result == ESP_OK) {
     Serial.printf("[PRESS] Sent (attempt %d/%d)\n", pressRetryCount + 1, MAX_PRESS_RETRIES);
     waitingForPressAck = true;
-    pressAckTimeout = millis() + PRESS_ACK_TIMEOUT_MS;
+    // Exponential backoff: base timeout + (retry_count * 50ms)
+    uint32_t timeoutMs = PRESS_ACK_TIMEOUT_MS + (pressRetryCount * 50);
+    pressAckTimeout = millis() + timeoutMs;
+    Serial.printf("[PRESS] ACK timeout set to %dms\n", timeoutMs);
   } else {
-    Serial.printf("[PRESS] Send FAILED (attempt %d/%d)\n", pressRetryCount + 1, MAX_PRESS_RETRIES);
-    // Retry immediately if send failed
+    Serial.printf("[PRESS] Send FAILED (attempt %d/%d), error: %d\n", pressRetryCount + 1, MAX_PRESS_RETRIES, result);
+    // Exponential backoff delay before retry
     pressRetryCount++;
     if (pressRetryCount < MAX_PRESS_RETRIES) {
-      delay(20); // Small delay before retry
+      uint32_t delayMs = 50 + (pressRetryCount * 100); // 50ms, 150ms, 250ms, 350ms, 450ms
+      Serial.printf("[PRESS] Retrying in %dms...\n", delayMs);
+      delay(delayMs);
       sendBuzzerPressWithRetry();
     } else {
       Serial.println("[PRESS] Max retries reached, giving up");
@@ -655,6 +869,14 @@ void sendCommandAck(uint16_t sequenceId) {
 void handleCommand(Command cmd) {
   Serial.printf("[CMD] Device %d received command: %d for target: %d, seq: %d\n",
                 DEVICE_ID, cmd.command, cmd.targetDevice, cmd.sequenceId);
+
+  // Validate command based on current state
+  if (!validateCommandForState(cmd)) {
+    Serial.printf("[CMD] Command %d rejected - invalid for current state %d\n", cmd.command, currentState);
+    // Still send ACK to prevent coordinator from retrying
+    sendCommandAck(cmd.sequenceId);
+    return;
+  }
 
   // Cancel any pending battery mode activation on game command
   batteryModeActivationPending = false;
@@ -704,6 +926,13 @@ void handleCommand(Command cmd) {
       endRoundReset();
       break;
 
+    case 8: // CHANGE_CHANNEL
+      Serial.printf("[CMD] Device %d executing CHANGE_CHANNEL command\n", DEVICE_ID);
+      // For now, assume coordinator sends channel as targetDevice (limited to 1-15)
+      // In future, could extend Command struct to include channel data
+      setWifiChannel(cmd.targetDevice);
+      break;
+
     default:
       Serial.printf("[CMD] Device %d received unknown command: %d\n", DEVICE_ID, cmd.command);
       break;
@@ -723,7 +952,7 @@ void armBuzzer() {
   if (!isArmed) {
     isArmed = true;
     buzzerPressed = false;
-    currentState = STATE_ARMED;
+    setBuzzerState(STATE_ARMED);
     digitalWrite(BUZZER_PIN, LOW);
 
     Serial.println("Buzzer ARMED");
@@ -748,7 +977,7 @@ void disarmBuzzer() {
 
   // Don't override wrong answer state - keep buzzers that answered wrong in red state until round ends
   if (currentState != STATE_WRONG_ANSWER) {
-    currentState = STATE_DISARMED;
+    setBuzzerState(STATE_DISARMED);
   }
 
   digitalWrite(BUZZER_PIN, LOW);
@@ -760,7 +989,7 @@ void testBuzzer() {
   Serial.println("Testing buzzer");
 
   BuzzerState previousState = currentState;
-  currentState = STATE_TEST;
+  setBuzzerState(STATE_TEST);
 
   // Test sequence: Rainbow effect with louder buzzer
   int testFreqs[] = {800, 1000, 1200}; // Different test frequencies
@@ -799,7 +1028,7 @@ void resetBuzzer() {
   ledState = false;
   blinkCounter = 0;
   chaserPosition = 0;
-  currentState = STATE_DISARMED;
+  setBuzzerState(STATE_DISARMED);
 
   digitalWrite(BUZZER_PIN, LOW);
 
@@ -809,7 +1038,7 @@ void resetBuzzer() {
 
 void correctAnswerFeedback() {
   Serial.println("Correct answer feedback");
-  currentState = STATE_CORRECT_ANSWER;
+  setBuzzerState(STATE_CORRECT_ANSWER);
   buzzerPressed = false; // Reset buzzer press state
   waitingForAnswerFeedback = false; // Clear timeout
   correctAnswerStartTime = millis(); // Start 2-second green decay timer
@@ -820,14 +1049,12 @@ void correctAnswerFeedback() {
 
 void wrongAnswerFeedback() {
   Serial.printf("[WRONG_ANSWER] Device %d receiving wrong answer feedback - switching to red state\n", DEVICE_ID);
-  currentState = STATE_WRONG_ANSWER;
+  setBuzzerState(STATE_WRONG_ANSWER);
   isArmed = false; // Disarm the buzzer when wrong answer is received
   buzzerPressed = false; // Reset buzzer press state
   waitingForAnswerFeedback = false; // Clear timeout
 
-  // Force immediate LED update to red
-  setAllLeds(COLOR_WRONG_ANSWER);
-
+  // Note: LED update is handled automatically by setBuzzerState() for critical state changes
   Serial.printf("[WRONG_ANSWER] Device %d red LEDs should now be visible\n", DEVICE_ID);
 
   // Play wrong answer tone
@@ -846,7 +1073,7 @@ void endRoundReset() {
   // Force state to disarmed regardless of previous state
   // This ensures wrong answer state is cleared even if buzzer wasn't armed
   isArmed = false;
-  currentState = STATE_DISARMED;
+  setBuzzerState(STATE_DISARMED);
 
   Serial.printf("[END_ROUND] Device %d reset to DISARMED (ready for next question)\n", DEVICE_ID);
 }
@@ -1233,12 +1460,22 @@ void exitBatteryMode() {
   batteryModeActivationPending = false;
   idDisplayShown = false;  // Reset ID display flag
 
-  // Return to appropriate state
-  if (isArmed) {
-    currentState = STATE_ARMED;
-  } else {
-    currentState = STATE_DISARMED;
+  // Restore the state we were in before battery mode
+  // But validate that it's still appropriate
+  BuzzerState targetState = stateBeforeBatteryMode;
+
+  // Validate the target state is still appropriate
+  if (targetState == STATE_ARMED && !isArmed) {
+    Serial.println("[BATTERY] Correcting state - was ARMED but no longer armed");
+    targetState = STATE_DISARMED;
+  } else if ((targetState == STATE_ANSWERING_NOW || targetState == STATE_CORRECT_ANSWER ||
+              targetState == STATE_WRONG_ANSWER) && !buzzerPressed) {
+    Serial.println("[BATTERY] Correcting state - was answer state but buzzer not pressed");
+    targetState = isArmed ? STATE_ARMED : STATE_DISARMED;
   }
+
+  setBuzzerState(targetState);
+  Serial.printf("[BATTERY] Restored to state %d (was %d before battery mode)\n", currentState, stateBeforeBatteryMode);
 
   // Clear LEDs immediately
   setAllLeds(COLOR_OFF);

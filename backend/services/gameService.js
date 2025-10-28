@@ -1,5 +1,29 @@
 const { v4: uuidv4 } = require('uuid');
 
+// Centralized timing utility for consistent timestamps across all components
+class TimingService {
+  static now() {
+    return Date.now();
+  }
+
+  static getElapsedTime(startTime) {
+    return this.now() - startTime;
+  }
+
+  static formatTimestamp(timestamp) {
+    return new Date(timestamp).toISOString();
+  }
+
+  // High-precision timing for game events (when available)
+  static getPreciseTime() {
+    // Use performance.now() if available (browser), otherwise Date.now()
+    if (typeof performance !== 'undefined' && performance.now) {
+      return performance.now();
+    }
+    return this.now();
+  }
+}
+
 class GameService {
   constructor(database, io, esp32Service = null) {
     this.db = database;
@@ -9,6 +33,7 @@ class GameService {
     this.currentGlobalGame = null; // Global current game for all frontend apps
     this.buzzerActivity = new Map(); // Track last activity for each buzzer
     this.onlineBuzzers = new Set(); // Track which buzzer IDs are currently online
+    this.timerOperationLock = new Set(); // Prevent concurrent timer operations
   }
 
   async createGame(gameData) {
@@ -106,8 +131,11 @@ class GameService {
   async startQuestion(gameId, questionIndex) {
     const game = await this.getGame(gameId);
     if (questionIndex >= game.questions.length) {
+      global.consoleLogger?.error(`Question index ${questionIndex} out of bounds for game ${gameId}`);
       throw new Error('Question index out of bounds');
     }
+
+    global.consoleLogger?.game(`Starting question ${questionIndex + 1} for game ${gameId}`);
 
     // Mark as played immediately when started (like before)
     let playedQuestions = [...game.played_questions];
@@ -139,7 +167,7 @@ class GameService {
 
     this.activeGames.set(gameId, {
       questionId: currentQuestion.id,
-      startTime: Date.now(),
+      startTime: TimingService.now(),
       buzzerOrder: [],
       answeredBuzzers: [], // Track buzzers that have already answered THIS question (correctly or incorrectly)
       timeLimit: currentQuestion.time_limit * 1000,
@@ -178,71 +206,115 @@ class GameService {
   }
 
   pauseQuestion(gameId) {
-    const gameState = this.activeGames.get(gameId);
-    if (!gameState || gameState.isPaused) return;
-
-    // Clear the timeout
-    if (gameState.timeoutId) {
-      clearTimeout(gameState.timeoutId);
-      gameState.timeoutId = null;
-    }
-
-    gameState.isPaused = true;
-    gameState.pausedAt = Date.now();
-
-    // Emit pause event to all clients
-    this.io.to(`game-${gameId}`).emit('timer-paused', {
-      gameId,
-      pausedAt: gameState.pausedAt,
-      timeElapsed: gameState.pausedAt - gameState.startTime - gameState.totalPausedDuration
-    });
-
-    console.log(`Question timer paused for game ${gameId}`);
-  }
-
-  resumeQuestion(gameId) {
-    const gameState = this.activeGames.get(gameId);
-    if (!gameState || !gameState.isPaused) return;
-
-    // Calculate pause duration and add to total
-    const pauseDuration = Date.now() - gameState.pausedAt;
-    gameState.totalPausedDuration += pauseDuration;
-    gameState.isPaused = false;
-    gameState.pausedAt = null;
-
-    // Calculate remaining time and set new timeout
-    const effectiveElapsed = Date.now() - gameState.startTime - gameState.totalPausedDuration;
-    const remainingTime = Math.max(0, gameState.timeLimit - effectiveElapsed);
-
-    if (remainingTime > 0) {
-      gameState.timeoutId = setTimeout(() => {
-        this.endQuestion(gameId);
-      }, remainingTime);
-    } else {
-      // Time already expired, end question immediately
-      this.endQuestion(gameId);
+    // Prevent concurrent timer operations
+    if (this.timerOperationLock.has(gameId)) {
+      console.log(`Timer operation already in progress for game ${gameId}, skipping pause`);
       return;
     }
 
-    // Emit resume event to all clients
-    this.io.to(`game-${gameId}`).emit('timer-resumed', {
-      gameId,
-      resumedAt: Date.now(),
-      timeRemaining: remainingTime,
-      totalPausedDuration: gameState.totalPausedDuration
-    });
+    this.timerOperationLock.add(gameId);
 
-    console.log(`Question timer resumed for game ${gameId}, ${remainingTime}ms remaining`);
+    try {
+      const gameState = this.activeGames.get(gameId);
+      if (!gameState || gameState.isPaused) {
+        return;
+      }
+
+      // Clear the timeout
+      if (gameState.timeoutId) {
+        clearTimeout(gameState.timeoutId);
+        gameState.timeoutId = null;
+      }
+
+    gameState.isPaused = true;
+    gameState.pausedAt = TimingService.now();
+
+      // Emit pause event to all clients
+      this.io.to(`game-${gameId}`).emit('timer-paused', {
+        gameId,
+        pausedAt: gameState.pausedAt,
+        timeElapsed: gameState.pausedAt - gameState.startTime - gameState.totalPausedDuration
+      });
+
+      console.log(`Question timer paused for game ${gameId}`);
+    } finally {
+      this.timerOperationLock.delete(gameId);
+    }
+  }
+
+  resumeQuestion(gameId) {
+    // Prevent concurrent timer operations
+    if (this.timerOperationLock.has(gameId)) {
+      console.log(`Timer operation already in progress for game ${gameId}, skipping resume`);
+      return;
+    }
+
+    this.timerOperationLock.add(gameId);
+
+    try {
+      const gameState = this.activeGames.get(gameId);
+      if (!gameState || !gameState.isPaused) {
+        return;
+      }
+
+      // Calculate pause duration and add to total
+      const pauseDuration = TimingService.now() - gameState.pausedAt;
+      gameState.totalPausedDuration += pauseDuration;
+      gameState.isPaused = false;
+      gameState.pausedAt = null;
+
+      // Calculate remaining time and set new timeout
+      const effectiveElapsed = TimingService.now() - gameState.startTime - gameState.totalPausedDuration;
+      const remainingTime = Math.max(0, gameState.timeLimit - effectiveElapsed);
+
+      if (remainingTime > 0) {
+        gameState.timeoutId = setTimeout(() => {
+          this.endQuestion(gameId);
+        }, remainingTime);
+      } else {
+        // Time already expired, end question immediately
+        this.endQuestion(gameId);
+        return;
+      }
+
+      // Emit resume event to all clients
+      this.io.to(`game-${gameId}`).emit('timer-resumed', {
+        gameId,
+        resumedAt: TimingService.now(),
+        timeRemaining: remainingTime,
+        totalPausedDuration: gameState.totalPausedDuration
+      });
+
+      console.log(`Question timer resumed for game ${gameId}, ${remainingTime}ms remaining`);
+    } finally {
+      this.timerOperationLock.delete(gameId);
+    }
   }
 
   async endQuestion(gameId) {
-    const gameState = this.activeGames.get(gameId);
-    if (!gameState) return;
+    global.consoleLogger?.game(`Ending question for game ${gameId}`);
 
-    // Clear the timeout if it exists
-    if (gameState.timeoutId) {
-      clearTimeout(gameState.timeoutId);
+    // Prevent concurrent timer operations
+    if (this.timerOperationLock.has(gameId)) {
+      global.consoleLogger?.game(`Timer operation already in progress for game ${gameId}, queuing endQuestion`, 'warning');
+      // Queue the endQuestion to run after current operation completes
+      setImmediate(() => this.endQuestion(gameId));
+      return;
     }
+
+    this.timerOperationLock.add(gameId);
+
+    try {
+      const gameState = this.activeGames.get(gameId);
+      if (!gameState) {
+        global.consoleLogger?.warning(`No active game state found for game ${gameId} in endQuestion`);
+        return;
+      }
+
+      // Clear the timeout if it exists
+      if (gameState.timeoutId) {
+        clearTimeout(gameState.timeoutId);
+      }
 
     // Don't modify played_questions here - they're already set when question starts
     await this.db.run(
@@ -274,6 +346,9 @@ class GameService {
 
     // Remove the game state to prevent any lingering timers
     this.activeGames.delete(gameId);
+    } finally {
+      this.timerOperationLock.delete(gameId);
+    }
   }
 
   async evaluateAnswer(gameId, isCorrect, buzzerPosition = 0) {
@@ -383,7 +458,7 @@ class GameService {
       buzzer_id: buzzerEntry.buzzer_id,
       groupId: buzzerEntry.groupId,
       isCorrect: isCorrect,
-      timestamp: Date.now()
+      timestamp: TimingService.now()
     };
     gameState.answeredBuzzers.push(answeredBuzzer);
     console.log(`[EVAL] Added buzzer ${buzzerEntry.buzzer_id} to answered list (${isCorrect ? 'correct' : 'wrong'})`);
@@ -542,43 +617,27 @@ class GameService {
       currentQuestion,
       buzzerOrder: gameState.buzzerOrder,
       nextInLine: await nextInLine,
-      timeRemaining: Math.max(0, gameState.timeLimit - (Date.now() - gameState.startTime))
+      timeRemaining: Math.max(0, gameState.timeLimit - (TimingService.now() - gameState.startTime))
     };
   }
 
   async handleBuzzerPress(data) {
     const { gameId, groupId, timestamp, buzzer_id, buzzerId, deltaMs: providedDeltaMs } = data;
-    console.log(`[BUZZ] Buzzer press - gameId: ${gameId}, groupId: ${groupId}, buzzer_id: ${buzzer_id || buzzerId}`);
+    const buzzerIdStr = buzzerId || buzzer_id;
+    global.consoleLogger?.game(`Buzzer press - gameId: ${gameId}, groupId: ${groupId}, buzzer: ${buzzerIdStr}`);
 
     const gameState = this.activeGames.get(gameId);
-
     if (!gameState) {
+      global.consoleLogger?.game(`No active game state for game ${gameId}`, 'warning');
       return;
     }
 
-    // Map buzzer_id to actual database group.id
-    // The groupId from ESP32Service is actually the buzzer_id, need to find real group.id
-    let actualGroupId = groupId;
-    if (buzzer_id || buzzerId) {
-      const buzzerIdToLookup = buzzer_id || buzzerId;
+    // Resolve the actual group ID using simplified mapping logic
+    const actualGroupId = await this.resolveGroupId(gameId, groupId, buzzer_id || buzzerId);
 
-      // For virtual buzzers, the buzzer lookup will fail since they're not in the database
-      // In that case, the groupId sent is already the correct database group ID
-      const groupRecord = await this.db.get(
-        'SELECT id FROM groups WHERE game_id = ? AND buzzer_id = ?',
-        [gameId, buzzerIdToLookup]
-      );
-
-      if (groupRecord) {
-        actualGroupId = groupRecord.id;
-      } else {
-        // For virtual buzzers or if lookup fails, use the provided groupId directly
-        actualGroupId = groupId;
-      }
-
-      // Debug timing comparison
-      if (data.deltaMs !== undefined) {
-      }
+    if (!actualGroupId) {
+      global.consoleLogger?.error(`Could not resolve group ID for buzzer press: gameId=${gameId}, groupId=${groupId}, buzzer=${buzzerIdStr}`);
+      return;
     }
 
     // Track buzzer activity for virtual buzzer availability
@@ -594,8 +653,8 @@ class GameService {
     const team = teams.find(t => t.id === actualGroupId);
 
     const buzzerEntry = {
-      groupId: actualGroupId, // Use the mapped group ID from database
-      buzzer_id,
+      groupId: actualGroupId,
+      buzzer_id: buzzer_id || buzzerId,
       timestamp,
       deltaMs,
       position: gameState.buzzerOrder.length + 1
@@ -698,7 +757,7 @@ class GameService {
         questionId: gameState.questionId,
         startTime: gameState.startTime,
         buzzerOrder: gameState.buzzerOrder,
-        timeRemaining: Math.max(0, gameState.timeLimit - (Date.now() - gameState.startTime))
+        timeRemaining: Math.max(0, gameState.timeLimit - (TimingService.now() - gameState.startTime))
       } : null
     };
   }
@@ -901,6 +960,40 @@ class GameService {
     };
   }
 
+  // Buzzer ID Resolution Helper
+  async resolveGroupId(gameId, providedGroupId, buzzerId) {
+    try {
+      // Case 1: Virtual buzzers - groupId is already the correct database ID
+      if (buzzerId && buzzerId.startsWith('virtual_')) {
+        console.log(`[BUZZ] Virtual buzzer detected: ${buzzerId}, using provided groupId: ${providedGroupId}`);
+        return providedGroupId;
+      }
+
+      // Case 2: Physical buzzers with buzzer_id - look up in database
+      if (buzzerId && /^\d+$/.test(buzzerId.toString())) {
+        const groupRecord = await this.db.get(
+          'SELECT id FROM groups WHERE game_id = ? AND buzzer_id = ?',
+          [gameId, buzzerId.toString()]
+        );
+
+        if (groupRecord) {
+          console.log(`[BUZZ] Physical buzzer ${buzzerId} mapped to group ${groupRecord.id}`);
+          return groupRecord.id;
+        } else {
+          console.warn(`[BUZZ] Physical buzzer ${buzzerId} not found in database for game ${gameId}`);
+        }
+      }
+
+      // Case 3: Fallback - assume provided groupId is already correct (for legacy support)
+      console.log(`[BUZZ] Using provided groupId as fallback: ${providedGroupId}`);
+      return providedGroupId;
+
+    } catch (error) {
+      console.error(`[BUZZ] Error resolving group ID:`, error);
+      return null;
+    }
+  }
+
   // Virtual Buzzer Settings Methods
   async updateVirtualBuzzerSettings(gameId, settings) {
     const game = await this.getGame(gameId);
@@ -928,7 +1021,7 @@ class GameService {
   updateBuzzerActivity(buzzerId, groupId) {
     this.buzzerActivity.set(buzzerId, {
       groupId: groupId,
-      lastSeen: Date.now(),
+      lastSeen: TimingService.now(),
       isPhysical: !buzzerId.startsWith('virtual_')
     });
   }

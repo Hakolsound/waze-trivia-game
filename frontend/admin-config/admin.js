@@ -26,10 +26,13 @@ class AdminConfig {
         this.setupSocketListeners();
         this.initializeElements();
         this.setupEventListeners();
-        
+
         // Initialize buzzer sidebar
         this.buzzerDevices = new Map();
         this.loadThresholdSetting();
+
+        // Initialize console monitor and system status
+        this.refreshSystemStatus();
 
         // Initialize virtual buzzer test state
         this.virtualBuzzerTestState = {
@@ -37,6 +40,25 @@ class AdminConfig {
             testedBuzzers: new Set(),
             isActive: false
         };
+
+        // Performance optimization caches
+        this.domUpdateCache = new Map();
+        this.lastDomUpdate = performance.now();
+
+        // Initialize hardware failure detection
+        this.hardwareFailureDetection = {
+            enabled: false,
+            offlineThreshold: 120, // seconds
+            failedBuzzers: new Set(), // buzzerIds that have failed
+            virtualReplacements: new Map(), // failedBuzzerId -> virtualBuzzerId
+        };
+
+        // Initialize console monitor
+        this.consoleEntries = [];
+        this.consoleFilter = 'all';
+        this.maxConsoleEntries = 200;
+        this.systemStatus = { esp32: 'unknown', gameservice: 'unknown', pm2: 'unknown' };
+        this.operationInProgress = false;
         setTimeout(() => {
             this.refreshBuzzerStatus();
         }, 1000);
@@ -44,7 +66,13 @@ class AdminConfig {
         // Set up periodic status updates to handle stale devices
         setInterval(() => {
             this.updateBuzzerSidebar(); // Check for stale devices based on timestamps
+            this.checkHardwareFailures(); // Check for hardware failures and enable virtual replacements
         }, 3000); // Check every 3 seconds
+
+        // Set up periodic DOM cache cleanup
+        setInterval(() => {
+            this.cleanupDomCache(); // Clean up old DOM update cache entries
+        }, 60000); // Clean up every minute
     }
 
     // Helper function to format timestamp as HH:MM:SS.mmm
@@ -291,7 +319,28 @@ class AdminConfig {
             
             // Navigation buttons
             navOpenDisplayBtn: document.getElementById('nav-open-display-btn'),
-            navOpenHostBtn: document.getElementById('nav-open-host-btn')
+            navOpenHostBtn: document.getElementById('nav-open-host-btn'),
+
+            // Console monitor elements
+            consoleClearBtn: document.getElementById('console-clear-btn'),
+            consoleFilterAll: document.getElementById('console-filter-all'),
+            consoleFilterHardware: document.getElementById('console-filter-hardware'),
+            consoleFilterGame: document.getElementById('console-filter-game'),
+            consoleFilterError: document.getElementById('console-filter-error'),
+            consoleMonitor: document.getElementById('console-monitor'),
+            consoleEntryCount: document.getElementById('console-entry-count'),
+            consoleLastUpdate: document.getElementById('console-last-update'),
+
+            // System management elements
+            esp32StatusIndicator: document.getElementById('esp32-status-indicator'),
+            gameserviceStatusIndicator: document.getElementById('gameservice-status-indicator'),
+            pm2StatusIndicator: document.getElementById('pm2-status-indicator'),
+            restartEsp32Btn: document.getElementById('restart-esp32-btn'),
+            restartGameserviceBtn: document.getElementById('restart-gameservice-btn'),
+            restartPm2Btn: document.getElementById('restart-pm2-btn'),
+            refreshSystemStatusBtn: document.getElementById('refresh-system-status-btn'),
+            systemOperationStatus: document.getElementById('system-operation-status'),
+            operationStatusText: document.getElementById('operation-status-text')
         };
     }
 
@@ -490,6 +539,34 @@ class AdminConfig {
                 this.backupDatabase();
             });
         }
+
+        // Console monitor
+        if (this.elements.consoleClearBtn) {
+            this.elements.consoleClearBtn.addEventListener('click', () => this.clearConsole());
+        }
+        if (this.elements.consoleFilterAll) {
+            this.elements.consoleFilterAll.addEventListener('click', () => this.setConsoleFilter('all'));
+        }
+        if (this.elements.consoleFilterHardware) {
+            this.elements.consoleFilterHardware.addEventListener('click', () => this.setConsoleFilter('hardware'));
+        }
+        if (this.elements.consoleFilterGame) {
+            this.elements.consoleFilterGame.addEventListener('click', () => this.setConsoleFilter('game'));
+        }
+        if (this.elements.consoleFilterError) {
+            this.elements.consoleFilterError.addEventListener('click', () => this.setConsoleFilter('error'));
+        }
+
+        // System management
+        if (this.elements.restartEsp32Btn) {
+            this.elements.restartEsp32Btn.addEventListener('click', () => this.restartService('esp32'));
+        }
+        if (this.elements.restartGameserviceBtn) {
+            this.elements.restartGameserviceBtn.addEventListener('click', () => this.restartService('gameservice'));
+        }
+        if (this.elements.restartPm2Btn) {
+            this.elements.restartPm2Btn.addEventListener('click', () => this.restartService('pm2'));
+        }
         
         // Buzzer test modal
         if (this.elements.closeBuzzerTestBtn) {
@@ -655,6 +732,27 @@ class AdminConfig {
             this.handleVirtualBuzzerConnect(data);
         });
 
+        // Console logging listeners
+        this.socket.on('console-log', (data) => {
+            this.addConsoleEntry(data.category, data.message, data.level || 'info');
+        });
+
+        this.socket.on('hardware-event', (data) => {
+            this.addConsoleEntry('hardware', data.message, data.level || 'info');
+        });
+
+        this.socket.on('game-service-event', (data) => {
+            this.addConsoleEntry('game', data.message, data.level || 'info');
+        });
+
+        // System management listeners
+        this.socket.on('system-status-update', (data) => {
+            this.updateSystemStatus(data);
+        });
+
+        this.socket.on('service-restart-result', (data) => {
+            this.handleServiceRestartResult(data);
+        });
         this.socket.on('virtual-buzzer-disconnect', (data) => {
             this.handleVirtualBuzzerDisconnect(data);
         });
@@ -2868,9 +2966,17 @@ class AdminConfig {
                 if (this.elements.virtualBuzzersEnabled) {
                     this.elements.virtualBuzzersEnabled.checked = settings.virtualBuzzersEnabled;
                     this.toggleVirtualBuzzerDetails();
+
+                    // Enable/disable hardware failure detection based on virtual buzzer setting
+                    if (settings.virtualBuzzersEnabled) {
+                        this.enableHardwareFailureDetection();
+                    } else {
+                        this.disableHardwareFailureDetection();
+                    }
                 }
                 if (this.elements.buzzerOfflineThreshold) {
                     this.elements.buzzerOfflineThreshold.value = settings.buzzerOfflineThreshold || 120;
+                    this.hardwareFailureDetection.offlineThreshold = settings.buzzerOfflineThreshold || 120;
                 }
             }
         } catch (error) {
@@ -3269,6 +3375,410 @@ class AdminConfig {
             setTimeout(() => {
                 this.stopTeamBuzzerTest();
             }, 1000);
+        }
+    }
+
+    // Hardware Failure Detection Methods
+    enableHardwareFailureDetection() {
+        this.hardwareFailureDetection.enabled = true;
+        console.log('Hardware failure detection enabled');
+        this.showToast('Hardware failure detection enabled - virtual buzzers will automatically activate for failed devices', 'info');
+    }
+
+    disableHardwareFailureDetection() {
+        this.hardwareFailureDetection.enabled = false;
+        this.hardwareFailureDetection.failedBuzzers.clear();
+        this.hardwareFailureDetection.virtualReplacements.clear();
+        console.log('Hardware failure detection disabled');
+        this.showToast('Hardware failure detection disabled', 'info');
+    }
+
+    checkHardwareFailures() {
+        if (!this.hardwareFailureDetection.enabled || !this.buzzerDevices) {
+            return;
+        }
+
+        const now = Date.now();
+        const threshold = this.hardwareFailureDetection.offlineThreshold * 1000; // Convert to milliseconds
+
+        // Check each buzzer device for failures
+        this.buzzerDevices.forEach((device, deviceId) => {
+            const timeSinceLastSeen = now - device.last_seen;
+
+            // Device is considered failed if offline for longer than threshold
+            if (!device.online && timeSinceLastSeen > threshold) {
+                if (!this.hardwareFailureDetection.failedBuzzers.has(deviceId)) {
+                    this.handleHardwareFailure(deviceId, device);
+                }
+            } else if (device.online && this.hardwareFailureDetection.failedBuzzers.has(deviceId)) {
+                // Device recovered
+                this.handleHardwareRecovery(deviceId, device);
+            }
+        });
+    }
+
+    handleHardwareFailure(deviceId, device) {
+        this.hardwareFailureDetection.failedBuzzers.add(deviceId);
+
+        // Find the team associated with this buzzer
+        const failedTeam = this.teams?.find(team => team.buzzer_id === deviceId);
+        if (!failedTeam) {
+            console.log(`Hardware failure detected for buzzer ${deviceId}, but no associated team found`);
+            return;
+        }
+
+        // Create virtual replacement
+        const virtualBuzzerId = `virtual_replacement_${deviceId}`;
+        this.hardwareFailureDetection.virtualReplacements.set(deviceId, virtualBuzzerId);
+
+        console.log(`Hardware failure detected: Buzzer ${deviceId} (${failedTeam.name}) - activating virtual replacement`);
+
+        // Automatically enable virtual buzzers if not already enabled
+        if (!this.elements.virtualBuzzersEnabled?.checked) {
+            this.elements.virtualBuzzersEnabled.checked = true;
+            this.saveVirtualBuzzerSettingsWithToast();
+        }
+
+        // Show notification
+        this.showToast(`⚠️ Hardware failure: ${failedTeam.name}'s buzzer failed. Virtual buzzer activated.`, 'warning');
+
+        // Update UI to show failed status
+        this.updateBuzzerFailureStatus(deviceId, true);
+    }
+
+    handleHardwareRecovery(deviceId, device) {
+        if (this.hardwareFailureDetection.failedBuzzers.has(deviceId)) {
+            this.hardwareFailureDetection.failedBuzzers.delete(deviceId);
+            this.hardwareFailureDetection.virtualReplacements.delete(deviceId);
+
+            // Find the team
+            const recoveredTeam = this.teams?.find(team => team.buzzer_id === deviceId);
+            const teamName = recoveredTeam?.name || `Buzzer ${deviceId}`;
+
+            console.log(`Hardware recovery detected: ${teamName} buzzer is back online`);
+
+            this.showToast(`✅ Hardware recovered: ${teamName}'s buzzer is back online!`, 'success');
+
+            // Update UI to show recovered status
+            this.updateBuzzerFailureStatus(deviceId, false);
+        }
+    }
+
+    updateBuzzerFailureStatus(deviceId, isFailed) {
+        // Update buzzer sidebar to show failure status
+        const buzzerItems = this.elements.onlineBuzzers?.querySelectorAll('.buzzer-item') || [];
+        const offlineItems = this.elements.offlineBuzzers?.querySelectorAll('.buzzer-item') || [];
+
+        [...buzzerItems, ...offlineItems].forEach(item => {
+            const buzzerIdElement = item.querySelector('.buzzer-id');
+            if (buzzerIdElement && buzzerIdElement.textContent === `#${deviceId}`) {
+                if (isFailed) {
+                    item.classList.add('hardware-failed');
+                    const statusDot = item.querySelector('.buzzer-status-dot');
+                    if (statusDot) {
+                        statusDot.classList.add('failed');
+                        statusDot.title = 'Hardware failed - using virtual replacement';
+                    }
+                } else {
+                    item.classList.remove('hardware-failed');
+                    const statusDot = item.querySelector('.buzzer-status-dot');
+                    if (statusDot) {
+                        statusDot.classList.remove('failed');
+                        statusDot.title = '';
+                    }
+                }
+            }
+        });
+    }
+
+    // Enhanced virtual buzzer press handling for hardware failure scenarios
+    handleVirtualBuzzerPressForFailedHardware(data) {
+        // Check if this virtual press is for a failed hardware buzzer
+        const failedHardwareId = Array.from(this.hardwareFailureDetection.virtualReplacements.entries())
+            .find(([failedId, virtualId]) => virtualId === data.buzzerId)?.[0];
+
+        if (failedHardwareId) {
+            console.log(`Virtual buzzer press for failed hardware: ${failedHardwareId} -> ${data.buzzerId}`);
+
+            // Modify the data to indicate this is a hardware replacement
+            data.originalBuzzerId = failedHardwareId;
+            data.isHardwareReplacement = true;
+        }
+
+        return data;
+    }
+
+    // DOM Performance Optimization Methods
+    shouldThrottleDomUpdate(operation, throttleMs = 100) {
+        const now = performance.now();
+        const lastUpdate = this.domUpdateCache.get(operation) || 0;
+
+        if (now - lastUpdate < throttleMs) {
+            return true; // Throttle this update
+        }
+
+        this.domUpdateCache.set(operation, now);
+        return false; // Allow this update
+    }
+
+    createElementOptimized(tagName, className = '', attributes = {}) {
+        const element = document.createElement(tagName);
+        if (className) element.className = className;
+
+        Object.entries(attributes).forEach(([key, value]) => {
+            element.setAttribute(key, value);
+        });
+
+        return element;
+    }
+
+    batchDomUpdates(updates) {
+        // Use requestAnimationFrame for smooth batch updates
+        requestAnimationFrame(() => {
+            updates.forEach(update => update());
+        });
+    }
+
+    // Console Monitor Methods
+    addConsoleEntry(category, message, level = 'info') {
+        const entry = {
+            id: Date.now() + Math.random(), // Unique ID
+            timestamp: new Date().toLocaleTimeString(),
+            category: category,
+            message: message,
+            level: level
+        };
+
+        // Add to entries array
+        this.consoleEntries.push(entry);
+
+        // Limit entries to prevent memory issues
+        if (this.consoleEntries.length > this.maxConsoleEntries) {
+            this.consoleEntries.shift(); // Remove oldest
+        }
+
+        // Update UI if filter allows
+        this.updateConsoleDisplay();
+
+        // Update stats
+        this.updateConsoleStats();
+    }
+
+    updateConsoleDisplay() {
+        if (!this.elements.consoleMonitor) return;
+
+        // Clear current display
+        this.elements.consoleMonitor.innerHTML = '';
+
+        // Filter entries
+        const filteredEntries = this.consoleFilter === 'all'
+            ? this.consoleEntries
+            : this.consoleEntries.filter(entry => entry.category === this.consoleFilter || entry.level === 'error');
+
+        // Show placeholder if no entries
+        if (filteredEntries.length === 0) {
+            this.elements.consoleMonitor.innerHTML = '<div class="console-placeholder">No entries to display</div>';
+            return;
+        }
+
+        // Create and append entry elements
+        filteredEntries.forEach(entry => {
+            const entryElement = document.createElement('div');
+            entryElement.className = `console-entry ${entry.category} ${entry.level}`;
+            entryElement.innerHTML = `
+                <span class="console-timestamp">${entry.timestamp}</span>
+                <span class="console-category ${entry.category}">${entry.category.toUpperCase()}</span>
+                <span class="console-message">${entry.message}</span>
+            `;
+            this.elements.consoleMonitor.appendChild(entryElement);
+        });
+
+        // Auto-scroll to bottom
+        this.elements.consoleMonitor.scrollTop = this.elements.consoleMonitor.scrollHeight;
+    }
+
+    updateConsoleStats() {
+        if (!this.elements.consoleEntryCount || !this.elements.consoleLastUpdate) return;
+
+        this.elements.consoleEntryCount.textContent = `${this.consoleEntries.length} entries`;
+
+        if (this.consoleEntries.length > 0) {
+            const lastEntry = this.consoleEntries[this.consoleEntries.length - 1];
+            this.elements.consoleLastUpdate.textContent = lastEntry.timestamp;
+        } else {
+            this.elements.consoleLastUpdate.textContent = 'No activity';
+        }
+    }
+
+    setConsoleFilter(filter) {
+        this.consoleFilter = filter;
+
+        // Update filter button states
+        const filterButtons = [
+            this.elements.consoleFilterAll,
+            this.elements.consoleFilterHardware,
+            this.elements.consoleFilterGame,
+            this.elements.consoleFilterError
+        ];
+
+        filterButtons.forEach(btn => {
+            if (btn) {
+                btn.classList.remove('active');
+            }
+        });
+
+        const activeButton = filterButtons.find(btn => btn && btn.dataset.filter === filter);
+        if (activeButton) {
+            activeButton.classList.add('active');
+        }
+
+        // Update display
+        this.updateConsoleDisplay();
+    }
+
+    clearConsole() {
+        this.consoleEntries = [];
+        this.updateConsoleDisplay();
+        this.updateConsoleStats();
+
+        // Add confirmation entry
+        this.addConsoleEntry('info', 'Console cleared by user', 'info');
+    }
+
+    // System Management Methods
+    async refreshSystemStatus() {
+        try {
+            const response = await fetch('/api/system/status');
+            if (response.ok) {
+                const status = await response.json();
+                this.updateSystemStatus(status);
+            } else {
+                this.showToast('Failed to refresh system status', 'error');
+            }
+        } catch (error) {
+            console.error('Error refreshing system status:', error);
+            this.showToast('Error refreshing system status', 'error');
+        }
+    }
+
+    updateSystemStatus(status) {
+        // Update internal status
+        if (status.esp32 !== undefined) {
+            this.systemStatus.esp32 = status.esp32;
+            if (this.elements.esp32StatusIndicator) {
+                this.elements.esp32StatusIndicator.textContent = status.esp32;
+                this.elements.esp32StatusIndicator.className = `status-indicator ${status.esp32}`;
+            }
+        }
+
+        if (status.gameservice !== undefined) {
+            this.systemStatus.gameservice = status.gameservice;
+            if (this.elements.gameserviceStatusIndicator) {
+                this.elements.gameserviceStatusIndicator.textContent = status.gameservice;
+                this.elements.gameserviceStatusIndicator.className = `status-indicator ${status.gameservice}`;
+            }
+        }
+
+        if (status.pm2 !== undefined) {
+            this.systemStatus.pm2 = status.pm2;
+            if (this.elements.pm2StatusIndicator) {
+                this.elements.pm2StatusIndicator.textContent = status.pm2;
+                this.elements.pm2StatusIndicator.className = `status-indicator ${status.pm2}`;
+            }
+        }
+    }
+
+    async restartService(serviceType) {
+        if (this.operationInProgress) {
+            this.showToast('Another operation is in progress', 'warning');
+            return;
+        }
+
+        // Show operation status
+        this.showOperationStatus(`Restarting ${serviceType}...`);
+
+        // Disable buttons during operation
+        this.setSystemButtonsDisabled(true);
+
+        try {
+            const response = await fetch(`/api/system/restart/${serviceType}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                this.addConsoleEntry('info', `Restart ${serviceType}: ${result.message}`, 'info');
+
+                // Wait a bit for the service to restart, then check status
+                setTimeout(() => {
+                    this.refreshSystemStatus();
+                }, 3000);
+
+            } else {
+                const error = await response.json();
+                this.addConsoleEntry('error', `Restart ${serviceType} failed: ${error.message}`, 'error');
+                this.showToast(`Failed to restart ${serviceType}`, 'error');
+            }
+        } catch (error) {
+            console.error(`Error restarting ${serviceType}:`, error);
+            this.addConsoleEntry('error', `Restart ${serviceType} error: ${error.message}`, 'error');
+            this.showToast(`Error restarting ${serviceType}`, 'error');
+        } finally {
+            this.hideOperationStatus();
+            this.setSystemButtonsDisabled(false);
+        }
+    }
+
+    showOperationStatus(message) {
+        this.operationInProgress = true;
+        if (this.elements.systemOperationStatus && this.elements.operationStatusText) {
+            this.elements.operationStatusText.textContent = message;
+            this.elements.systemOperationStatus.classList.remove('hidden');
+        }
+    }
+
+    hideOperationStatus() {
+        this.operationInProgress = false;
+        if (this.elements.systemOperationStatus) {
+            this.elements.systemOperationStatus.classList.add('hidden');
+        }
+    }
+
+    setSystemButtonsDisabled(disabled) {
+        const buttons = [
+            this.elements.restartEsp32Btn,
+            this.elements.restartGameserviceBtn,
+            this.elements.restartPm2Btn,
+            this.elements.refreshSystemStatusBtn
+        ];
+
+        buttons.forEach(btn => {
+            if (btn) {
+                btn.disabled = disabled;
+            }
+        });
+    }
+
+    handleServiceRestartResult(data) {
+        if (data.success) {
+            this.addConsoleEntry('info', `Service ${data.service} restarted successfully`, 'info');
+            this.showToast(`Service ${data.service} restarted`, 'success');
+        } else {
+            this.addConsoleEntry('error', `Service ${data.service} restart failed: ${data.message}`, 'error');
+            this.showToast(`Service ${data.service} restart failed`, 'error');
+        }
+    }
+
+    cleanupDomCache() {
+        // Clean up old cache entries (older than 30 seconds)
+        const now = performance.now();
+        const maxAge = 30000; // 30 seconds
+
+        for (const [key, timestamp] of this.domUpdateCache.entries()) {
+            if (now - timestamp > maxAge) {
+                this.domUpdateCache.delete(key);
+            }
         }
     }
 }

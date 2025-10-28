@@ -1809,18 +1809,22 @@ kbd {
   max-width: 500px;
 }
 
-/* ===== REDESIGNED EVALUATION MODAL ===== */
+/* ===== OPTIMIZED EVALUATION MODAL ===== */
 .evaluation-modal-redesign {
   max-width: 900px !important;
   width: 95vw !important;
   max-height: 95vh !important;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-  border-radius: 24px !important;
+  border-radius: 20px !important;
   border: none !important;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3) !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25) !important;
   padding: 0 !important;
   position: relative;
   overflow: hidden;
+  /* Performance optimizations */
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
 .evaluation-close-btn {
@@ -1836,16 +1840,19 @@ kbd {
   height: 50px;
   border-radius: 50%;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
   z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Performance optimizations */
+  will-change: background-color, opacity;
+  backface-visibility: hidden;
 }
 
 .evaluation-close-btn:hover {
   background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.1);
+  /* Removed transform scale for better performance */
 }
 
 .evaluation-container {
@@ -1855,6 +1862,8 @@ kbd {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  /* Performance optimizations */
+  contain: layout style paint;
 }
 
 /* Empty State Redesign */
@@ -1896,10 +1905,24 @@ kbd {
   background: rgba(255, 255, 255, 0.7);
   border-radius: 50%;
   animation: pulse-wave 1.5s ease-in-out infinite;
+  /* Performance optimizations */
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
 
 .pulse-dot:nth-child(2) { animation-delay: 0.3s; }
 .pulse-dot:nth-child(3) { animation-delay: 0.6s; }
+
+@keyframes pulse-wave {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
 
 /* Answerer Header */
 .answerer-header {
@@ -1990,62 +2013,65 @@ kbd {
 .mega-btn {
   background: white;
   border: none;
-  border-radius: 24px;
-  padding: 50px 30px;
+  border-radius: 20px;
+  padding: 40px 25px;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+  transition: transform 0.12s ease-out, box-shadow 0.12s ease-out;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
   position: relative;
   overflow: hidden;
-  min-height: 220px;
+  min-height: 200px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-}
-
-.mega-btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-  transition: left 0.5s ease;
-}
-
-.mega-btn:hover::before {
-  left: 100%;
+  /* Performance optimizations */
+  will-change: transform, box-shadow;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  /* Prevent text selection for better interaction */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .mega-btn:hover {
-  transform: translateY(-8px) scale(1.02);
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+  transform: translateY(-6px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
 }
 
 .mega-btn:active {
-  transform: translateY(-4px) scale(0.98);
+  transform: translateY(-2px);
+  transition-duration: 0.08s;
 }
 
+/* Removed complex ::before animation for better performance */
+
 .mega-btn-icon {
-  font-size: 4rem;
-  font-weight: 900;
-  margin-bottom: 15px;
+  font-size: 3.5rem;
+  font-weight: 700;
+  margin-bottom: 12px;
   line-height: 1;
+  /* Performance optimization */
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
 .mega-btn-text {
-  font-size: 1.8rem;
-  font-weight: 900;
-  margin-bottom: 8px;
-  letter-spacing: 1px;
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+  letter-spacing: 0.5px;
+  /* Performance optimization */
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
 .mega-btn-hint {
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 500;
   opacity: 0.7;
+  /* Performance optimization */
+  text-rendering: optimizeSpeed;
 }
 
 .mega-btn-correct {
@@ -2804,9 +2830,6 @@ kbd {
     display: none;
 }
 
-.buzzer-sidebar.collapsed #toggle-buzzer-sidebar {
-    transform: rotate(180deg);
-}
 
 #toggle-buzzer-sidebar {
     transition: transform 0.3s ease;
@@ -3597,5 +3620,693 @@ kbd {
 .battery-icon {
     font-size: 8px;
     line-height: 1;
+}
+
+/* WiFi Channel Optimization Styles */
+.wifi-section {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 12px;
+    margin-top: 12px;
+}
+
+.wifi-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    cursor: pointer;
+}
+
+.wifi-toggle-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.8rem;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+    min-width: 20px;
+    text-align: center;
+}
+
+.wifi-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.wifi-section-content {
+    transition: all 0.3s ease;
+}
+
+.wifi-section.collapsed .wifi-section-content {
+    display: none;
+}
+
+.wifi-section.collapsed .wifi-toggle-btn {
+    transform: rotate(180deg);
+}
+
+.wifi-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.wifi-scan-btn {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+}
+
+.wifi-scan-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #00D4FF;
+    font-size: 0.75rem;
+}
+
+.scan-spinner {
+    width: 12px;
+    height: 12px;
+    border: 2px solid rgba(0, 212, 255, 0.3);
+    border-top: 2px solid #00D4FF;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.wifi-results {
+    margin-top: 12px;
+}
+
+.current-channel-display {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    padding: 6px 8px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+.channel-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 500;
+}
+
+.current-channel {
+    color: #00D4FF;
+    font-weight: 600;
+}
+
+.channel-quality-bars {
+    margin-bottom: 8px;
+}
+
+.quality-bar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.apply-best-btn {
+    font-size: 0.65rem;
+    padding: 3px 6px;
+    background: #22c55e !important;
+    border-color: #16a34a !important;
+}
+
+.apply-best-btn:hover {
+    background: #16a34a !important;
+}
+
+.channel-quality-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.channel-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+}
+
+.channel-number {
+    width: 24px;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+    text-align: center;
+}
+
+.channel-bar-fill {
+    flex: 1;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+}
+
+.channel-bar-progress {
+    height: 100%;
+    background: linear-gradient(90deg, #ef4444, #f59e0b, #22c55e);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.channel-signal {
+    width: 32px;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.8);
+    text-align: right;
+}
+
+.channel-bar.best-channel .channel-bar-fill {
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+}
+
+.channel-bar.best-channel .channel-number {
+    color: #22c55e;
+    font-weight: 700;
+}
+
+.wifi-scan-error {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 4px;
+    font-size: 0.7rem;
+    color: #ef4444;
+}
+
+.error-icon {
+    font-size: 0.8rem;
+}
+
+/* WiFi Channel Change Confirmation Modal */
+.wifi-confirmation-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.wifi-confirmation-content {
+    background: #1a1a1a;
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.wifi-confirmation-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.wifi-confirmation-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+    display: block;
+}
+
+.wifi-confirmation-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 8px;
+}
+
+.wifi-confirmation-message {
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.5;
+    margin-bottom: 20px;
+}
+
+.wifi-channel-details {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 20px;
+}
+
+.channel-change-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.channel-change-label {
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.channel-change-value {
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.channel-quality-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.quality-badge {
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+.quality-badge.excellent {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+}
+
+.quality-badge.good {
+    background: rgba(245, 158, 11, 0.2);
+    color: #f59e0b;
+}
+
+.quality-badge.poor {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.wifi-confirmation-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.wifi-confirm-btn, .wifi-cancel-btn {
+    flex: 1;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.wifi-confirm-btn {
+    background: #22c55e;
+    color: white;
+}
+
+.wifi-confirm-btn:hover {
+    background: #16a34a;
+}
+
+.wifi-cancel-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.wifi-cancel-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+    .wifi-confirmation-content {
+        margin: 20px;
+        max-width: none;
+    }
+}
+
+/* Game Actions Modal Styling */
+.game-actions-modal {
+    max-width: 800px;
+    width: 95vw;
+    background: #1a1a1a;
+    border-radius: 16px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    border: 1px solid #333;
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+    color: #ffffff;
+    padding: 20px 24px;
+    position: relative;
+    border-bottom: 1px solid #333;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.modal-close-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: #ffffff;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.game-actions-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+
+.action-section {
+    background: #2a2a2a;
+    border: 1px solid #404040;
+    border-radius: 12px;
+    padding: 24px;
+}
+
+.section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0 0 20px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #404040;
+}
+
+.section-title::before {
+    content: '';
+    width: 4px;
+    height: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.action-buttons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: center;
+    min-height: 56px;
+}
+
+.action-btn .material-icons {
+    font-size: 22px;
+    flex-shrink: 0;
+}
+
+.action-btn .btn-text {
+    font-weight: 500;
+    letter-spacing: 0.025em;
+}
+
+.action-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.action-success {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    color: white;
+}
+
+.action-warning {
+    background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+    color: white;
+}
+
+.action-danger {
+    background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+    color: white;
+}
+
+.action-secondary {
+    background: #404040;
+    color: #ffffff;
+    border: 1px solid #555;
+}
+
+.action-info {
+    background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+    color: white;
+}
+
+.action-status {
+    text-align: center;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.02);
+    border-radius: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: #4a5568;
+}
+
+.spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    border-top: 2px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.confirmation-dialog {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+}
+
+.confirmation-content {
+    background: #2a2a2a;
+    border-radius: 16px;
+    padding: 32px;
+    max-width: 420px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    border: 1px solid #404040;
+}
+
+.confirmation-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    display: block;
+}
+
+.confirmation-icon .material-icons {
+    color: #e53e3e;
+    filter: drop-shadow(0 2px 4px rgba(229, 62, 62, 0.3));
+}
+
+.confirmation-content h4 {
+    margin: 0 0 12px 0;
+    color: #ffffff;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.confirmation-content p {
+    margin: 0 0 20px 0;
+    color: #cccccc;
+    line-height: 1.5;
+}
+
+.confirmation-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.modal-close-btn {
+    background: none;
+    border: none;
+    color: #4a5568;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #1a202c;
+}
+
+.modal-close-btn .material-icons {
+    font-size: 20px;
+}
+
+/* Responsive adjustments for game actions modal */
+@media (max-width: 768px) {
+    .game-actions-modal {
+        width: 98vw;
+        max-width: none;
+        margin: 8px;
+    }
+
+    .modal-header {
+        padding: 16px 20px;
+        margin: -20px -20px 20px -20px;
+    }
+
+    .modal-header h3 {
+        font-size: 1.25rem;
+    }
+
+    .game-actions-grid {
+        gap: 24px;
+    }
+
+    .action-section {
+        padding: 20px;
+    }
+
+    .section-title {
+        font-size: 1rem;
+        margin-bottom: 16px;
+    }
+
+    .action-buttons {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .action-btn {
+        padding: 14px 16px;
+        min-height: 50px;
+        font-size: 0.9rem;
+    }
+
+    .action-btn .material-icons {
+        font-size: 20px;
+    }
+
+    .confirmation-content {
+        padding: 20px;
+    }
+
+    .confirmation-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .confirmation-actions .btn {
+        width: 100%;
+        padding: 12px 16px;
+    }
+}
+
+@media (max-width: 768px) {
+    .wifi-section {
+        padding-top: 8px;
+        margin-top: 8px;
+    }
+
+    .wifi-section-header {
+        margin-bottom: 8px;
+    }
+
+    .wifi-toggle-btn {
+        font-size: 0.7rem;
+        min-width: 18px;
+    }
+
+    .wifi-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .wifi-scan-btn {
+        margin-bottom: 8px;
+    }
+
+    .channel-quality-bars {
+        margin-bottom: 6px;
+    }
+
+    .quality-bar-header {
+        flex-direction: column;
+        gap: 6px;
+        align-items: stretch;
+    }
+
+    .apply-best-btn {
+        align-self: flex-end;
+    }
+
+    .wifi-confirmation-actions {
+        flex-direction: column;
+    }
 }
 

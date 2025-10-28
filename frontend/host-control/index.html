@@ -358,6 +358,47 @@
                             <div class="no-buzzers">No offline buzzers</div>
                         </div>
                     </div>
+
+                    <!-- WiFi Channel Optimization Section -->
+                    <div class="buzzer-section wifi-section">
+                        <h4 class="wifi-section-header">
+                            📡 WiFi Optimizer
+                            <button id="toggle-wifi-section" class="wifi-toggle-btn" aria-label="Toggle WiFi section">▼</button>
+                        </h4>
+                        <div class="wifi-section-content">
+                            <button id="scan-wifi-channels-btn" class="btn btn-small btn-primary wifi-scan-btn">
+                                🔍 Scan Channels
+                            </button>
+                            <div id="wifi-scan-status" class="wifi-scan-status hidden">
+                                <div class="scan-spinner"></div>
+                                <span>Scanning...</span>
+                            </div>
+
+                            <div id="wifi-results" class="wifi-results hidden">
+                            <div class="current-channel-display">
+                                <span class="channel-label">Current:</span>
+                                <span id="current-channel-display" class="current-channel">CH 13</span>
+                            </div>
+
+                            <div class="channel-quality-bars">
+                                <div class="quality-bar-header">
+                                    <span>Channel Quality</span>
+                                    <button id="apply-best-channel-btn" class="btn btn-small btn-success apply-best-btn hidden">
+                                        🚀 Apply Best
+                                    </button>
+                                </div>
+                                <div id="channel-quality-list" class="channel-quality-list">
+                                    <!-- Channel quality bars will be populated here -->
+                                </div>
+                            </div>
+
+                            <div id="wifi-scan-error" class="wifi-scan-error hidden">
+                                <span class="error-icon">⚠️</span>
+                                <span id="wifi-error-message">Scan failed</span>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="buzzer-settings">
                     <label for="online-threshold">Threshold (sec):</label>
@@ -368,10 +409,10 @@
         </div>
 
         <!-- Answer Evaluation Modal -->
-        <div id="answer-evaluation-modal" class="modal hidden">
+        <div id="answer-evaluation-modal" class="modal hidden" style="contain: layout style paint;">
             <div class="modal-content evaluation-modal-redesign">
-                <button id="close-evaluation-btn" class="evaluation-close-btn">✕</button>
-                
+                <button id="close-evaluation-btn" class="evaluation-close-btn" type="button">✕</button>
+
                 <div class="evaluation-container">
                     <div id="no-buzzer-content" class="no-buzzer-content">
                         <div class="empty-state-redesign">
@@ -444,27 +485,6 @@
             </div>
         </div>
 
-        <!-- Buzzer Status Modal -->
-        <div id="buzzer-status-modal" class="modal hidden">
-            <div class="modal-content large">
-                <div class="modal-header">
-                    <h3>🔔 Live Buzzer Status</h3>
-                    <button id="close-buzzer-modal-btn" class="btn btn-secondary">Close</button>
-                </div>
-                
-                <div class="modal-body">
-                    <div class="buzzer-status-controls">
-                        <button id="modal-refresh-buzzers-btn" class="btn btn-secondary">Refresh Status</button>
-                        <button id="modal-arm-all-buzzers-btn" class="btn btn-warning">Arm All</button>
-                        <button id="modal-disarm-all-buzzers-btn" class="btn btn-secondary">Disarm All</button>
-                    </div>
-                    
-                    <div id="modal-buzzer-status-list" class="buzzer-status-container">
-                        <div class="no-buzzers">Loading buzzer status...</div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- Quick Actions Floating Panel -->
         <div class="floating-actions">
@@ -473,9 +493,6 @@
             </button>
             <button id="increase-font-btn" class="fab" title="Increase Display Font Size [+]">
                 <span class="material-icons">text_increase</span>
-            </button>
-            <button id="show-buzzer-status-btn" class="fab" title="Show Buzzer Status">
-                <span class="material-icons">sensors</span>
             </button>
             <button id="show-game-actions-btn" class="fab" title="Game Actions">
                 <span class="material-icons">settings</span>
@@ -509,17 +526,72 @@
 
         <!-- Game Actions Modal -->
         <div id="game-actions-modal" class="modal hidden">
-            <div class="modal-content">
+            <div class="modal-content game-actions-modal">
                 <div class="modal-header">
-                    <h3>⚙️ Game Actions</h3>
-                    <button id="close-game-actions-modal-btn" class="btn btn-secondary">Close</button>
+                    <h3>⚙️ Game Management</h3>
+                    <button id="close-game-actions-modal-btn" class="modal-close-btn" aria-label="Close">
+                        <span class="material-icons">close</span>
+                    </button>
                 </div>
+
                 <div class="modal-body">
-                    <div class="game-actions">
-                        <button id="reset-scores-btn" class="btn btn-secondary">Reset All Scores</button>
-                        <button id="reset-questions-btn" class="btn btn-secondary">Reset Questions</button>
-                        <button id="reset-game-btn" class="btn btn-danger">Reset Game</button>
-                        <button id="end-game-btn" class="btn btn-warning">End Game</button>
+                    <div class="game-actions-grid">
+                        <!-- Reset Actions -->
+                        <div class="action-section">
+                            <h4 class="section-title">🔄 Reset Options</h4>
+                            <div class="action-buttons">
+                                <button id="reset-scores-btn" class="action-btn action-secondary">
+                                    <span class="material-icons">refresh</span>
+                                    <span class="btn-text">Reset Scores</span>
+                                </button>
+                                <button id="reset-questions-btn" class="action-btn action-secondary">
+                                    <span class="material-icons">restore</span>
+                                    <span class="btn-text">Reset Questions</span>
+                                </button>
+                                <button id="reset-game-btn" class="action-btn action-danger">
+                                    <span class="material-icons">delete_forever</span>
+                                    <span class="btn-text">Reset Game</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Advanced Actions -->
+                        <div class="action-section">
+                            <h4 class="section-title">⚡ Advanced</h4>
+                            <div class="action-buttons">
+                                <button id="export-game-data-btn" class="action-btn action-info">
+                                    <span class="material-icons">download</span>
+                                    <span class="btn-text">Export Data</span>
+                                </button>
+                                <button id="clear-game-history-btn" class="action-btn action-secondary">
+                                    <span class="material-icons">clear_all</span>
+                                    <span class="btn-text">Clear History</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Status -->
+                    <div id="game-action-status" class="action-status hidden">
+                        <div class="status-indicator">
+                            <div class="spinner"></div>
+                            <span id="status-message">Processing...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Confirmation Dialog -->
+                <div id="game-action-confirmation" class="confirmation-dialog hidden">
+                    <div class="confirmation-content">
+                        <div class="confirmation-icon">
+                            <span class="material-icons" id="confirmation-icon">warning</span>
+                        </div>
+                        <h4 id="confirmation-title">Confirm Action</h4>
+                        <p id="confirmation-message">Are you sure you want to perform this action?</p>
+                        <div class="confirmation-actions">
+                            <button id="confirm-action-btn" class="btn btn-danger">Confirm</button>
+                            <button id="cancel-action-btn" class="btn btn-secondary">Cancel</button>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -981,12 +981,18 @@ void handleCommand(Command cmd) {
       Serial.printf("[CMD] Device %d executing CORRECT_ANSWER command - changing to GREEN state\n", DEVICE_ID);
       correctAnswerFeedback();
       Serial.printf("[CMD] CORRECT_ANSWER completed - buzzer should now be GREEN (state: %d)\n", currentState);
+      // Force immediate LED update for correct answer
+      updateLedState();
+      Serial.printf("[CMD] Forced LED update for CORRECT_ANSWER\n");
       break;
 
     case 6: // WRONG_ANSWER
       Serial.printf("[CMD] Device %d executing WRONG_ANSWER command - changing to RED state\n", DEVICE_ID);
       wrongAnswerFeedback();
       Serial.printf("[CMD] WRONG_ANSWER completed - buzzer should now be RED (state: %d)\n", currentState);
+      // Force immediate LED update for wrong answer
+      updateLedState();
+      Serial.printf("[CMD] Forced LED update for WRONG_ANSWER\n");
       break;
 
     case 7: // END_ROUND (return to armed state)

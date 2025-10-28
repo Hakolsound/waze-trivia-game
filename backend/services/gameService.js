@@ -693,13 +693,27 @@ class GameService {
 
     gameState.buzzerOrder.push(buzzerEntry);
 
-    // PAUSE TIMER when first team buzzes in
+    // PAUSE TIMER and DISARM ALL OTHER BUZZERS when first team buzzes in
     if (gameState.buzzerOrder.length === 1 && !gameState.isPaused) {
       this.pauseQuestion(gameId);
 
-      // NOTE: Not disarming buzzers immediately anymore - they should stay armed until evaluation
-      // The buzzing buzzer stays in ANSWERING_NOW state, others can still buzz but timer is paused
-      console.log(`[BUZZ] Timer paused, buzzer stays armed for evaluation`);
+      // DISARM ALL BUZZERS except the one that just buzzed
+      console.log(`[BUZZ] Timer paused, disarming all other buzzers - only buzzing buzzer stays armed`);
+      if (this.esp32Service) {
+        // Get all groups for this game to find their buzzer IDs
+        const allGroups = await this.db.all('SELECT buzzer_id FROM groups WHERE game_id = ?', [gameId]);
+        const allBuzzerIds = allGroups.map(g => g.buzzer_id).filter(id => id); // Remove null/empty buzzer IDs
+
+        // Filter out the buzzer that just pressed (it stays armed for evaluation)
+        const buzzingBuzzerId = buzzerIdStr;
+        const buzzersToDisarm = allBuzzerIds.filter(buzzerId => buzzerId !== buzzingBuzzerId);
+
+        console.log(`[BUZZ] Disarming buzzers: [${buzzersToDisarm.join(', ')}], keeping armed: ${buzzingBuzzerId}`);
+
+        if (buzzersToDisarm.length > 0) {
+          await this.esp32Service.disarmSpecificBuzzers(gameId, buzzersToDisarm);
+        }
+      }
     }
 
     await this.db.run(

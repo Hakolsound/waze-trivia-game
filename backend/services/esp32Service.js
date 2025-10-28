@@ -561,12 +561,56 @@ class ESP32Service extends EventEmitter {
     };
   }
 
+  async disarmSpecificBuzzers(gameId, buzzerIds = []) {
+    this.currentGameId = gameId;
+    let success = true;
+
+    if (buzzerIds.length === 0) {
+      // No buzzers to disarm
+      console.log(`[ESP32] No buzzers to disarm for game ${gameId}`);
+      return {
+        success: true,
+        gameId,
+        buzzerIds: [],
+        timestamp: Date.now(),
+        hardwareConnected: this.serialPort && this.serialPort.isOpen,
+        message: 'No buzzers to disarm'
+      };
+    }
+
+    // Send disarm command to each buzzer individually
+    console.log(`[ESP32] Disarming specific buzzers: [${buzzerIds.join(', ')}]`);
+    for (const buzzerId of buzzerIds) {
+      const commandSuccess = this.sendBinaryCommand(this.COMMAND_TYPES.DISARM, buzzerId, parseInt(gameId) || 0);
+      if (!commandSuccess) {
+        success = false;
+      }
+      // Small delay between commands
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+
+    if (success) {
+      console.log(`[ESP32] Successfully disarmed buzzers: [${buzzerIds.join(', ')}]`);
+    } else {
+      console.log(`[ESP32] Some disarms failed for buzzers: [${buzzerIds.join(', ')}]`);
+    }
+
+    return {
+      success,
+      gameId,
+      buzzerIds,
+      timestamp: Date.now(),
+      hardwareConnected: this.serialPort && this.serialPort.isOpen,
+      message: success ? 'Buzzers disarmed' : 'Some disarms failed'
+    };
+  }
+
   async disarmBuzzers() {
     const success = this.sendCommand('DISARM');
     this.currentGameId = null;
-    
+
     this.io.emit('buzzers-disarmed');
-    
+
     return {
       success: true,
       timestamp: Date.now(),

@@ -300,6 +300,12 @@ void processBinaryCommands() {
 
     // Process complete command message
     if (commandBufferPos >= sizeof(CommandMessage)) {
+      Serial.printf("[COORD] Raw command buffer: ");
+      for (int i = 0; i < sizeof(CommandMessage); i++) {
+        Serial.printf("%02X ", commandBuffer[i]);
+      }
+      Serial.println();
+
       CommandMessage* cmd = (CommandMessage*)commandBuffer;
 
       // Verify checksum

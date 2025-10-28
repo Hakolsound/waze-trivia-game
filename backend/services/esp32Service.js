@@ -460,9 +460,11 @@ class ESP32Service extends EventEmitter {
     }
     buffer[7] = checksum;
 
-    console.log(`Sending binary command: type=${command}, target=${targetDevice}, gameId=${gameId}`);
-    this.serialPort.write(buffer);
-    return true;
+    console.log(`Sending binary command: type=${command}, target=${targetDevice}, gameId=${gameId}, buffer=${buffer.toString('hex')}`);
+    const writeResult = this.serialPort.write(buffer);
+    console.log(`Serial write result: ${writeResult}`);
+
+    return writeResult;
   }
 
   sendBinaryArmSpecific(bitmask, gameId = 0) {

@@ -487,13 +487,58 @@ class GameService {
     if (isCorrect) {
       // Correct answer - wait 2 seconds for green LED fade to complete before ending
       console.log(`[EVAL] Correct answer - waiting 2 seconds for LED feedback before ending round`);
-      setTimeout(async () => {
+
+      // Use Promise-based delay instead of setTimeout for better async handling
+      const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+      delay(2000).then(async () => {
+        console.log(`[EVAL] 2-second delay completed, now sending END_ROUND to reset buzzers`);
+        // Send END_ROUND to reset all buzzers to DISARMED state after showing colors
+        if (this.esp32Service) {
+          try {
+            await this.esp32Service.endRound(0); // 0 = all devices
+            console.log(`[EVAL] END_ROUND sent to all buzzers after 2-second color display`);
+          } catch (error) {
+            console.error('[EVAL] Failed to send END_ROUND:', error);
+          }
+        }
+
+        // Now end the question and prepare next
         await this.endQuestion(gameId);
         await this.prepareNextQuestion(gameId);
-      }, 2000); // 2 second delay to match buzzer green fade duration
+      }).catch(error => {
+        console.error('[EVAL] Error in delay for question ending:', error);
+      });
+
+      // Return immediately after setting up the delay
+      return {
+        success: true,
+        isCorrect,
+        pointsAwarded: pointsToAward,
+        nextInLine: false,
+        questionComplete: isCorrect
+      };
     } else {
-      // Wrong answer - clear buzzer order and resume timer for fresh attempts
-      console.log(`[EVAL] Wrong answer - clearing buzzer order and resuming timer`);
+      // Wrong answer - show red for 2 seconds, then reset to disarmed (black)
+      console.log(`[EVAL] Wrong answer - showing red for 2 seconds, then resetting buzzer`);
+
+      // Send END_ROUND to this wrong buzzer after 2 seconds to reset it to disarmed (black)
+      const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+      delay(2000).then(async () => {
+        console.log(`[EVAL] 2-second red display completed, sending END_ROUND to wrong buzzer ${buzzerDeviceId}`);
+        if (this.esp32Service) {
+          try {
+            await this.esp32Service.endRound(buzzerDeviceId); // Send to specific wrong buzzer
+            console.log(`[EVAL] END_ROUND sent to wrong buzzer ${buzzerDeviceId}`);
+          } catch (error) {
+            console.error('[EVAL] Failed to send END_ROUND to wrong buzzer:', error);
+          }
+        }
+      }).catch(error => {
+        console.error('[EVAL] Error in delay for wrong buzzer reset:', error);
+      });
+
+      // Clear buzzer order and resume timer for fresh attempts
+      console.log(`[EVAL] Clearing buzzer order and resuming timer for remaining buzzers`);
       gameState.buzzerOrder = [];
 
       // Resume timer for remaining time

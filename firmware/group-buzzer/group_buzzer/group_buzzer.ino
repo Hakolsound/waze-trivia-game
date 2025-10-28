@@ -659,15 +659,8 @@ void greenDecay() {
 }
 
 void sadRed() {
-  // Sad red effect for wrong answer - slow dim pulsing
-  static float pulsePhase = 0;
-  pulsePhase += 0.05; // Very slow pulse
-
-  int brightness = 80 + (40 * sin(pulsePhase)); // Dim pulse between 40-120
-  CRGB sadColor = COLOR_WRONG_ANSWER;
-  sadColor.fadeToBlackBy(255 - brightness);
-
-  setAllLeds(sadColor);
+  // Solid red for wrong answer - stays red until end of round
+  setAllLeds(COLOR_WRONG_ANSWER);
 }
 
 void updateLedState() {

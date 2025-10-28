@@ -4059,6 +4059,13 @@ class HostControl {
     }
 
     async resetGame() {
+        // Check if there's an active game
+        if (!this.currentGame) {
+            console.log('❌ No active game to reset');
+            alert('Please select a game first');
+            return;
+        }
+
         // Full game reset (scores already reset before confirmation)
         await this.resetQuestions();
 

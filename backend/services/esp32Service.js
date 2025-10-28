@@ -589,8 +589,8 @@ class ESP32Service extends EventEmitter {
       if (!commandSuccess) {
         success = false;
       }
-      // Small delay between commands
-      await new Promise(resolve => setTimeout(resolve, 50));
+      // Small delay between commands - reduced to 10ms for faster re-arming
+      await new Promise(resolve => setTimeout(resolve, 10));
     }
 
     if (success) {

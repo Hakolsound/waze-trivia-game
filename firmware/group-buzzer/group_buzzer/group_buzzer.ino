@@ -80,7 +80,7 @@ uint8_t pressRetryCount = 0;
 uint8_t lastCommandType = 0;
 uint8_t lastCommandTarget = 0;
 unsigned long lastCommandTime = 0;
-#define DUPLICATE_WINDOW_MS 500  // Ignore duplicate command types within 500ms
+#define DUPLICATE_WINDOW_MS 2000  // Ignore duplicate command types within 2 seconds
 
 // Battery monitoring variables
 float batteryVoltage = 0.0;
@@ -132,7 +132,7 @@ unsigned long correctAnswerStartTime = 0;
 CRGB leds[NUM_LEDS];
 
 // Device configuration
-#define DEVICE_ID 6  // Change this for each group buzzer (1, 2, 3, etc.)
+#define DEVICE_ID 14  // Change this for each group buzzer (1, 2, 3, etc.)
 #define MAX_GROUPS 15
 // Previous coordinator MAC address (backup)
 // #define COORDINATOR_MAC {0x78, 0xE3, 0x6D, 0x1B, 0x13, 0x28}

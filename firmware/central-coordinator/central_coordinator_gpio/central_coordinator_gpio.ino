@@ -514,14 +514,21 @@ void loop() {
 
   // PRIORITY: Check for serial commands from Raspberry Pi FIRST
   // Process all available serial data immediately to prevent buffer overflow
-  while (Serial.available()) {
+  if (Serial.available()) {
     if (TEXT_DEBUG_ENABLED) {
-      Serial.printf("[COORD] Serial data available: %d bytes at time %lu\n", Serial.available(), currentTime);
+      Serial.printf("[COORD] Serial data detected: %d bytes available at time %lu\n", Serial.available(), currentTime);
     }
-    if (BINARY_PROTOCOL_ENABLED) {
-      processBinaryCommands();
-    } else {
-      handleSerialCommand();
+
+    while (Serial.available()) {
+      if (BINARY_PROTOCOL_ENABLED) {
+        processBinaryCommands();
+      } else {
+        handleSerialCommand();
+      }
+    }
+
+    if (TEXT_DEBUG_ENABLED) {
+      Serial.printf("[COORD] Finished processing serial data\n");
     }
   }
   

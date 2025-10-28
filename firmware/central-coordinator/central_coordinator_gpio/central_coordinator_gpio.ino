@@ -514,10 +514,16 @@ void loop() {
 
   // PRIORITY: Check for serial commands from Raspberry Pi FIRST
   // Process all available serial data immediately to prevent buffer overflow
+  static unsigned long lastSerialCheck = 0;
+  static bool serialTimeoutLogged = false;
+
   if (Serial.available()) {
+    serialTimeoutLogged = false; // Reset timeout flag when we see data
     if (TEXT_DEBUG_ENABLED) {
-      Serial.printf("[COORD] Serial data detected: %d bytes available at time %lu\n", Serial.available(), currentTime);
+      Serial.printf("[COORD] Serial data detected: %d bytes available at time %lu (gap: %lu ms)\n",
+                   Serial.available(), currentTime, currentTime - lastSerialCheck);
     }
+    lastSerialCheck = currentTime;
 
     while (Serial.available()) {
       if (BINARY_PROTOCOL_ENABLED) {
@@ -528,7 +534,15 @@ void loop() {
     }
 
     if (TEXT_DEBUG_ENABLED) {
-      Serial.printf("[COORD] Finished processing serial data\n");
+      Serial.printf("[COORD] Finished processing serial data (buffer now: %d bytes)\n", Serial.available());
+    }
+  } else {
+    // Log if we haven't seen serial data for a while (every 5 seconds)
+    if (!serialTimeoutLogged && currentTime - lastSerialCheck > 5000) {
+      if (TEXT_DEBUG_ENABLED) {
+        Serial.printf("[COORD] No serial data for %lu ms\n", currentTime - lastSerialCheck);
+      }
+      serialTimeoutLogged = true;
     }
   }
   

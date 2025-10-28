@@ -972,18 +972,19 @@ void handleCommand(Command cmd) {
     case 5: // CORRECT_ANSWER
       Serial.printf("[CMD] Device %d executing CORRECT_ANSWER command - changing to GREEN state\n", DEVICE_ID);
       correctAnswerFeedback();
-      Serial.printf("[CMD] CORRECT_ANSWER completed - buzzer should now be GREEN\n");
+      Serial.printf("[CMD] CORRECT_ANSWER completed - buzzer should now be GREEN (state: %d)\n", currentState);
       break;
 
     case 6: // WRONG_ANSWER
       Serial.printf("[CMD] Device %d executing WRONG_ANSWER command - changing to RED state\n", DEVICE_ID);
       wrongAnswerFeedback();
-      Serial.printf("[CMD] WRONG_ANSWER completed - buzzer should now be RED\n");
+      Serial.printf("[CMD] WRONG_ANSWER completed - buzzer should now be RED (state: %d)\n", currentState);
       break;
 
     case 7: // END_ROUND (return to armed state)
-      Serial.printf("[CMD] Device %d executing END_ROUND command\n", DEVICE_ID);
+      Serial.printf("[CMD] Device %d executing END_ROUND command - resetting to DISARMED\n", DEVICE_ID);
       endRoundReset();
+      Serial.printf("[CMD] END_ROUND completed - buzzer should now be BLACK (state: %d)\n", currentState);
       break;
 
     case 8: // CHANGE_CHANNEL

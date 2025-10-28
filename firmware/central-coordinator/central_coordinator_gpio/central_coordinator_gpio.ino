@@ -344,15 +344,19 @@ void handleBinaryCommand(CommandMessage cmd) {
       }
       break;
     case 5: // CORRECT_ANSWER
-      Serial.printf("[COORD] Received CORRECT_ANSWER command for device %d\n", cmd.targetDevice);
+      Serial.printf("[COORD] Received CORRECT_ANSWER command for device %d - forwarding to buzzer\n", cmd.targetDevice);
       sendCorrectAnswerFeedback(cmd.targetDevice);
+      Serial.printf("[COORD] CORRECT_ANSWER command forwarded to device %d\n", cmd.targetDevice);
       break;
     case 6: // WRONG_ANSWER
-      Serial.printf("[COORD] Received WRONG_ANSWER command for device %d\n", cmd.targetDevice);
+      Serial.printf("[COORD] Received WRONG_ANSWER command for device %d - forwarding to buzzer\n", cmd.targetDevice);
       sendWrongAnswerFeedback(cmd.targetDevice);
+      Serial.printf("[COORD] WRONG_ANSWER command forwarded to device %d\n", cmd.targetDevice);
       break;
     case 7: // END_ROUND
+      Serial.printf("[COORD] Received END_ROUND command for device %d - forwarding to buzzer\n", cmd.targetDevice);
       endRoundReset(cmd.targetDevice);
+      Serial.printf("[COORD] END_ROUND command forwarded to device %d\n", cmd.targetDevice);
       break;
     case 8: // ARM_SPECIFIC
       {

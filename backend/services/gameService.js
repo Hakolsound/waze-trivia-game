@@ -160,9 +160,11 @@ class GameService {
       console.log(`[START] FORCE clearing previous answered buzzers: [${existingGameState.answeredBuzzers.map(ab => ab.buzzer_id).join(', ')}]`);
     }
 
-    // Set up the new timeout
+    // Set up the new timeout - just notify when time is up, don't auto-end
     const timeoutId = setTimeout(() => {
-      this.endQuestion(gameId);
+      console.log(`[TIMER] Time expired for game ${gameId} - waiting for host to manually advance`);
+      this.io.to(`game-${gameId}`).emit('timer-expired', { gameId });
+      this.io.to('control-panel').emit('timer-expired', { gameId });
     }, currentQuestion.time_limit * 1000);
 
     this.activeGames.set(gameId, {
@@ -269,11 +271,15 @@ class GameService {
 
       if (remainingTime > 0) {
         gameState.timeoutId = setTimeout(() => {
-          this.endQuestion(gameId);
+          console.log(`[TIMER] Time expired for game ${gameId} - waiting for host to manually advance`);
+          this.io.to(`game-${gameId}`).emit('timer-expired', { gameId });
+          this.io.to('control-panel').emit('timer-expired', { gameId });
         }, remainingTime);
       } else {
-        // Time already expired, end question immediately
-        this.endQuestion(gameId);
+        // Time already expired, just notify
+        console.log(`[TIMER] Time already expired for game ${gameId} - waiting for host to manually advance`);
+        this.io.to(`game-${gameId}`).emit('timer-expired', { gameId });
+        this.io.to('control-panel').emit('timer-expired', { gameId });
         return;
       }
 

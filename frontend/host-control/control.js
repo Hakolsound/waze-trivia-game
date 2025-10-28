@@ -469,6 +469,13 @@ class HostControl {
             }
         });
 
+        this.socket.on('timer-expired', () => {
+            console.log('[TIMER] Timer expired - waiting for host to manually advance');
+            // Just show visual indication that time is up, don't auto-close modal
+            // Host can still evaluate the current buzzer press
+            this.stopTimer();
+        });
+
         this.socket.on('question-end', async (data) => {
             this.isQuestionActive = false;
             this.activeQuestionIndex = -1; // Clear on-air status
@@ -476,10 +483,10 @@ class HostControl {
             this.stopTimer();
             this.hideTimers();
 
-            // Close evaluation modal if it's open (question timed out before evaluation)
+            // Close evaluation modal when question actually ends (host manually advanced)
             this.hideAnswerEvaluationModal();
 
-            // Disarm buzzers when question ends naturally (timeout)
+            // Disarm buzzers when question ends
             if (this.isBuzzersArmed) {
                 await this.disarmBuzzers(true, 'question-end');
             }
@@ -489,7 +496,7 @@ class HostControl {
             this.hideCurrentAnswererHighlight();
             this.updateQuestionTabsState();
 
-            // Time up - host controls when to advance manually for entertainment purposes
+            // Host manually advanced to next question
         });
 
         this.socket.on('score-update', (data) => {

@@ -19,54 +19,7 @@ enum BuzzerState {
   STATE_BATTERY_DISPLAY
 };
 
-// State validation and consistency functions
-void setBuzzerState(BuzzerState newState) {
-  if (currentState != newState) {
-    previousState = currentState;
-    currentState = newState;
-    Serial.printf("[STATE] Device %d: %d -> %d\n", DEVICE_ID, previousState, currentState);
-
-    // Force immediate LED update for critical state changes
-    if (newState == STATE_ANSWERING_NOW || newState == STATE_CORRECT_ANSWER ||
-        newState == STATE_WRONG_ANSWER) {
-      updateLedState();
-      lastRgbUpdate = millis(); // Prevent immediate re-update in loop
-      lastLedState = newState; // Update tracking state
-    }
-  }
-}
-
-bool validateStateConsistency() {
-  bool isConsistent = true;
-
-  // Check for inconsistent state combinations
-  if (currentState == STATE_ARMED && !isArmed) {
-    Serial.printf("[STATE ERROR] Device %d: ARMED state but isArmed=false - fixing\n", DEVICE_ID);
-    isArmed = true;
-    isConsistent = false;
-  }
-
-  if ((currentState == STATE_ANSWERING_NOW || currentState == STATE_CORRECT_ANSWER ||
-       currentState == STATE_WRONG_ANSWER) && !buzzerPressed) {
-    Serial.printf("[STATE ERROR] Device %d: Answer state but buzzerPressed=false - fixing\n", DEVICE_ID);
-    buzzerPressed = true;
-    isConsistent = false;
-  }
-
-  if (currentState == STATE_DISARMED && isArmed) {
-    Serial.printf("[STATE WARNING] Device %d: DISARMED state but isArmed=true - checking context\n", DEVICE_ID);
-    // This is OK if we're in wrong answer state after disarm
-    if (previousState != STATE_WRONG_ANSWER) {
-      Serial.printf("[STATE ERROR] Device %d: DISARMED but isArmed=true - fixing\n", DEVICE_ID);
-      isArmed = false;
-      isConsistent = false;
-    }
-  }
-
-  return isConsistent;
-}
-
-// validateCommandForState function moved after struct definitions
+// State validation and consistency functions - MOVED AFTER GLOBAL VARIABLES
 
 bool setWifiChannel(uint8_t channel) {
   if (channel < 1 || channel > 13) {

@@ -3628,7 +3628,7 @@ class HostControl {
                 </div>
                 <div class="channel-details">
                     <div class="channel-signal">${channel.signal}dBm</div>
-                    <div class="channel-networks">${channel.networkCount} networks</div>
+                    <div class="channel-networks">📶 ${channel.networkCount}</div>
                 </div>
                 <button class="channel-select-btn" onclick="window.hostControl.selectChannel(${channel.channel})">
                     Select

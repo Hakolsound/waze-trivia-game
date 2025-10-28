@@ -3762,6 +3762,7 @@ kbd {
     align-items: center;
     gap: 8px;
     padding: 4px 0;
+    width: 100%; /* Ensure full width */
 }
 
 .channel-number {
@@ -3896,7 +3897,7 @@ kbd {
 .channel-info {
     display: flex;
     flex-direction: column;
-    min-width: 60px;
+    min-width: 50px; /* Reduced from 60px */
 }
 
 .channel-number {
@@ -3916,7 +3917,7 @@ kbd {
     height: 16px; /* Increased from 8px to 16px for better visibility */
     background: #374151;
     border-radius: 4px;
-    margin: 0 12px;
+    margin: 0 8px; /* Reduced from 12px to 8px for more bar width */
     overflow: hidden;
 }
 
@@ -3930,7 +3931,7 @@ kbd {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    min-width: 80px;
+    min-width: 70px; /* Reduced from 80px */
 }
 
 .channel-signal {

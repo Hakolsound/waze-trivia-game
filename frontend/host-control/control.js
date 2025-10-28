@@ -1707,6 +1707,9 @@ class HostControl {
     }
 
     handleBuzzerPress(data) {
+        // Close game actions modal if it's open (buzzer activity takes priority)
+        this.hideGameActionsModal();
+
         // Clear armed indicators when first buzzer activity begins
         if (this.buzzerOrder.length === 0 && this.isBuzzersArmed) {
             this.clearArmedIndicators();
@@ -2020,7 +2023,17 @@ class HostControl {
 
     updateAnswerEvaluationModal() {
         // Early return for invalid state to avoid unnecessary DOM operations
-        if (!this.currentGame || !this.isQuestionActive || this.buzzerOrder.length === 0) {
+        if (!this.currentGame || !this.isQuestionActive) {
+            requestAnimationFrame(() => {
+                this.elements.noBuzzerContent.classList.remove('hidden');
+                this.elements.currentAnswererContent.classList.add('hidden');
+                this.elements.evaluationHistorySection.classList.add('hidden');
+            });
+            return;
+        }
+
+        // If no buzzers in queue, show waiting state but keep modal open
+        if (this.buzzerOrder.length === 0) {
             requestAnimationFrame(() => {
                 this.elements.noBuzzerContent.classList.remove('hidden');
                 this.elements.currentAnswererContent.classList.add('hidden');
@@ -2517,8 +2530,8 @@ class HostControl {
                     this.buzzerOrder = [];
                     this.currentBuzzerPosition = -1;
 
-                    // Hide the evaluation modal
-                    this.hideAnswerEvaluationModal();
+                    // Update modal to show waiting state (don't hide it)
+                    this.updateAnswerEvaluationModal();
 
                     // NOTE: Removed this.armBuzzers() call - backend already handles selective re-arming
                     // The backend only arms buzzers that haven't answered wrong yet

@@ -2032,13 +2032,9 @@ class HostControl {
             return;
         }
 
-        // If no buzzers in queue, show waiting state - modal stays open
+        // If no buzzers in queue, hide the modal completely - no "waiting for teams" needed
         if (this.buzzerOrder.length === 0) {
-            requestAnimationFrame(() => {
-                this.elements.noBuzzerContent.classList.remove('hidden');
-                this.elements.currentAnswererContent.classList.add('hidden');
-                this.elements.evaluationHistorySection.classList.add('hidden');
-            });
+            this.hideAnswerEvaluationModal();
             return;
         }
 
@@ -2530,13 +2526,8 @@ class HostControl {
                     this.buzzerOrder = [];
                     this.currentBuzzerPosition = -1;
 
-                    // Keep modal open but show "waiting for next team" - don't hide it
-                    // The modal will stay visible until a correct answer or question timeout
-                    requestAnimationFrame(() => {
-                        this.elements.noBuzzerContent.classList.remove('hidden');
-                        this.elements.currentAnswererContent.classList.add('hidden');
-                        this.elements.evaluationHistorySection.classList.add('hidden');
-                    });
+                    // Hide modal completely - no "waiting for teams" modal needed
+                    this.hideAnswerEvaluationModal();
 
                     // NOTE: Removed this.armBuzzers() call - backend already handles selective re-arming
                     // The backend only arms buzzers that haven't answered wrong yet

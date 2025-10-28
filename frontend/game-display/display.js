@@ -201,6 +201,10 @@ class GameDisplay {
             this.handleGameReset();
         });
 
+        this.socket.on('game-state', (data) => {
+            this.handleGameStateUpdate(data);
+        });
+
         // Leaderboard events
         this.socket.on('show-leaderboard', (data) => {
             this.showLeaderboard(data?.view || 'all');
@@ -459,10 +463,17 @@ class GameDisplay {
             points: Math.abs(data.pointsAwarded),
             isCorrect: data.isCorrect
         };
-        
+
+        // Update the buzzer queue item with evaluation status
+        const buzzerIndex = this.buzzerQueue.findIndex(item => item.groupId === data.groupId);
+        if (buzzerIndex !== -1) {
+            this.buzzerQueue[buzzerIndex].evaluated = true;
+            this.buzzerQueue[buzzerIndex].isCorrect = data.isCorrect;
+        }
+
         // Show answer feedback
         this.showAnswerFeedback(displayData);
-        
+
         // Update buzzer queue to show result
         this.updateBuzzerQueueWithResult(displayData);
         
@@ -471,10 +482,12 @@ class GameDisplay {
             if (data.isCorrect) {
                 this.showIdleState();
                 this.currentQuestion = null;
-            } else {
-                // Remove the incorrect team from queue and continue
-                this.removeFromBuzzerQueue(data.groupId);
+                // Clear the buzzer queue after correct answer
+                this.buzzerQueue = [];
+                this.updateBuzzerQueue();
             }
+            // For incorrect answers, keep the evaluated team in queue with styling
+            // Don't remove them - let them stay as visual history
         }, 3000);
     }
 
@@ -508,11 +521,27 @@ class GameDisplay {
     handleGameReset() {
         this.clearTimer();
         this.clearBuzzerQueue();
-        
+
         // Auto-hide correct answer overlay on game reset
         this.hideCorrectAnswer();
-        
+
         this.showIdleState();
+    }
+
+    handleGameStateUpdate(data) {
+        console.log('Game state update received:', data);
+
+        // Update buzzer queue based on new game state
+        // If questions are reset, clear the buzzer queue
+        if (data.played_questions && data.played_questions.length === 0) {
+            console.log('Questions reset detected, clearing buzzer queue');
+            this.clearBuzzerQueue();
+        }
+
+        // Update current question index if changed
+        if (data.current_question_index !== undefined) {
+            // Handle question navigation if needed
+        }
     }
 
     // UI Update Methods
@@ -736,7 +765,24 @@ class GameDisplay {
 
     createOrReuseBuzzerItem(item, index) {
         const buzzerItem = document.createElement('div');
-        buzzerItem.className = `buzzer-item ${index === 0 ? 'fastest' : 'active'}`;
+
+        // Determine the appropriate class based on evaluation status
+        let itemClass = 'buzzer-item';
+
+        if (item.evaluated) {
+            // Already evaluated - show result
+            itemClass += item.isCorrect ? ' correct' : ' incorrect';
+        } else {
+            // Not evaluated yet - check if it's the current fastest (first unevaluated)
+            const firstUnevaluatedIndex = this.buzzerQueue.findIndex(b => !b.evaluated);
+            if (index === firstUnevaluatedIndex) {
+                itemClass += ' fastest';
+            } else {
+                itemClass += ' active';
+            }
+        }
+
+        buzzerItem.className = itemClass;
         buzzerItem.dataset.buzzerId = item.buzzerId;
 
         // Use textContent for better performance than innerHTML

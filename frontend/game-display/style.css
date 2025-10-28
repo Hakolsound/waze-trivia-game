@@ -533,8 +533,13 @@ h1.question-text,
 
 .buzzer-item.fastest {
   border-left-color: var(--hakol-success);
-  background: rgba(107, 155, 110, 0.3);
-  animation: pulse 2s infinite;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.4), rgba(107, 155, 110, 0.3));
+  animation: fastestPulse 1.5s ease-in-out infinite;
+  min-height: 120px;
+  padding: 24px;
+  margin: 8px 0;
+  border-radius: 20px;
+  border: 2px solid rgba(16, 185, 129, 0.5);
 }
 
 .buzzer-team {
@@ -544,12 +549,30 @@ h1.question-text,
   margin-bottom: 4px;
 }
 
+.buzzer-item.fastest .buzzer-team {
+  font: var(--md-sys-typescale-headline-large);
+  font-weight: 700;
+  color: #ffffff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  text-align: center;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
 .buzzer-details {
   display: flex;
   justify-content: space-between;
   align-items: center;
   font: var(--md-sys-typescale-body-medium);
   color: var(--md-sys-color-on-surface-variant);
+}
+
+.buzzer-item.fastest .buzzer-details {
+  opacity: 0.7;
+  font-size: 0.9rem;
+  justify-content: center;
+  margin-top: 4px;
 }
 
 .buzzer-order {
@@ -805,8 +828,25 @@ h1.question-text,
 }
 
 @keyframes pulse {
-  0%, 100% { transform: translateX(-4px); }
-  50% { transform: translateX(-8px); }
+  0%, 100% {
+    transform: translateX(-4px);
+    box-shadow: 0 8px 32px rgba(16, 185, 129, 0.4);
+  }
+  50% {
+    transform: translateX(-8px);
+    box-shadow: 0 12px 48px rgba(16, 185, 129, 0.6);
+  }
+}
+
+@keyframes fastestPulse {
+  0%, 100% {
+    transform: scale(1.15);
+    box-shadow: 0 8px 32px rgba(16, 185, 129, 0.4);
+  }
+  50% {
+    transform: scale(1.2);
+    box-shadow: 0 16px 64px rgba(16, 185, 129, 0.7);
+  }
 }
 
 @keyframes slideInRight {
@@ -869,13 +909,39 @@ h1.question-text,
 
 .buzzer-item.correct {
   border-left-color: var(--hakol-success);
-  background: rgba(107, 155, 110, 0.4);
+  background: rgba(107, 155, 110, 0.3);
+  opacity: 0.8;
+  /* Remove pulsing animation */
+  animation: none;
+  transform: none;
+  box-shadow: none;
+  min-height: 60px;
+  padding: 16px;
+  margin: 4px 0;
 }
 
 .buzzer-item.incorrect {
   border-left-color: var(--hakol-error);
-  background: rgba(184, 92, 92, 0.4);
-  opacity: 0.7;
+  background: rgba(184, 92, 92, 0.2);
+  opacity: 0.5;
+  /* Remove pulsing animation and make it grayed out */
+  animation: none;
+  transform: none;
+  box-shadow: none;
+  min-height: 50px;
+  padding: 12px;
+  margin: 2px 0;
+  filter: grayscale(0.3);
+}
+
+.buzzer-item.correct .buzzer-team,
+.buzzer-item.incorrect .buzzer-team {
+  font: var(--md-sys-typescale-body-medium);
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface-variant);
+  text-transform: none;
+  letter-spacing: normal;
+  text-shadow: none;
 }
 
 /* Hidden State */

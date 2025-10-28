@@ -17,7 +17,10 @@ class HostControl {
         this.isAnswerVisible = false; // Track answer display state
         this.currentLeaderboardView = 'all'; // Track current leaderboard view
         this.gameSelector = null;
-        
+
+        // Modal event listeners flag
+        this.modalEventListenersAttached = false;
+
         // Show Correct Answer state
         this.answerShown = false;
         this.keyPressCount = { 'A': 0, lastTime: 0 };
@@ -76,18 +79,22 @@ class HostControl {
     }
 
     onGameChanged(game) {
-        console.log('Game changed in host control:', game);
+        console.log('🎮 onGameChanged called with game:', game?.name, 'played_questions:', game?.played_questions);
         console.log('Teams in game:', game?.groups?.length || 0);
         console.log('Questions in game:', game?.questions?.length || 0);
 
         if (game) {
+            // Update current game object with new data
+            this.currentGame = game;
+
             // Load game data
             this.questions = game.questions || [];
             this.teams = game.groups || [];
             this.currentQuestionIndex = game.current_question_index || 0;
 
             console.log('Loaded teams:', this.teams.length, 'questions:', this.questions.length);
-            
+            console.log('Updated currentGame.played_questions:', this.currentGame.played_questions);
+
             // Synchronize with server game state
             this.synchronizeGameState(game);
             
@@ -540,12 +547,10 @@ class HostControl {
         if (this.elements.prevQuestionBtn) this.elements.prevQuestionBtn.addEventListener('click', () => this.prevQuestion());
         if (this.elements.questionSelect) this.elements.questionSelect.addEventListener('change', (e) => this.jumpToQuestion(e.target.value));
         if (this.elements.showQuestionSelectBtn) this.elements.showQuestionSelectBtn.addEventListener('click', () => this.showQuestionSelectModal());
-        if (this.elements.resetScoresBtn) this.elements.resetScoresBtn.addEventListener('click', () => this.confirmAction('reset-scores'));
-        if (this.elements.resetQuestionsBtn) this.elements.resetQuestionsBtn.addEventListener('click', () => this.confirmAction('reset-questions'));
-        if (this.elements.resetGameBtn) this.elements.resetGameBtn.addEventListener('click', () => this.confirmAction('reset-game'));
         if (this.elements.showLeaderboardBtn) this.elements.showLeaderboardBtn.addEventListener('click', () => this.toggleLeaderboard());
         if (this.elements.leaderboardViewSelect) this.elements.leaderboardViewSelect.addEventListener('change', (e) => this.changeLeaderboardView(e.target.value));
         if (this.elements.endGameBtn) this.elements.endGameBtn.addEventListener('click', () => this.endGame());
+
         
         // Buzzer controls
         if (this.elements.armBuzzersBtn) this.elements.armBuzzersBtn.addEventListener('click', () => this.armBuzzers());
@@ -560,13 +565,7 @@ class HostControl {
 
         // Game actions modal
         if (this.elements.closeGameActionsModalBtn) this.elements.closeGameActionsModalBtn.addEventListener('click', () => this.hideGameActionsModal());
-        if (this.elements.resetScoresBtn) this.elements.resetScoresBtn.addEventListener('click', () => this.confirmAction('reset-scores'));
-        if (this.elements.resetQuestionsBtn) this.elements.resetQuestionsBtn.addEventListener('click', () => this.confirmAction('reset-questions'));
-        if (this.elements.resetGameBtn) this.elements.resetGameBtn.addEventListener('click', () => this.confirmAction('reset-game'));
         if (this.elements.exportGameDataBtn) this.elements.exportGameDataBtn.addEventListener('click', () => this.exportGameData());
-        if (this.elements.clearGameHistoryBtn) this.elements.clearGameHistoryBtn.addEventListener('click', () => this.confirmAction('clear-history'));
-        if (this.elements.confirmActionBtn) this.elements.confirmActionBtn.addEventListener('click', () => this.executeConfirmedAction());
-        if (this.elements.cancelActionBtn) this.elements.cancelActionBtn.addEventListener('click', () => this.hideConfirmationDialog());
         // Game actions modal click outside to close
         if (this.elements.gameActionsModal) {
             this.elements.gameActionsModal.addEventListener('click', (e) => {
@@ -2111,13 +2110,6 @@ class HostControl {
         this.elements.manualPointsModal.classList.add('hidden');
     }
 
-    showGameActionsModal() {
-        this.elements.gameActionsModal.classList.remove('hidden');
-    }
-
-    hideGameActionsModal() {
-        this.elements.gameActionsModal.classList.add('hidden');
-    }
 
     async awardManualPoints() {
         const teamId = this.elements.teamSelect.value;
@@ -3717,6 +3709,17 @@ class HostControl {
         if (this.elements.gameActionsModal) {
             this.elements.gameActionsModal.classList.remove('hidden');
             this.updateGameActionsState();
+
+            // Attach modal button event listeners only once
+            if (!this.modalEventListenersAttached) {
+                if (this.elements.resetScoresBtn) this.elements.resetScoresBtn.addEventListener('click', () => this.confirmAction('reset-scores'));
+                if (this.elements.resetQuestionsBtn) this.elements.resetQuestionsBtn.addEventListener('click', () => this.confirmAction('reset-questions'));
+                if (this.elements.resetGameBtn) this.elements.resetGameBtn.addEventListener('click', () => this.confirmAction('reset-game'));
+                if (this.elements.clearGameHistoryBtn) this.elements.clearGameHistoryBtn.addEventListener('click', () => this.confirmAction('clear-history'));
+                if (this.elements.confirmActionBtn) this.elements.confirmActionBtn.addEventListener('click', () => this.executeConfirmedAction());
+                if (this.elements.cancelActionBtn) this.elements.cancelActionBtn.addEventListener('click', () => this.hideConfirmationDialog());
+                this.modalEventListenersAttached = true;
+            }
         }
     }
 
@@ -3733,6 +3736,7 @@ class HostControl {
     }
 
     async confirmAction(actionType) {
+        console.log('confirmAction called with:', actionType);
         let title, message, icon;
 
         switch (actionType) {
@@ -3751,13 +3755,7 @@ class HostControl {
                 title = 'Reset Game';
                 message = 'This will reset the entire game, clearing all scores and progress. This action cannot be undone.';
                 icon = 'delete_forever';
-                // Special handling: reset scores before confirming
-                try {
-                    await this.resetAllScores();
-                } catch (error) {
-                    // If score reset fails, don't show confirmation dialog
-                    return;
-                }
+                // Note: scores will be reset in executeConfirmedAction along with questions
                 break;
             case 'clear-history':
                 title = 'Clear Game History';
@@ -3792,36 +3790,53 @@ class HostControl {
     }
 
     async executeConfirmedAction() {
-        if (!this.pendingAction) return;
+        console.log('🎯 executeConfirmedAction called, pendingAction:', this.pendingAction);
+        if (!this.pendingAction) {
+            console.log('❌ No pending action, returning');
+            return;
+        }
 
         this.hideConfirmationDialog();
         this.showActionStatus('Processing...');
 
         try {
+            console.log('🔄 Executing action:', this.pendingAction);
             switch (this.pendingAction) {
                 case 'reset-scores':
+                    console.log('🔄 Calling resetAllScores');
                     await this.resetAllScores();
                     this.showToast('All scores have been reset to zero', 'success');
+                    console.log('✅ resetAllScores completed');
                     break;
                 case 'reset-questions':
+                    console.log('🔄 Calling resetQuestions');
                     await this.resetQuestions();
                     this.showToast('Question progress has been reset', 'success');
+                    console.log('✅ resetQuestions completed');
                     break;
                 case 'reset-game':
+                    console.log('🔄 Calling resetAllScores + resetGame');
+                    await this.resetAllScores();
+                    console.log('✅ resetAllScores completed for reset-game');
                     await this.resetGame();
                     this.showToast('Game has been completely reset', 'success');
+                    console.log('✅ resetGame completed');
                     break;
                 case 'clear-history':
+                    console.log('🔄 Calling clearGameHistory');
                     await this.clearGameHistory();
                     this.showToast('Game history has been cleared', 'success');
+                    console.log('✅ clearGameHistory completed');
                     break;
             }
+            console.log('🎉 Action execution completed successfully');
         } catch (error) {
-            console.error('Action failed:', error);
+            console.error('❌ Action failed:', error);
             this.showToast(`Action failed: ${error.message}`, 'error');
         } finally {
             this.hideActionStatus();
             this.pendingAction = null;
+            console.log('🔄 Cleaned up action status and pendingAction');
         }
     }
 
@@ -3839,12 +3854,15 @@ class HostControl {
     }
 
     async resetAllScores() {
+        console.log('resetAllScores called, currentGame:', !!this.currentGame, 'teams length:', this.teams.length);
         if (!this.currentGame || !this.teams.length) {
+            console.log('No active game or teams, returning early');
             this.showToast('No active game or teams to reset', 'warning');
             return;
         }
 
         try {
+            console.log('Starting score reset for', this.teams.length, 'teams');
             // Reset each team's score in the database
             const resetPromises = this.teams.map(async (team) => {
                 if (team.score !== 0) {
@@ -3868,6 +3886,7 @@ class HostControl {
             this.socket.emit('update-teams', this.teams);
             this.updateTeamDisplay();
 
+            console.log('resetAllScores completed successfully');
             // Note: Toast will be shown after confirmation in executeConfirmedAction
         } catch (error) {
             console.error('Failed to reset scores:', error);
@@ -3877,43 +3896,56 @@ class HostControl {
     }
 
     async resetQuestions() {
+        console.log('🔄 resetQuestions called');
         if (!this.currentGame) {
+            console.log('❌ No active game to reset');
             this.showToast('No active game to reset', 'warning');
             return;
         }
 
         try {
+            console.log('📡 Calling server API to reset questions');
             // Call server API to reset questions
             const response = await fetch(`/api/games/${this.currentGame.id}/reset-questions`, {
                 method: 'POST'
             });
 
+            console.log('📡 API response status:', response.status);
             if (!response.ok) {
+                const errorText = await response.text();
+                console.error('❌ API response not ok:', response.status, errorText);
                 throw new Error('Failed to reset questions on server');
             }
 
+            console.log('📡 Fetching updated game data');
             // Fetch updated game data from server to ensure we're in sync
             const gameResponse = await fetch(`/api/games/${this.currentGame.id}`);
             const updatedGame = await gameResponse.json();
+            console.log('📡 Updated game data:', updatedGame.played_questions);
 
             // Update local game state with server data
+            console.log('🔄 Calling onGameChanged with updated game');
             this.onGameChanged(updatedGame);
 
             // Reset additional local state
             this.activeQuestionIndex = -1;
             this.isQuestionActive = false;
             this.buzzerOrder.length = 0;
+            console.log('🔄 Reset local state');
 
             // Emit to display clients
             this.socket.emit('game-state', this.getGameState());
+            console.log('📡 Emitted game-state to display clients');
 
             // Update UI controls
             this.updateQuestionControls();
             this.updateQuestionTabsState(); // Ensure tabs reflect reset state
+            console.log('🔄 Updated UI controls and tabs');
 
+            console.log('✅ resetQuestions completed successfully');
             // Note: Toast will be shown after confirmation in executeConfirmedAction
         } catch (error) {
-            console.error('Failed to reset questions:', error);
+            console.error('❌ Failed to reset questions:', error);
             this.showToast('Failed to reset questions', 'error');
         }
     }

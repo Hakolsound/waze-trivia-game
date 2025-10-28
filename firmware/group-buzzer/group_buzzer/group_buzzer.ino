@@ -238,7 +238,11 @@ unsigned long correctAnswerStartTime = 0;
 // Device configuration
 #define DEVICE_ID 15  // Change this for each group buzzer (1, 2, 3, etc.)
 #define MAX_GROUPS 15
-#define COORDINATOR_MAC {0x78, 0xE3, 0x6D, 0x1B, 0x13, 0x28}
+// Previous coordinator MAC address (backup)
+// #define COORDINATOR_MAC {0x78, 0xE3, 0x6D, 0x1B, 0x13, 0x28}
+
+// New coordinator MAC address
+#define COORDINATOR_MAC {0xB0, 0xB2, 0x1C, 0x45, 0x85, 0x1C}
 
 // Battery configuration
 #define BATTERY_ADC_PIN 34

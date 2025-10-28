@@ -668,11 +668,9 @@ class GameService {
     if (gameState.buzzerOrder.length === 1 && !gameState.isPaused) {
       this.pauseQuestion(gameId);
 
-      // DISARM ALL BUZZERS to prevent others from buzzing during evaluation
-      if (this.esp32Service) {
-        console.log(`[BUZZ] Disarming all buzzers - first team has buzzed, waiting for evaluation`);
-        await this.esp32Service.disarmBuzzers(gameId);
-      }
+      // NOTE: Not disarming buzzers immediately anymore - they should stay armed until evaluation
+      // The buzzing buzzer stays in ANSWERING_NOW state, others can still buzz but timer is paused
+      console.log(`[BUZZ] Timer paused, buzzer stays armed for evaluation`);
     }
 
     await this.db.run(

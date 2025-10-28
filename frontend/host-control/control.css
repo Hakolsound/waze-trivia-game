@@ -3821,76 +3821,7 @@ kbd {
     font-weight: 700;
 }
 
-/* Channel Recommendation Section */
-.channel-recommendation {
-    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 215, 0, 0.05) 100%);
-    border: 1px solid rgba(255, 215, 0, 0.3);
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 16px;
-}
-
-.recommendation-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-}
-
-.recommendation-icon {
-    font-size: 1.2rem;
-}
-
-.recommendation-title {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #fbbf24;
-    margin: 0;
-}
-
-.recommendation-details {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-}
-
-.recommended-channel {
-    font-size: 1.2rem;
-    font-weight: 700;
-    color: #fbbf24;
-}
-
-.recommendation-quality {
-    font-size: 0.8rem;
-    color: #9ca3af;
-    text-transform: capitalize;
-}
-
-.recommendation-reason {
-    font-size: 0.75rem;
-    color: #6b7280;
-    font-style: italic;
-    margin: 4px 0;
-}
-
-.apply-recommendation-btn {
-    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-    color: #000;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    width: 100%;
-}
-
-.apply-recommendation-btn:hover {
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-    transform: translateY(-1px);
-}
+/* Channel Recommendation Section - Removed as requested */
 
 /* Updated Channel Bar Layout */
 .channel-bar {

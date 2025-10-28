@@ -3591,10 +3591,7 @@ class HostControl {
         this.elements.wifiResults.classList.remove('hidden');
         this.elements.channelQualityList.innerHTML = '';
 
-        // Display recommendation if available
-        if (recommendation) {
-            this.showChannelRecommendation(recommendation);
-        }
+        // Recommendation display removed as requested
 
         // Display each channel
         channels.forEach(channel => {
@@ -3668,34 +3665,7 @@ class HostControl {
     }
 
     showChannelRecommendation(recommendation) {
-        // Create or update recommendation display
-        let recommendationDiv = document.querySelector('.channel-recommendation');
-        if (!recommendationDiv) {
-            recommendationDiv = document.createElement('div');
-            recommendationDiv.className = 'channel-recommendation';
-            // Insert at the beginning of wifi-results, after current-channel-display
-            const currentChannelDisplay = this.elements.wifiResults.querySelector('.current-channel-display');
-            if (currentChannelDisplay && currentChannelDisplay.nextSibling) {
-                this.elements.wifiResults.insertBefore(recommendationDiv, currentChannelDisplay.nextSibling);
-            } else {
-                this.elements.wifiResults.appendChild(recommendationDiv);
-            }
-        }
-
-        recommendationDiv.innerHTML = `
-            <div class="recommendation-header">
-                <span class="recommendation-icon">⭐</span>
-                <span class="recommendation-title">Recommended Channel</span>
-            </div>
-            <div class="recommendation-details">
-                <div class="recommended-channel">CH ${recommendation.channel}</div>
-                <div class="recommendation-quality">${recommendation.quality}</div>
-                <div class="recommendation-reason">${recommendation.reason}</div>
-            </div>
-            <button class="apply-recommendation-btn" onclick="window.hostControl.applyBestChannel(${recommendation.channel})">
-                Apply Recommended
-            </button>
-        `;
+        // Recommendation display removed as requested - function kept for compatibility
     }
 
     selectChannel(channelNumber) {

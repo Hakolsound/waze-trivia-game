@@ -577,11 +577,12 @@ void loop() {
   // Send periodic status updates
   static unsigned long lastStatusUpdate = 0;
   if (currentTime - lastStatusUpdate > 10000) {  // Increased from 5000ms to 10000ms to reduce overhead
-    if (BINARY_PROTOCOL_ENABLED) {
-      sendBinaryStatus();
-    } else {
-      sendStatusToSerial();
-    }
+    // Temporarily disable automatic status to reduce serial noise during debugging
+    // if (BINARY_PROTOCOL_ENABLED) {
+    //   sendBinaryStatus();
+    // } else {
+    //   sendStatusToSerial();
+    // }
     lastStatusUpdate = currentTime;
   }
 
@@ -723,10 +724,10 @@ void handleHeartbeat(Message msg) {
       delay(10);
       digitalWrite(COMM_LED_PIN, LOW);
 
-      // Send status update to Pi when heartbeat is received
-      if (BINARY_PROTOCOL_ENABLED) {
-        sendBinaryStatus();
-      }
+      // Temporarily disable automatic status on heartbeat to reduce serial noise
+      // if (BINARY_PROTOCOL_ENABLED) {
+      //   sendBinaryStatus();
+      // }
       break;
     }
   }
@@ -755,12 +756,12 @@ void handleStatusUpdate(Message msg) {
       delay(10);
       digitalWrite(COMM_LED_PIN, LOW);
 
-      // Send status update to Pi
-      if (BINARY_PROTOCOL_ENABLED) {
-        sendBinaryStatus();
-      } else {
-        sendStatusToSerial();
-      }
+      // Temporarily disable automatic status to reduce serial noise
+      // if (BINARY_PROTOCOL_ENABLED) {
+      //   sendBinaryStatus();
+      // } else {
+      //   sendStatusToSerial();
+      // }
 
       break;
     }

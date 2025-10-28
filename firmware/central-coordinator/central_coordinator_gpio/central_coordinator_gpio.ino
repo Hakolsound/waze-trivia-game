@@ -263,7 +263,7 @@ void sendBinaryStatus() {
 
 void processBinaryCommands() {
   if (TEXT_DEBUG_ENABLED) {
-    Serial.printf("Processing binary commands... (%d bytes available)\n", Serial.available());
+    Serial.printf("[COORD] Processing binary commands... (%d bytes available)\n", Serial.available());
   }
 
   // Check if first byte is text (ARM_SPECIFIC starts with 'A' = 0x41)
@@ -512,8 +512,9 @@ void setup() {
 void loop() {
   unsigned long currentTime = millis();
 
-  // Check for serial commands from Raspberry Pi
-  if (Serial.available()) {
+  // PRIORITY: Check for serial commands from Raspberry Pi FIRST
+  // Process all available serial data immediately to prevent buffer overflow
+  while (Serial.available()) {
     if (TEXT_DEBUG_ENABLED) {
       Serial.printf("[COORD] Serial data available: %d bytes at time %lu\n", Serial.available(), currentTime);
     }

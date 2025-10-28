@@ -126,7 +126,7 @@ unsigned long correctAnswerStartTime = 0;
 CRGB leds[NUM_LEDS];
 
 // Device configuration
-#define DEVICE_ID 15  // Change this for each group buzzer (1, 2, 3, etc.)
+#define DEVICE_ID 6  // Change this for each group buzzer (1, 2, 3, etc.)
 #define MAX_GROUPS 15
 // Previous coordinator MAC address (backup)
 // #define COORDINATOR_MAC {0x78, 0xE3, 0x6D, 0x1B, 0x13, 0x28}
@@ -321,7 +321,9 @@ bool validateCommandForState(Command cmd) {
 
   // Debug logging for command validation
   if (!isValid) {
-    Serial.printf("[CMD VALIDATION] Command %d rejected for device %d in state %d\n", cmd.command, DEVICE_ID, currentState);
+    Serial.printf("[CMD VALIDATION] Command %d rejected for device %d in state %d (armed: %d)\n", cmd.command, DEVICE_ID, currentState, isArmed);
+  } else {
+    Serial.printf("[CMD VALIDATION] Command %d accepted for device %d in state %d\n", cmd.command, DEVICE_ID, currentState);
   }
 
   return isValid;
@@ -400,8 +402,9 @@ void OnDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *incomingDat
 
   Serial.printf("[BUZZER] Received command: type=%d, target=%d, my_id=%d\n", cmd.command, cmd.targetDevice, DEVICE_ID);
 
+  // Accept commands for broadcast (0) or specific device ID match
   if (cmd.targetDevice == 0 || cmd.targetDevice == DEVICE_ID) {
-    Serial.printf("[BUZZER] Command accepted - processing\n");
+    Serial.printf("[BUZZER] Command accepted - processing (current state: %d, armed: %d)\n", currentState, isArmed);
     handleCommand(cmd);
   } else {
     Serial.printf("[BUZZER] Command rejected - target %d != my_id %d\n", cmd.targetDevice, DEVICE_ID);

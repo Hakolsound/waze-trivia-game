@@ -354,7 +354,18 @@ void handleBinaryCommand(CommandMessage cmd) {
       armAllBuzzers();
       break;
     case 2: // DISARM
-      disarmAllBuzzers();
+      if (cmd.targetDevice == 0) {
+        // Disarm all buzzers
+        disarmAllBuzzers();
+      } else {
+        // Disarm specific buzzer
+        Serial.printf("[COORD] Received DISARM command for device %d - forwarding to buzzer\n", cmd.targetDevice);
+        if (sendCommandWithAck(cmd.targetDevice, CMD_DISARM)) {
+          Serial.printf("[COORD] DISARM command forwarded to device %d\n", cmd.targetDevice);
+        } else {
+          Serial.printf("[COORD] ERROR: Failed to disarm device %d\n", cmd.targetDevice);
+        }
+      }
       break;
     case 3: // TEST
       testBuzzer(cmd.targetDevice);

@@ -14,10 +14,10 @@ typedef struct {
 } Command;
 
 // Forward declarations for functions used before definition
-void handleCommand(Command cmd);
 void updateLedState();
 void sendBuzzerPressWithRetry();
 bool validateCommandForState(Command cmd);
+void handleCommand(Command cmd);
 
 // Hardware Configuration - MOVED TO BOTTOM FOR BETTER ORGANIZATION
 // See consolidated constants below

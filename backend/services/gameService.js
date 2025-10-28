@@ -837,6 +837,8 @@ class GameService {
   }
 
   async resetGame(gameId) {
+    console.log(`[RESET] Resetting game ${gameId} - clearing all data and buzzer states`);
+
     await this.db.run(
       'UPDATE games SET status = ?, current_question_index = 0, played_questions = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       ['setup', JSON.stringify([]), gameId]
@@ -860,12 +862,21 @@ class GameService {
 
     this.activeGames.delete(gameId);
 
+    // Reset all buzzer hardware states to black/disarmed
+    if (this.esp32Service) {
+      console.log(`[RESET] Sending END_ROUND to reset all buzzer hardware states`);
+      await this.esp32Service.disarmBuzzers();
+      await this.esp32Service.endRound(0); // 0 = all buzzers
+    }
+
     this.io.to(`game-${gameId}`).emit('game-reset', { gameId });
-    
+
     return this.getGame(gameId);
   }
 
   async resetQuestions(gameId) {
+    console.log(`[RESET] Resetting questions for game ${gameId} - clearing question progress and buzzer states`);
+
     await this.db.run(
       'UPDATE games SET status = ?, current_question_index = 0, played_questions = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       ['setup', JSON.stringify([]), gameId]
@@ -883,8 +894,15 @@ class GameService {
     }
     this.activeGames.delete(gameId);
 
+    // Reset all buzzer hardware states to black/disarmed
+    if (this.esp32Service) {
+      console.log(`[RESET] Sending END_ROUND to reset all buzzer hardware states`);
+      await this.esp32Service.disarmBuzzers();
+      await this.esp32Service.endRound(0); // 0 = all buzzers
+    }
+
     this.io.to(`game-${gameId}`).emit('questions-reset', { gameId });
-    
+
     return this.getGame(gameId);
   }
 
@@ -917,18 +935,27 @@ class GameService {
   }
 
   async resetScores(gameId) {
+    console.log(`[RESET] Resetting scores for game ${gameId} - clearing all team scores and buzzer states`);
+
     await this.db.run(
       'UPDATE groups SET score = 0 WHERE game_id = ?',
       [gameId]
     );
 
+    // Reset all buzzer hardware states to black/disarmed
+    if (this.esp32Service) {
+      console.log(`[RESET] Sending END_ROUND to reset all buzzer hardware states`);
+      await this.esp32Service.disarmBuzzers();
+      await this.esp32Service.endRound(0); // 0 = all buzzers
+    }
+
     // Get updated game data with reset scores
     const game = await this.getGame(gameId);
-    
+
     // Notify all clients about score reset
     this.io.to(`game-${gameId}`).emit('teams-updated', game.groups);
     this.io.to('control-panel').emit('teams-updated', game.groups);
-    
+
     return game;
   }
 

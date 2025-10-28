@@ -6,8 +6,7 @@
 // Hardware Configuration - MOVED TO BOTTOM FOR BETTER ORGANIZATION
 // See consolidated constants below
 
-// WS2812B LED Array
-CRGB leds[NUM_LEDS];
+// WS2812B LED Array - MOVED HERE after NUM_LEDS definition
 
 // Game states
 enum BuzzerState {
@@ -67,42 +66,7 @@ bool validateStateConsistency() {
   return isConsistent;
 }
 
-bool validateCommandForState(Command cmd) {
-  // Command validation based on current state to prevent invalid transitions
-  switch (cmd.command) {
-    case 1: // ARM
-      // Can arm from disarmed or wrong answer states
-      return (currentState == STATE_DISARMED || currentState == STATE_WRONG_ANSWER);
-
-    case 2: // DISARM
-      // Can disarm from any armed state
-      return (currentState == STATE_ARMED || currentState == STATE_ANSWERING_NOW ||
-              currentState == STATE_CORRECT_ANSWER || currentState == STATE_WRONG_ANSWER);
-
-    case 3: // TEST
-      // Can test from any state
-      return true;
-
-    case 4: // RESET
-      // Can reset from any state
-      return true;
-
-    case 5: // CORRECT_ANSWER
-      // Must be in answering state
-      return (currentState == STATE_ANSWERING_NOW);
-
-    case 6: // WRONG_ANSWER
-      // Must be in answering state
-      return (currentState == STATE_ANSWERING_NOW);
-
-    case 7: // END_ROUND
-      // Can end round from any state
-      return true;
-
-    default:
-      return false;
-  }
-}
+// validateCommandForState function moved after struct definitions
 
 bool setWifiChannel(uint8_t channel) {
   if (channel < 1 || channel > 13) {
@@ -235,6 +199,9 @@ unsigned long correctAnswerStartTime = 0;
 #define LED_TYPE WS2812B
 #define LED_COLOR_ORDER GRB
 
+// WS2812B LED Array
+CRGB leds[NUM_LEDS];
+
 // Device configuration
 #define DEVICE_ID 15  // Change this for each group buzzer (1, 2, 3, etc.)
 #define MAX_GROUPS 15
@@ -243,6 +210,7 @@ unsigned long correctAnswerStartTime = 0;
 
 // New coordinator MAC address
 #define COORDINATOR_MAC {0xB0, 0xB2, 0x1C, 0x45, 0x85, 0x1C}
+uint8_t coordinatorMAC[] = COORDINATOR_MAC; // Global coordinator MAC array
 
 // Battery configuration
 #define BATTERY_ADC_PIN 34
@@ -289,6 +257,43 @@ typedef struct {
   uint8_t retryCount;   // Retry attempt counter
   uint8_t reserved;     // Padding to maintain alignment
 } Command;
+
+bool validateCommandForState(Command cmd) {
+  // Command validation based on current state to prevent invalid transitions
+  switch (cmd.command) {
+    case 1: // ARM
+      // Can arm from disarmed or wrong answer states
+      return (currentState == STATE_DISARMED || currentState == STATE_WRONG_ANSWER);
+
+    case 2: // DISARM
+      // Can disarm from any armed state
+      return (currentState == STATE_ARMED || currentState == STATE_ANSWERING_NOW ||
+              currentState == STATE_CORRECT_ANSWER || currentState == STATE_WRONG_ANSWER);
+
+    case 3: // TEST
+      // Can test from any state
+      return true;
+
+    case 4: // RESET
+      // Can reset from any state
+      return true;
+
+    case 5: // CORRECT_ANSWER
+      // Must be in answering state
+      return (currentState == STATE_ANSWERING_NOW);
+
+    case 6: // WRONG_ANSWER
+      // Must be in answering state
+      return (currentState == STATE_ANSWERING_NOW);
+
+    case 7: // END_ROUND
+      // Can end round from any state
+      return true;
+
+    default:
+      return false;
+  }
+}
 
 // ESP-NOW callback for sending data (ESP-IDF v5.x signature)
 void OnDataSent(const wifi_tx_info_t *tx_info, esp_now_send_status_t status) {

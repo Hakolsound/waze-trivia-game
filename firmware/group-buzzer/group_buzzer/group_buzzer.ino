@@ -3,6 +3,22 @@
 #include <esp_wifi.h>
 #include <FastLED.h>
 
+// Pre-define Command struct for forward declarations
+typedef struct {
+  uint8_t command;      // 1=arm, 2=disarm, 3=test, 4=reset, 5=correct_answer, 6=wrong_answer, 7=end_round, 8=change_channel
+  uint8_t targetDevice; // 0=all, or specific device ID (for channel change: channel number)
+  uint32_t timestamp;
+  uint16_t sequenceId;  // For tracking acknowledgments
+  uint8_t retryCount;   // Retry attempt counter
+  uint8_t reserved;     // Padding to maintain alignment
+} Command;
+
+// Forward declarations for functions used before definition
+void handleCommand(Command cmd);
+void updateLedState();
+void sendBuzzerPressWithRetry();
+bool validateCommandForState(Command cmd);
+
 // Hardware Configuration - MOVED TO BOTTOM FOR BETTER ORGANIZATION
 // See consolidated constants below
 
@@ -156,14 +172,7 @@ typedef struct {
   uint8_t data[8];      // Additional data if needed, data[0] = sequenceId for ACK
 } Message;
 
-typedef struct {
-  uint8_t command;      // 1=arm, 2=disarm, 3=test, 4=reset, 5=correct_answer, 6=wrong_answer, 7=end_round, 8=change_channel
-  uint8_t targetDevice; // 0=all, or specific device ID (for channel change: channel number)
-  uint32_t timestamp;
-  uint16_t sequenceId;  // For tracking acknowledgments
-  uint8_t retryCount;   // Retry attempt counter
-  uint8_t reserved;     // Padding to maintain alignment
-} Command;
+// Command struct moved to top of file
 
 // State validation and consistency functions
 void setBuzzerState(BuzzerState newState) {
@@ -212,10 +221,7 @@ bool validateStateConsistency() {
   return isConsistent;
 }
 
-// Forward declarations
-void handleCommand(Command cmd);
-void updateLedState();
-void sendBuzzerPressWithRetry();
+// Forward declarations moved to top of file
 
 bool setWifiChannel(uint8_t channel) {
   if (channel < 1 || channel > 13) {

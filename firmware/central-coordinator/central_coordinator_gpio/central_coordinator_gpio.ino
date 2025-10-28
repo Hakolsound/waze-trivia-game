@@ -1332,7 +1332,20 @@ void sendBuzzerPressAck(uint8_t deviceId) {
 
 void sendCorrectAnswerFeedback(uint8_t deviceId) {
   if (deviceId == 0) {
-    Serial.println("ERROR:Correct answer feedback requires specific device ID");
+    // Broadcast to all devices
+    Serial.println("[ESP32] Broadcasting correct answer feedback to ALL buzzers");
+    int sent = 0;
+    int failed = 0;
+    for (int i = 0; i < registeredDeviceCount; i++) {
+      if (devices[i].isOnline) {
+        if (sendCommandWithAck(devices[i].deviceId, CMD_CORRECT_ANSWER)) {
+          sent++;
+        } else {
+          failed++;
+        }
+      }
+    }
+    Serial.printf("Correct answer feedback broadcast: %d sent, %d failed\n", sent, failed);
     return;
   }
 
@@ -1347,7 +1360,20 @@ void sendCorrectAnswerFeedback(uint8_t deviceId) {
 
 void sendWrongAnswerFeedback(uint8_t deviceId) {
   if (deviceId == 0) {
-    Serial.println("ERROR:Wrong answer feedback requires specific device ID");
+    // Broadcast to all devices
+    Serial.println("[ESP32] Broadcasting wrong answer feedback to ALL buzzers");
+    int sent = 0;
+    int failed = 0;
+    for (int i = 0; i < registeredDeviceCount; i++) {
+      if (devices[i].isOnline) {
+        if (sendCommandWithAck(devices[i].deviceId, CMD_WRONG_ANSWER)) {
+          sent++;
+        } else {
+          failed++;
+        }
+      }
+    }
+    Serial.printf("Wrong answer feedback broadcast: %d sent, %d failed\n", sent, failed);
     return;
   }
 

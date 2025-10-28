@@ -580,7 +580,13 @@ class HostControl {
         if (this.elements.awardPointsSubmitBtn) this.elements.awardPointsSubmitBtn.addEventListener('click', () => this.awardManualPoints());
         
         // Game actions modal
-        if (this.elements.showGameActionsBtn) this.elements.showGameActionsBtn.addEventListener('click', () => this.showGameActionsModal());
+        if (this.elements.showGameActionsBtn) {
+            console.log('📌 Attaching showGameActionsBtn listener');
+            this.elements.showGameActionsBtn.addEventListener('click', () => {
+                console.log('🎯 showGameActionsBtn clicked');
+                this.showGameActionsModal();
+            });
+        }
         if (this.elements.closeGameActionsModalBtn) this.elements.closeGameActionsModalBtn.addEventListener('click', () => this.hideGameActionsModal());
         
         // Question tabs event listeners
@@ -3568,7 +3574,8 @@ class HostControl {
             channelBar.className = `channel-bar ${channel.channel === bestChannel?.channel ? 'best-channel' : ''}`;
 
             // Calculate signal strength percentage (signal is in dBm, typically -30 to -90)
-            const signalPercent = Math.max(0, Math.min(100, ((channel.signal + 30) / 60) * 100));
+            // -30 dBm = excellent (100%), -90 dBm = poor (0%)
+            const signalPercent = Math.max(0, Math.min(100, ((90 + channel.signal) / 60) * 100));
 
             channelBar.innerHTML = `
                 <div class="channel-number">${channel.channel}</div>
@@ -3706,19 +3713,47 @@ class HostControl {
     // =========================================
 
     showGameActionsModal() {
+        console.log('🎯 showGameActionsModal called');
         if (this.elements.gameActionsModal) {
+            console.log('✅ Opening game actions modal');
             this.elements.gameActionsModal.classList.remove('hidden');
             this.updateGameActionsState();
 
             // Attach modal button event listeners only once
             if (!this.modalEventListenersAttached) {
-                if (this.elements.resetScoresBtn) this.elements.resetScoresBtn.addEventListener('click', () => this.confirmAction('reset-scores'));
-                if (this.elements.resetQuestionsBtn) this.elements.resetQuestionsBtn.addEventListener('click', () => this.confirmAction('reset-questions'));
-                if (this.elements.resetGameBtn) this.elements.resetGameBtn.addEventListener('click', () => this.confirmAction('reset-game'));
+                console.log('🔧 Attaching modal event listeners');
+                if (this.elements.resetScoresBtn) {
+                    console.log('📌 Attaching reset-scores button listener');
+                    this.elements.resetScoresBtn.addEventListener('click', () => {
+                        console.log('🎯 reset-scores button clicked');
+                        this.confirmAction('reset-scores');
+                    });
+                }
+                if (this.elements.resetQuestionsBtn) {
+                    console.log('📌 Attaching reset-questions button listener');
+                    this.elements.resetQuestionsBtn.addEventListener('click', () => {
+                        console.log('🎯 reset-questions button clicked');
+                        this.confirmAction('reset-questions');
+                    });
+                }
+                if (this.elements.resetGameBtn) {
+                    console.log('📌 Attaching reset-game button listener');
+                    this.elements.resetGameBtn.addEventListener('click', () => {
+                        console.log('🎯 reset-game button clicked');
+                        this.confirmAction('reset-game');
+                    });
+                }
                 if (this.elements.clearGameHistoryBtn) this.elements.clearGameHistoryBtn.addEventListener('click', () => this.confirmAction('clear-history'));
-                if (this.elements.confirmActionBtn) this.elements.confirmActionBtn.addEventListener('click', () => this.executeConfirmedAction());
+                if (this.elements.confirmActionBtn) {
+                    console.log('📌 Attaching confirm-action button listener');
+                    this.elements.confirmActionBtn.addEventListener('click', () => {
+                        console.log('🎯 confirm-action button clicked');
+                        this.executeConfirmedAction();
+                    });
+                }
                 if (this.elements.cancelActionBtn) this.elements.cancelActionBtn.addEventListener('click', () => this.hideConfirmationDialog());
                 this.modalEventListenersAttached = true;
+                console.log('✅ Modal event listeners attached');
             }
         }
     }
@@ -3736,7 +3771,7 @@ class HostControl {
     }
 
     async confirmAction(actionType) {
-        console.log('confirmAction called with:', actionType);
+        console.log('🎯 confirmAction called with:', actionType);
         let title, message, icon;
 
         switch (actionType) {
@@ -3767,19 +3802,25 @@ class HostControl {
         }
 
         this.pendingAction = actionType;
+        console.log('🎯 Setting pendingAction to:', actionType);
         this.showConfirmationDialog(title, message, icon);
     }
 
     showConfirmationDialog(title, message, icon) {
+        console.log('🎯 showConfirmationDialog called with:', { title, message, icon });
         if (!this.elements.gameActionConfirmation ||
             !this.elements.confirmationTitle ||
             !this.elements.confirmationMessage ||
-            !this.elements.confirmationIcon) return;
+            !this.elements.confirmationIcon) {
+            console.error('❌ Confirmation dialog elements not found');
+            return;
+        }
 
         this.elements.confirmationTitle.textContent = title;
         this.elements.confirmationMessage.textContent = message;
         this.elements.confirmationIcon.textContent = icon;
         this.elements.gameActionConfirmation.classList.remove('hidden');
+        console.log('✅ Confirmation dialog shown');
     }
 
     hideConfirmationDialog() {
@@ -3790,43 +3831,33 @@ class HostControl {
     }
 
     async executeConfirmedAction() {
-        console.log('🎯 executeConfirmedAction called, pendingAction:', this.pendingAction);
-        if (!this.pendingAction) {
-            console.log('❌ No pending action, returning');
-            return;
-        }
+        if (!this.pendingAction) return;
+
+        // Capture the action before hiding dialog (which sets pendingAction to null)
+        const actionToExecute = this.pendingAction;
 
         this.hideConfirmationDialog();
         this.showActionStatus('Processing...');
 
         try {
-            console.log('🔄 Executing action:', this.pendingAction);
-            switch (this.pendingAction) {
+            console.log('🔄 Executing action:', actionToExecute);
+            switch (actionToExecute) {
                 case 'reset-scores':
-                    console.log('🔄 Calling resetAllScores');
                     await this.resetAllScores();
                     this.showToast('All scores have been reset to zero', 'success');
-                    console.log('✅ resetAllScores completed');
                     break;
                 case 'reset-questions':
-                    console.log('🔄 Calling resetQuestions');
                     await this.resetQuestions();
                     this.showToast('Question progress has been reset', 'success');
-                    console.log('✅ resetQuestions completed');
                     break;
                 case 'reset-game':
-                    console.log('🔄 Calling resetAllScores + resetGame');
                     await this.resetAllScores();
-                    console.log('✅ resetAllScores completed for reset-game');
                     await this.resetGame();
                     this.showToast('Game has been completely reset', 'success');
-                    console.log('✅ resetGame completed');
                     break;
                 case 'clear-history':
-                    console.log('🔄 Calling clearGameHistory');
                     await this.clearGameHistory();
                     this.showToast('Game history has been cleared', 'success');
-                    console.log('✅ clearGameHistory completed');
                     break;
             }
             console.log('🎉 Action execution completed successfully');
@@ -3836,7 +3867,6 @@ class HostControl {
         } finally {
             this.hideActionStatus();
             this.pendingAction = null;
-            console.log('🔄 Cleaned up action status and pendingAction');
         }
     }
 

@@ -21,53 +21,7 @@ enum BuzzerState {
 
 // State validation and consistency functions - MOVED AFTER GLOBAL VARIABLES
 
-bool setWifiChannel(uint8_t channel) {
-  if (channel < 1 || channel > 13) {
-    Serial.printf("[CHANNEL] ERROR: Invalid channel %d\n", channel);
-    return false;
-  }
-
-  if (channel == currentWifiChannel) {
-    Serial.printf("[CHANNEL] Already on channel %d\n", channel);
-    return true;
-  }
-
-  Serial.printf("[CHANNEL] Changing from %d to %d\n", currentWifiChannel, channel);
-
-  esp_err_t result = esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
-  if (result != ESP_OK) {
-    Serial.printf("[CHANNEL] ERROR: Failed to set channel %d (error %d)\n", channel, result);
-    return false;
-  }
-
-  currentWifiChannel = channel;
-  Serial.printf("[CHANNEL] Successfully set to channel %d\n", channel);
-  return true;
-}
-
-void forceStateRecovery() {
-  Serial.printf("[STATE RECOVERY] Device %d starting state recovery\n", DEVICE_ID);
-
-  // Clear all pending operations
-  waitingForPressAck = false;
-  waitingForAnswerFeedback = false;
-  pressRetryCount = 0;
-  batteryModeActivationPending = false;
-  buttonPressActive = false;
-
-  // Determine appropriate recovery state
-  if (isArmed && !buzzerPressed) {
-    setBuzzerState(STATE_ARMED);
-  } else if (isArmed && buzzerPressed) {
-    setBuzzerState(STATE_ANSWERING_NOW);
-    waitingForAnswerFeedback = true;
-    answerFeedbackTimeout = millis() + 30000;
-  } else {
-    setBuzzerState(STATE_DISARMED);
-  }
-
-  Serial.printf("[STATE RECOVERY] Device %d recovered to state %d\n", DEVICE_ID, currentState);
-}
+// setWifiChannel and forceStateRecovery moved after global variables
 
 // Color definitions
 #define COLOR_OFF CRGB::Black
@@ -299,6 +253,54 @@ bool validateCommandForState(Command cmd) {
 void handleCommand(Command cmd);
 void updateLedState();
 void sendBuzzerPressWithRetry();
+
+bool setWifiChannel(uint8_t channel) {
+  if (channel < 1 || channel > 13) {
+    Serial.printf("[CHANNEL] ERROR: Invalid channel %d\n", channel);
+    return false;
+  }
+
+  if (channel == currentWifiChannel) {
+    Serial.printf("[CHANNEL] Already on channel %d\n", channel);
+    return true;
+  }
+
+  Serial.printf("[CHANNEL] Changing from %d to %d\n", currentWifiChannel, channel);
+
+  esp_err_t result = esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
+  if (result != ESP_OK) {
+    Serial.printf("[CHANNEL] ERROR: Failed to set channel %d (error %d)\n", channel, result);
+    return false;
+  }
+
+  currentWifiChannel = channel;
+  Serial.printf("[CHANNEL] Successfully set to channel %d\n", channel);
+  return true;
+}
+
+void forceStateRecovery() {
+  Serial.printf("[STATE RECOVERY] Device %d starting state recovery\n", DEVICE_ID);
+
+  // Clear all pending operations
+  waitingForPressAck = false;
+  waitingForAnswerFeedback = false;
+  pressRetryCount = 0;
+  batteryModeActivationPending = false;
+  buttonPressActive = false;
+
+  // Determine appropriate recovery state
+  if (isArmed && !buzzerPressed) {
+    setBuzzerState(STATE_ARMED);
+  } else if (isArmed && buzzerPressed) {
+    setBuzzerState(STATE_ANSWERING_NOW);
+    waitingForAnswerFeedback = true;
+    answerFeedbackTimeout = millis() + 30000;
+  } else {
+    setBuzzerState(STATE_DISARMED);
+  }
+
+  Serial.printf("[STATE RECOVERY] Device %d recovered to state %d\n", DEVICE_ID, currentState);
+}
 
 // ESP-NOW callback for sending data (ESP-IDF v5.x signature)
 void OnDataSent(const wifi_tx_info_t *tx_info, esp_now_send_status_t status) {

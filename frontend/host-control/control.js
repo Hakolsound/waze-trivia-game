@@ -3605,8 +3605,18 @@ class HostControl {
             channelBar.className = `channel-bar ${isRecommended ? 'recommended-channel' : ''} ${isCurrent ? 'current-channel' : ''}`;
 
             // Calculate signal strength percentage (signal is in dBm, typically -30 to -90)
-            // -30 dBm = excellent (100%), -90 dBm = poor (0%)
+            // Formula: ((90 + signal) / 60) * 100
+            // Examples:
+            // -30 dBm (excellent) = ((90-30)/60)*100 = 100%
+            // -50 dBm (very good) = ((90-50)/60)*100 = 67%
+            // -60 dBm (good) = ((90-60)/60)*100 = 50%
+            // -70 dBm (fair) = ((90-70)/60)*100 = 33%
+            // -80 dBm (weak) = ((90-80)/60)*100 = 17%
+            // -90 dBm (very weak) = ((90-90)/60)*100 = 0%
             const signalPercent = Math.max(0, Math.min(100, ((90 + channel.signal) / 60) * 100));
+
+            // Debug logging for signal calculation
+            console.log(`WiFi Channel ${channel.channel}: ${channel.signal}dBm → ${signalPercent.toFixed(1)}%`);
 
             channelBar.innerHTML = `
                 <div class="channel-info">

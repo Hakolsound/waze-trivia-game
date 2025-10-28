@@ -344,71 +344,84 @@ void OnDataSent(const wifi_tx_info_t *tx_info, esp_now_send_status_t status) {
 void OnDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *incomingData, int len) {
   Serial.printf("ESP-NOW received %d bytes\n", len);
 
-  // Check first byte to determine message type
-  // If it's >= 5, it's likely a Message type (press ACK = type 5)
-  // If it's 1-4 or 7, it's a Command
-  uint8_t firstByte = incomingData[0];
+  // Distinguish between Message (16 bytes) and Command (12 bytes) by length
+  // Message: 1 (type) + 1 (deviceId) + 4 (timestamp) + 8 (data) + 2 (padding) = 16 bytes
+  // Command: 1 (command) + 1 (target) + 4 (timestamp) + 2 (seq) + 1 (retry) + 1 (reserved) = 12 bytes
 
-  if (firstByte == 5) {
-    // This is a buzzer press ACK message
-    // Protect against duplicate ACKs
-    if (!waitingForPressAck && currentState == STATE_ANSWERING_NOW) {
-      Serial.println("[PRESS] Ignoring duplicate ACK - already in ANSWERING_NOW state");
+  if (len == 16) {
+    // This is a Message (press ACK, END_ROUND, etc.)
+    uint8_t messageType = incomingData[0];
+
+    if (messageType == 5) {
+      // This is a buzzer press ACK message
+      // Protect against duplicate ACKs
+      if (!waitingForPressAck && currentState == STATE_ANSWERING_NOW) {
+        Serial.println("[PRESS] Ignoring duplicate ACK - already in ANSWERING_NOW state");
+        return;
+      }
+
+      Serial.println("[PRESS] ACK received from coordinator - press confirmed!");
+      waitingForPressAck = false;
+      pressRetryCount = 0;
+
+      // NOW change state to PRESSED (white flashing) - press is confirmed registered
+      buzzerPressed = true;
+      setBuzzerState(STATE_ANSWERING_NOW);
+      // Note: LED update is handled automatically by setBuzzerState()
+
+      // Start waiting for answer feedback with 30 second timeout
+      waitingForAnswerFeedback = true;
+      answerFeedbackTimeout = millis() + 30000;
+
+      Serial.println("[PRESS] State changed to ANSWERING_NOW (white) - press confirmed on server");
       return;
     }
 
-    Serial.println("[PRESS] ACK received from coordinator - press confirmed!");
-    waitingForPressAck = false;
-    pressRetryCount = 0;
+    if (messageType == 8) {
+      // This is an END_ROUND ACK request - coordinator wants confirmation we reset
+      Serial.println("[END_ROUND] ACK request received - sending confirmation");
+      Message ackMsg;
+      ackMsg.messageType = 8; // END_ROUND_ACK
+      ackMsg.deviceId = DEVICE_ID;
+      ackMsg.timestamp = millis();
+      memset(ackMsg.data, 0, sizeof(ackMsg.data));
+      esp_now_send(coordinatorMAC, (uint8_t*)&ackMsg, sizeof(ackMsg));
+      return;
+    }
 
-    // NOW change state to PRESSED (white flashing) - press is confirmed registered
-    buzzerPressed = true;
-    setBuzzerState(STATE_ANSWERING_NOW);
-    // Note: LED update is handled automatically by setBuzzerState()
-
-    // Start waiting for answer feedback with 30 second timeout
-    waitingForAnswerFeedback = true;
-    answerFeedbackTimeout = millis() + 30000;
-
-    Serial.println("[PRESS] State changed to ANSWERING_NOW (white) - press confirmed on server");
+    Serial.printf("[WARN] Unknown Message type: %d\n", messageType);
     return;
   }
 
-  if (firstByte == 8) {
-    // This is an END_ROUND ACK request - coordinator wants confirmation we reset
-    Serial.println("[END_ROUND] ACK request received - sending confirmation");
-    Message ackMsg;
-    ackMsg.messageType = 8; // END_ROUND_ACK
-    ackMsg.deviceId = DEVICE_ID;
-    ackMsg.timestamp = millis();
-    memset(ackMsg.data, 0, sizeof(ackMsg.data));
-    esp_now_send(coordinatorMAC, (uint8_t*)&ackMsg, sizeof(ackMsg));
+  if (len == 12) {
+    // This is a Command
+    Command cmd;
+    memcpy(&cmd, incomingData, sizeof(cmd));
+
+    Serial.printf("Command data: cmd=%d, target=%d, timestamp=%lu\n",
+                  cmd.command, cmd.targetDevice, cmd.timestamp);
+
+    char macStr[18];
+    snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
+             recv_info->src_addr[0], recv_info->src_addr[1], recv_info->src_addr[2],
+             recv_info->src_addr[3], recv_info->src_addr[4], recv_info->src_addr[5]);
+
+    Serial.printf("Received %d bytes from %s\n", len, macStr);
+
+    Serial.printf("[BUZZER] Received command: type=%d, target=%d, my_id=%d\n", cmd.command, cmd.targetDevice, DEVICE_ID);
+
+    // Accept commands for broadcast (0) or specific device ID match
+    if (cmd.targetDevice == 0 || cmd.targetDevice == DEVICE_ID) {
+      Serial.printf("[BUZZER] Command accepted - processing (current state: %d, armed: %d)\n", currentState, isArmed);
+      handleCommand(cmd);
+    } else {
+      Serial.printf("[BUZZER] Command rejected - target %d != my_id %d\n", cmd.targetDevice, DEVICE_ID);
+    }
     return;
   }
 
-  // Otherwise treat as Command
-  Command cmd;
-  memcpy(&cmd, incomingData, sizeof(cmd));
-
-  Serial.printf("Command data: cmd=%d, target=%d, timestamp=%lu\n",
-                cmd.command, cmd.targetDevice, cmd.timestamp);
-
-  char macStr[18];
-  snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
-           recv_info->src_addr[0], recv_info->src_addr[1], recv_info->src_addr[2],
-           recv_info->src_addr[3], recv_info->src_addr[4], recv_info->src_addr[5]);
-
-  Serial.printf("Received %d bytes from %s\n", len, macStr);
-
-  Serial.printf("[BUZZER] Received command: type=%d, target=%d, my_id=%d\n", cmd.command, cmd.targetDevice, DEVICE_ID);
-
-  // Accept commands for broadcast (0) or specific device ID match
-  if (cmd.targetDevice == 0 || cmd.targetDevice == DEVICE_ID) {
-    Serial.printf("[BUZZER] Command accepted - processing (current state: %d, armed: %d)\n", currentState, isArmed);
-    handleCommand(cmd);
-  } else {
-    Serial.printf("[BUZZER] Command rejected - target %d != my_id %d\n", cmd.targetDevice, DEVICE_ID);
-  }
+  // Unknown length
+  Serial.printf("[ERROR] Received unknown message length: %d bytes\n", len);
 }
 
 void setup() {

@@ -676,6 +676,13 @@ class GameService {
     const actualBuzzerId = buzzerId || buzzer_id || `physical_${actualGroupId}`;
     this.updateBuzzerActivity(actualBuzzerId, actualGroupId);
 
+    // Check if this buzzer has already answered this question
+    const alreadyAnswered = gameState.answeredBuzzers.some(ab => ab.buzzer_id === buzzerIdStr);
+    if (alreadyAnswered) {
+      console.log(`[BUZZ] Rejecting press from buzzer ${buzzerIdStr} - already answered this question`);
+      return;
+    }
+
     // Always use JavaScript timing for physical buzzers (ESP32 deltaMs is unreliable)
     // Calculate actual elapsed time from when question started
     const deltaMs = timestamp - gameState.startTime;

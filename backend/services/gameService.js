@@ -518,24 +518,8 @@ class GameService {
         questionComplete: isCorrect
       };
     } else {
-      // Wrong answer - show red for 2 seconds, then reset to disarmed (black)
-      console.log(`[EVAL] Wrong answer - showing red for 2 seconds, then resetting buzzer`);
-
-      // Send END_ROUND to this wrong buzzer after 2 seconds to reset it to disarmed (black)
-      const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-      delay(2000).then(async () => {
-        console.log(`[EVAL] 2-second red display completed, sending END_ROUND to wrong buzzer ${buzzerDeviceId}`);
-        if (this.esp32Service) {
-          try {
-            await this.esp32Service.endRound(buzzerDeviceId); // Send to specific wrong buzzer
-            console.log(`[EVAL] END_ROUND sent to wrong buzzer ${buzzerDeviceId}`);
-          } catch (error) {
-            console.error('[EVAL] Failed to send END_ROUND to wrong buzzer:', error);
-          }
-        }
-      }).catch(error => {
-        console.error('[EVAL] Error in delay for wrong buzzer reset:', error);
-      });
+      // Wrong answer - keep buzzer RED until round ends (don't send END_ROUND yet)
+      console.log(`[EVAL] Wrong answer - buzzer stays RED until round ends`);
 
       // Clear buzzer order and resume timer for fresh attempts
       console.log(`[EVAL] Clearing buzzer order and resuming timer for remaining buzzers`);

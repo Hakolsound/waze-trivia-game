@@ -379,7 +379,13 @@ void OnDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *incomingDat
 
     if (messageType == 8) {
       // This is an END_ROUND ACK request - coordinator wants confirmation we reset
-      Serial.println("[END_ROUND] ACK request received - sending confirmation");
+      Serial.println("[END_ROUND] ACK request received - resetting buzzer state");
+
+      // Actually reset the buzzer state first!
+      endRoundReset();
+
+      // Then send confirmation
+      Serial.println("[END_ROUND] Sending confirmation ACK to coordinator");
       Message ackMsg;
       ackMsg.messageType = 8; // END_ROUND_ACK
       ackMsg.deviceId = DEVICE_ID;
@@ -1138,7 +1144,15 @@ void correctAnswerFeedback() {
 }
 
 void wrongAnswerFeedback() {
-  Serial.printf("[WRONG_ANSWER] Device %d receiving wrong answer feedback - switching to red state\n", DEVICE_ID);
+  Serial.printf("[WRONG_ANSWER] Device %d receiving wrong answer feedback\n", DEVICE_ID);
+
+  // Check if already in WRONG_ANSWER state (duplicate command or already answered)
+  if (currentState == STATE_WRONG_ANSWER) {
+    Serial.printf("[WRONG_ANSWER] Device %d already in WRONG_ANSWER state - ignoring duplicate\n", DEVICE_ID);
+    return;
+  }
+
+  Serial.printf("[WRONG_ANSWER] Device %d switching to red state\n", DEVICE_ID);
   setBuzzerState(STATE_WRONG_ANSWER);
   isArmed = false; // Disarm the buzzer when wrong answer is received
   // DON'T clear buzzerPressed - state validation needs it true to keep WRONG_ANSWER state valid

@@ -275,8 +275,8 @@ bool validateCommandForState(Command cmd) {
   bool isValid = false;
   switch (cmd.command) {
     case 1: // ARM
-      // Can arm from disarmed or wrong answer states
-      isValid = (currentState == STATE_DISARMED || currentState == STATE_WRONG_ANSWER);
+      // Can arm from disarmed state only - must wait for END_ROUND if in answer states
+      isValid = (currentState == STATE_DISARMED);
       break;
 
     case 2: // DISARM
@@ -1024,10 +1024,10 @@ void handleCommand(Command cmd) {
 }
 
 void armBuzzer() {
-  // Force-reset if in wrong answer state (missed END_ROUND) - prevents stuck state
-  if (currentState == STATE_WRONG_ANSWER) {
-    Serial.println("[ARM] Buzzer in wrong answer state - forcing reset before arming (missed END_ROUND?)");
-    endRoundReset(); // Force reset to clear wrong state
+  // Don't arm if in answer feedback states - must wait for END_ROUND first
+  if (currentState == STATE_WRONG_ANSWER || currentState == STATE_CORRECT_ANSWER) {
+    Serial.printf("[ARM] Buzzer in answer state %d - ignoring ARM command (waiting for END_ROUND)\n", currentState);
+    return;
   }
 
   if (!isArmed) {

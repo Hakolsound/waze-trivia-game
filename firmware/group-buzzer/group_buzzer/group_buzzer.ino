@@ -272,39 +272,59 @@ void forceStateRecovery() {
 
 bool validateCommandForState(Command cmd) {
   // Command validation based on current state to prevent invalid transitions
+  bool isValid = false;
   switch (cmd.command) {
     case 1: // ARM
       // Can arm from disarmed or wrong answer states
-      return (currentState == STATE_DISARMED || currentState == STATE_WRONG_ANSWER);
+      isValid = (currentState == STATE_DISARMED || currentState == STATE_WRONG_ANSWER);
+      break;
 
     case 2: // DISARM
-      // Can disarm from any armed state
-      return (currentState == STATE_ARMED || currentState == STATE_ANSWERING_NOW ||
-              currentState == STATE_CORRECT_ANSWER || currentState == STATE_WRONG_ANSWER);
+      // Can disarm from armed states, but NOT from ANSWERING_NOW (must wait for answer evaluation)
+      isValid = (currentState == STATE_ARMED || currentState == STATE_CORRECT_ANSWER || currentState == STATE_WRONG_ANSWER);
+      break;
 
     case 3: // TEST
       // Can test from any state
-      return true;
+      isValid = true;
+      break;
 
     case 4: // RESET
       // Can reset from any state
-      return true;
+      isValid = true;
+      break;
 
     case 5: // CORRECT_ANSWER
       // Must be in answering state
-      return (currentState == STATE_ANSWERING_NOW);
+      isValid = (currentState == STATE_ANSWERING_NOW);
+      break;
 
     case 6: // WRONG_ANSWER
       // Must be in answering state
-      return (currentState == STATE_ANSWERING_NOW);
+      isValid = (currentState == STATE_ANSWERING_NOW);
+      break;
 
     case 7: // END_ROUND
       // Can end round from any state
-      return true;
+      isValid = true;
+      break;
+
+    case 8: // CHANGE_CHANNEL
+      // Can change channel from any state
+      isValid = true;
+      break;
 
     default:
-      return false;
+      isValid = false;
+      break;
   }
+
+  // Debug logging for command validation
+  if (!isValid) {
+    Serial.printf("[CMD VALIDATION] Command %d rejected for device %d in state %d\n", cmd.command, DEVICE_ID, currentState);
+  }
+
+  return isValid;
 }
 
 // ESP-NOW callback for sending data (ESP-IDF v5.x signature)

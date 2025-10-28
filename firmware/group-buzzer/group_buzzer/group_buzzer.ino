@@ -212,43 +212,6 @@ bool validateStateConsistency() {
   return isConsistent;
 }
 
-bool validateCommandForState(Command cmd) {
-  // Command validation based on current state to prevent invalid transitions
-  switch (cmd.command) {
-    case 1: // ARM
-      // Can arm from disarmed or wrong answer states
-      return (currentState == STATE_DISARMED || currentState == STATE_WRONG_ANSWER);
-
-    case 2: // DISARM
-      // Can disarm from any armed state
-      return (currentState == STATE_ARMED || currentState == STATE_ANSWERING_NOW ||
-              currentState == STATE_CORRECT_ANSWER || currentState == STATE_WRONG_ANSWER);
-
-    case 3: // TEST
-      // Can test from any state
-      return true;
-
-    case 4: // RESET
-      // Can reset from any state
-      return true;
-
-    case 5: // CORRECT_ANSWER
-      // Must be in answering state
-      return (currentState == STATE_ANSWERING_NOW);
-
-    case 6: // WRONG_ANSWER
-      // Must be in answering state
-      return (currentState == STATE_ANSWERING_NOW);
-
-    case 7: // END_ROUND
-      // Can end round from any state
-      return true;
-
-    default:
-      return false;
-  }
-}
-
 // Forward declarations
 void handleCommand(Command cmd);
 void updateLedState();
@@ -300,6 +263,43 @@ void forceStateRecovery() {
   }
 
   Serial.printf("[STATE RECOVERY] Device %d recovered to state %d\n", DEVICE_ID, currentState);
+}
+
+bool validateCommandForState(Command cmd) {
+  // Command validation based on current state to prevent invalid transitions
+  switch (cmd.command) {
+    case 1: // ARM
+      // Can arm from disarmed or wrong answer states
+      return (currentState == STATE_DISARMED || currentState == STATE_WRONG_ANSWER);
+
+    case 2: // DISARM
+      // Can disarm from any armed state
+      return (currentState == STATE_ARMED || currentState == STATE_ANSWERING_NOW ||
+              currentState == STATE_CORRECT_ANSWER || currentState == STATE_WRONG_ANSWER);
+
+    case 3: // TEST
+      // Can test from any state
+      return true;
+
+    case 4: // RESET
+      // Can reset from any state
+      return true;
+
+    case 5: // CORRECT_ANSWER
+      // Must be in answering state
+      return (currentState == STATE_ANSWERING_NOW);
+
+    case 6: // WRONG_ANSWER
+      // Must be in answering state
+      return (currentState == STATE_ANSWERING_NOW);
+
+    case 7: // END_ROUND
+      // Can end round from any state
+      return true;
+
+    default:
+      return false;
+  }
 }
 
 // ESP-NOW callback for sending data (ESP-IDF v5.x signature)

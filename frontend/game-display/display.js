@@ -207,10 +207,12 @@ class GameDisplay {
 
         // Leaderboard events
         this.socket.on('show-leaderboard', (data) => {
+            console.log('DEBUG: Received show-leaderboard event with data:', data);
             this.showLeaderboard(data?.view || 'all');
         });
 
         this.socket.on('hide-leaderboard', () => {
+            console.log('DEBUG: Received hide-leaderboard event');
             this.hideLeaderboard();
         });
 
@@ -279,6 +281,11 @@ class GameDisplay {
             } else if (e.key === 'l' || e.key === 'L') {
                 e.preventDefault();
                 this.toggleLeaderboard();
+            } else if (e.key === 't' || e.key === 'T') {
+                e.preventDefault();
+                console.log('DEBUG: Manual leaderboard test - forcing show');
+                this.elements.leaderboardOverlay.classList.remove('hidden');
+                console.log('DEBUG: leaderboardOverlay visible:', !this.elements.leaderboardOverlay.classList.contains('hidden'));
             }
         });
     }
@@ -997,31 +1004,36 @@ class GameDisplay {
 
     // Leaderboard Methods
     showLeaderboard(view = 'all') {
+        console.log('DEBUG: showLeaderboard called with view:', view);
         if (!this.currentGame || !this.currentGame.groups) {
             console.log('No game or teams available for leaderboard');
             return;
         }
 
-        // Request fresh game data before showing leaderboard
+        // Show immediately with current data
+        console.log('DEBUG: Showing leaderboard with current data');
+        this.displayLeaderboardWithCurrentData(view);
+
+        // Also request fresh data to update if available
+        console.log('DEBUG: Requesting fresh game data');
         this.socket.emit('get-game-state', this.currentGame.id);
-        
-        // Listen for the response with fresh data
+
+        // Listen for the response with fresh data (but don't show again)
         this.socket.once('game-state-response', (gameData) => {
+            console.log('DEBUG: Received game-state-response:', gameData);
             if (gameData && gameData.groups) {
                 // Update current game data with fresh scores
                 this.currentGame.groups = gameData.groups;
-                this.displayLeaderboardWithCurrentData(view);
-            } else {
-                // Fallback to existing data if request fails
-                this.displayLeaderboardWithCurrentData(view);
+                console.log('DEBUG: Updated game data with fresh scores');
+                // Note: We don't call displayLeaderboardWithCurrentData again to avoid flickering
             }
         });
-        
-        // Also immediately show with current data (will be updated when fresh data arrives)
-        this.displayLeaderboardWithCurrentData(view);
     }
     
     displayLeaderboardWithCurrentData(view = 'all') {
+        console.log('DEBUG: displayLeaderboardWithCurrentData called with view:', view);
+        console.log('DEBUG: currentGame exists:', !!this.currentGame);
+        console.log('DEBUG: currentGame.groups exists:', !!(this.currentGame && this.currentGame.groups));
         if (!this.currentGame || !this.currentGame.groups) {
             console.log('No game or teams available for leaderboard display');
             return;
@@ -1029,7 +1041,8 @@ class GameDisplay {
 
         // Sort teams by score (descending)
         const allTeams = [...this.currentGame.groups].sort((a, b) => b.score - a.score);
-        
+        console.log('DEBUG: allTeams length:', allTeams.length);
+
         // Filter teams based on view
         let teamsToShow = allTeams;
         let hasMoreTeams = false;
@@ -1056,12 +1069,13 @@ class GameDisplay {
                 }
                 break;
         }
-        
+
         const teamCount = teamsToShow.length;
-        
+        console.log('DEBUG: teamsToShow length:', teamCount);
+
         // Apply view-specific styling to overlay
         this.applyViewSpecificStyling(view, teamCount);
-        
+
         // Update ranked teams list based on view
         if (view === 'top3') {
             this.updateTop3PodiumView(teamsToShow);
@@ -1072,9 +1086,13 @@ class GameDisplay {
             this.applyDynamicSizing(teamCount);
             this.updateRankedTeamsList(teamsToShow, hasMoreTeams, allTeams);
         }
-        
+
         // Show the leaderboard overlay
+        console.log('DEBUG: About to show leaderboard overlay');
+        console.log('DEBUG: leaderboardOverlay element exists:', !!this.elements.leaderboardOverlay);
+        console.log('DEBUG: leaderboardOverlay has hidden class:', this.elements.leaderboardOverlay.classList.contains('hidden'));
         this.elements.leaderboardOverlay.classList.remove('hidden');
+        console.log('DEBUG: leaderboardOverlay has hidden class after removal:', this.elements.leaderboardOverlay.classList.contains('hidden'));
         
         // Ensure first item is visible and scrolled into view
         setTimeout(() => {

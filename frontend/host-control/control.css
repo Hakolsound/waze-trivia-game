@@ -1821,6 +1821,7 @@ kbd {
   padding: 0 !important;
   position: relative;
   overflow: hidden;
+  z-index: 1100 !important; /* Higher than game actions modal */
   /* Performance optimizations */
   will-change: transform;
   backface-visibility: hidden;

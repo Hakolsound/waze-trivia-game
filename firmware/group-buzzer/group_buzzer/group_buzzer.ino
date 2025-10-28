@@ -224,26 +224,25 @@ bool validateStateConsistency() {
 // Forward declarations moved to top of file
 
 bool setWifiChannel(uint8_t channel) {
+  // Validate channel range
   if (channel < 1 || channel > 13) {
-    Serial.printf("[CHANNEL] ERROR: Invalid channel %d\n", channel);
+    Serial.printf("[CHANNEL] ERROR: Invalid channel %d - must be 1-13\n", channel);
     return false;
   }
 
-  if (channel == currentWifiChannel) {
-    Serial.printf("[CHANNEL] Already on channel %d\n", channel);
-    return true;
-  }
-
-  Serial.printf("[CHANNEL] Changing from %d to %d\n", currentWifiChannel, channel);
+  // Always attempt to set the channel - don't trust the cached value
+  // ESP-NOW initialization may have reset the channel
+  Serial.printf("[CHANNEL] Setting channel to %d (was cached as %d)\n", channel, currentWifiChannel);
 
   esp_err_t result = esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
   if (result != ESP_OK) {
-    Serial.printf("[CHANNEL] ERROR: Failed to set channel %d (error %d)\n", channel, result);
+    Serial.printf("[CHANNEL] ERROR: Failed to set channel %d (ESP error %d)\n", channel, result);
     return false;
   }
 
   currentWifiChannel = channel;
-  Serial.printf("[CHANNEL] Successfully set to channel %d\n", channel);
+  Serial.printf("[CHANNEL] SUCCESS: Channel set to %d\n", channel);
+
   return true;
 }
 
@@ -422,16 +421,13 @@ void setup() {
   WiFi.mode(WIFI_STA);
   Serial.println("WiFi set to Station mode");
 
-  // Set WiFi channel (must match coordinator)
-  setWifiChannel(currentWifiChannel);
-
   // Set maximum TX power for better range in crowded environments
   esp_wifi_set_max_tx_power(WIFI_TX_POWER_RAW);
   Serial.printf("WiFi TX power set to %d (21 dBm)\n", WIFI_TX_POWER_RAW);
 
   // Wait for WiFi to initialize and get MAC
   delay(500);
-  
+
   // Print MAC address for coordinator registration
   char macAddress[18];
   WiFi.macAddress().toCharArray(macAddress, sizeof(macAddress));
@@ -452,43 +448,42 @@ void setup() {
     Serial.print("Retry MAC: ");
     Serial.println(macAddress);
   }
-  
-  // Initialize ESP-NOW
+
+  // Initialize ESP-NOW FIRST
   Serial.println("Initializing ESP-NOW...");
   if (esp_now_init() != ESP_OK) {
     Serial.println("ERROR: Failed to initialize ESP-NOW");
     return;
   }
   Serial.println("ESP-NOW initialized successfully");
-  
-  // Print WiFi channel info
-  uint8_t primaryChan;
-  wifi_second_chan_t secondChan;
-  esp_wifi_get_channel(&primaryChan, &secondChan);
-  Serial.print("WiFi Channel: ");
-  Serial.println(primaryChan);
-  
+
   // Register callbacks
   esp_now_register_send_cb(OnDataSent);
   esp_now_register_recv_cb(OnDataRecv);
   Serial.println("ESP-NOW callbacks registered");
-  
-  // Add coordinator as peer
+
+  // Set channel BEFORE adding peer
+  Serial.printf("Setting WiFi channel to %d BEFORE adding peer\n", currentWifiChannel);
+  if (!setWifiChannel(currentWifiChannel)) {
+    Serial.printf("WARNING: Failed to set channel to %d before adding peer!\n", currentWifiChannel);
+  }
+
+  // Add coordinator as peer with explicit channel
   esp_now_peer_info_t peerInfo;
   memset(&peerInfo, 0, sizeof(peerInfo)); // Clear the structure
   uint8_t coordMAC[] = COORDINATOR_MAC; // Use constant
   memcpy(peerInfo.peer_addr, coordMAC, 6);
-  peerInfo.channel = 0;
+  peerInfo.channel = currentWifiChannel; // Explicitly set peer channel
   peerInfo.encrypt = false;
   peerInfo.ifidx = WIFI_IF_STA; // Set the interface
-  
+
   esp_err_t addPeerResult = esp_now_add_peer(&peerInfo);
   if (addPeerResult != ESP_OK) {
     Serial.print("ERROR: Failed to add coordinator peer - Error: ");
     Serial.println(addPeerResult);
   } else {
     Serial.println("Coordinator peer added successfully");
-    
+
     // Print coordinator MAC for verification
     Serial.print("Coordinator MAC: ");
     for (int i = 0; i < 6; i++) {
@@ -497,6 +492,21 @@ void setup() {
       if (i < 5) Serial.print(":");
     }
     Serial.println();
+  }
+
+  // Print WiFi channel info to verify
+  uint8_t primaryChan;
+  wifi_second_chan_t secondChan;
+  esp_wifi_get_channel(&primaryChan, &secondChan);
+  Serial.print("WiFi Channel (final check): ");
+  Serial.println(primaryChan);
+
+  // Verify channel was set correctly
+  if (primaryChan != currentWifiChannel) {
+    Serial.printf("ERROR: Channel verification failed! Expected %d, got %d\n", currentWifiChannel, primaryChan);
+    Serial.println("This will prevent communication with coordinator!");
+  } else {
+    Serial.printf("Channel verification successful: %d\n", primaryChan);
   }
   
   // Initial battery reading

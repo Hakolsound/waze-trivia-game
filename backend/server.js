@@ -192,13 +192,14 @@ io.on('connection', (socket) => {
       console.error('Error in gameService.handleBuzzerPress:', error);
     }
 
-    // If this is a virtual buzzer press, also emit it to admin interfaces for testing
-    if (data.buzzerId && data.buzzerId.startsWith('virtual_')) {
-      console.log('Virtual buzzer press - broadcasting to control panel');
-      console.log('Control panel room size:', io.sockets.adapter.rooms.get('control-panel')?.size || 0);
-      io.to('control-panel').emit('buzzer-pressed', data);
-      console.log('Virtual buzzer press broadcast sent');
-    }
+    // Broadcast buzzer press to both control panel and display clients
+    console.log('Broadcasting buzzer press to control panel and display clients');
+    console.log('Control panel room size:', io.sockets.adapter.rooms.get('control-panel')?.size || 0);
+    console.log('Display room size:', io.sockets.adapter.rooms.get('game-display')?.size || 0);
+
+    io.to('control-panel').emit('buzzer-pressed', data);
+    io.to('game-display').emit('buzzer-pressed', data);
+    console.log('Buzzer press broadcast sent to all clients');
   });
 
   // Virtual buzzer events

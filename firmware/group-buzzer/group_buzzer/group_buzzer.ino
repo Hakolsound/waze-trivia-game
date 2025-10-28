@@ -923,8 +923,8 @@ void sendCommandAck(uint16_t sequenceId) {
 }
 
 void handleCommand(Command cmd) {
-  Serial.printf("[CMD] Device %d received command: %d for target: %d, seq: %d\n",
-                DEVICE_ID, cmd.command, cmd.targetDevice, cmd.sequenceId);
+  Serial.printf("[CMD] Device %d received command: %d for target: %d, seq: %d, current state: %d\n",
+                DEVICE_ID, cmd.command, cmd.targetDevice, cmd.sequenceId, currentState);
 
   // Validate command based on current state
   if (!validateCommandForState(cmd)) {
@@ -933,6 +933,8 @@ void handleCommand(Command cmd) {
     sendCommandAck(cmd.sequenceId);
     return;
   }
+
+  Serial.printf("[CMD] Command %d validated and will be executed in state %d\n", cmd.command, currentState);
 
   // Cancel any pending battery mode activation on game command
   batteryModeActivationPending = false;
@@ -968,15 +970,15 @@ void handleCommand(Command cmd) {
       break;
 
     case 5: // CORRECT_ANSWER
-      Serial.printf("[CMD] Device %d executing CORRECT_ANSWER command - should turn GREEN\n", DEVICE_ID);
+      Serial.printf("[CMD] Device %d executing CORRECT_ANSWER command - changing to GREEN state\n", DEVICE_ID);
       correctAnswerFeedback();
-      Serial.printf("[CMD] CORRECT_ANSWER command completed - LED should be GREEN\n");
+      Serial.printf("[CMD] CORRECT_ANSWER completed - buzzer should now be GREEN\n");
       break;
 
     case 6: // WRONG_ANSWER
-      Serial.printf("[CMD] Device %d executing WRONG_ANSWER command - should turn RED\n", DEVICE_ID);
+      Serial.printf("[CMD] Device %d executing WRONG_ANSWER command - changing to RED state\n", DEVICE_ID);
       wrongAnswerFeedback();
-      Serial.printf("[CMD] WRONG_ANSWER command completed - LED should be RED\n");
+      Serial.printf("[CMD] WRONG_ANSWER completed - buzzer should now be RED\n");
       break;
 
     case 7: // END_ROUND (return to armed state)

@@ -475,17 +475,20 @@ class HostControl {
             this.buzzerOrder = data.buzzerOrder || [];
             this.stopTimer();
             this.hideTimers();
-            
+
+            // Close evaluation modal if it's open (question timed out before evaluation)
+            this.hideAnswerEvaluationModal();
+
             // Disarm buzzers when question ends naturally (timeout)
             if (this.isBuzzersArmed) {
                 await this.disarmBuzzers(true, 'question-end');
             }
-            
+
             this.updateQuestionControls();
             this.updateBuzzerResults();
             this.hideCurrentAnswererHighlight();
             this.updateQuestionTabsState();
-            
+
             // Time up - host controls when to advance manually for entertainment purposes
         });
 

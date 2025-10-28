@@ -1054,16 +1054,18 @@ void armBuzzer() {
 
 void disarmBuzzer() {
   isArmed = false;
-  buzzerPressed = false;
 
-  // Don't override wrong answer state - keep buzzers that answered wrong in red state until round ends
-  if (currentState != STATE_WRONG_ANSWER) {
+  // IMPORTANT: Don't clear buzzerPressed if we're in answer feedback states
+  // The validation logic needs buzzerPressed=true to keep the answer states valid
+  if (currentState != STATE_WRONG_ANSWER && currentState != STATE_CORRECT_ANSWER) {
+    buzzerPressed = false;
     setBuzzerState(STATE_DISARMED);
   }
+  // else: Keep buzzerPressed=true to maintain answer state validity
 
   digitalWrite(BUZZER_PIN, LOW);
 
-  Serial.printf("Buzzer DISARMED - Device %d preserving state %d\n", DEVICE_ID, currentState);
+  Serial.printf("Buzzer DISARMED - Device %d preserving state %d, buzzerPressed=%d\n", DEVICE_ID, currentState, buzzerPressed);
 }
 
 void testBuzzer() {

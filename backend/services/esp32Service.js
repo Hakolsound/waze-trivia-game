@@ -584,6 +584,11 @@ class ESP32Service extends EventEmitter {
     console.log(`[ESP32] Sending correct answer feedback to buzzer ${buzzerId}`);
     const success = this.sendBinaryCommand(this.COMMAND_TYPES.CORRECT_ANSWER, buzzerId, parseInt(this.currentGameId) || 0);
 
+    // Add a small delay to ensure command is processed before sending more
+    if (success) {
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+
     return {
       success: true,
       buzzerId,
@@ -595,6 +600,11 @@ class ESP32Service extends EventEmitter {
   async sendWrongAnswerFeedback(buzzerId) {
     console.log(`[ESP32] Sending wrong answer feedback to buzzer ${buzzerId}`);
     const success = this.sendBinaryCommand(this.COMMAND_TYPES.WRONG_ANSWER, buzzerId, parseInt(this.currentGameId) || 0);
+
+    // Add a small delay to ensure command is processed before sending more
+    if (success) {
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
 
     return {
       success: true,

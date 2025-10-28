@@ -280,8 +280,8 @@ bool validateCommandForState(Command cmd) {
       break;
 
     case 2: // DISARM
-      // Can disarm from armed states, but NOT from ANSWERING_NOW (must wait for answer evaluation)
-      isValid = (currentState == STATE_ARMED || currentState == STATE_CORRECT_ANSWER || currentState == STATE_WRONG_ANSWER);
+      // Can disarm from any state - DISARM should always work to reset buzzers
+      isValid = true;
       break;
 
     case 3: // TEST
@@ -767,16 +767,20 @@ void loop() {
   // Handle answer feedback timeout (fallback for older coordinator)
   if (waitingForAnswerFeedback && currentTime > answerFeedbackTimeout) {
     waitingForAnswerFeedback = false;
+    Serial.printf("[TIMEOUT] Answer feedback timeout after 30s - should have received CORRECT_ANSWER or WRONG_ANSWER command!\n");
 
     // Don't override wrong answer state - keep buzzers that answered wrong in red state until round ends
     if (currentState != STATE_WRONG_ANSWER) {
       if (isArmed) {
         setBuzzerState(STATE_ARMED); // Return to armed state if no feedback received
+        Serial.printf("[TIMEOUT] Device %d returning to ARMED state (no answer evaluation received)\n", DEVICE_ID);
       } else {
         setBuzzerState(STATE_DISARMED);
+        Serial.printf("[TIMEOUT] Device %d going to DISARMED state (no answer evaluation received)\n", DEVICE_ID);
       }
+    } else {
+      Serial.printf("[TIMEOUT] Device %d staying in WRONG_ANSWER state\n", DEVICE_ID);
     }
-    Serial.printf("Answer feedback timeout - Device %d preserving state %d\n", DEVICE_ID, currentState);
   }
 
   // Periodic state consistency check
@@ -964,13 +968,15 @@ void handleCommand(Command cmd) {
       break;
 
     case 5: // CORRECT_ANSWER
-      Serial.printf("[CMD] Device %d executing CORRECT_ANSWER command\n", DEVICE_ID);
+      Serial.printf("[CMD] Device %d executing CORRECT_ANSWER command - should turn GREEN\n", DEVICE_ID);
       correctAnswerFeedback();
+      Serial.printf("[CMD] CORRECT_ANSWER command completed - LED should be GREEN\n");
       break;
 
     case 6: // WRONG_ANSWER
-      Serial.printf("[CMD] Device %d executing WRONG_ANSWER command\n", DEVICE_ID);
+      Serial.printf("[CMD] Device %d executing WRONG_ANSWER command - should turn RED\n", DEVICE_ID);
       wrongAnswerFeedback();
+      Serial.printf("[CMD] WRONG_ANSWER command completed - LED should be RED\n");
       break;
 
     case 7: // END_ROUND (return to armed state)

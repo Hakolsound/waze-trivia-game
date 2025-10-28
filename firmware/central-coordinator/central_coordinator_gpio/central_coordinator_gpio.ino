@@ -285,6 +285,9 @@ void processBinaryCommands() {
 
     // Wait for command header
     if (commandBufferPos == 0 && byte != 0xBB) {
+      if (TEXT_DEBUG_ENABLED) {
+        Serial.printf("Skipping non-header byte: 0x%02X\n", byte);
+      }
       continue;
     }
 
@@ -296,7 +299,7 @@ void processBinaryCommands() {
 
       // Verify checksum
       if (verifyChecksum((uint8_t*)cmd, sizeof(CommandMessage))) {
-        Serial.printf("Command received: type=%d, target=%d, gameId=%d\n", cmd->command, cmd->targetDevice, cmd->gameId);
+        Serial.printf("[COORD] Binary command received: type=%d, target=%d, gameId=%d\n", cmd->command, cmd->targetDevice, cmd->gameId);
         handleBinaryCommand(*cmd);
       } else {
         Serial.println("ERROR:Invalid command checksum");
@@ -334,9 +337,11 @@ void handleBinaryCommand(CommandMessage cmd) {
       }
       break;
     case 5: // CORRECT_ANSWER
+      Serial.printf("[COORD] Received CORRECT_ANSWER command for device %d\n", cmd.targetDevice);
       sendCorrectAnswerFeedback(cmd.targetDevice);
       break;
     case 6: // WRONG_ANSWER
+      Serial.printf("[COORD] Received WRONG_ANSWER command for device %d\n", cmd.targetDevice);
       sendWrongAnswerFeedback(cmd.targetDevice);
       break;
     case 7: // END_ROUND

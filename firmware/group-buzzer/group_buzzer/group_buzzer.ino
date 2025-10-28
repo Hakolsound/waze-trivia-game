@@ -398,8 +398,13 @@ void OnDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *incomingDat
 
   Serial.printf("Received %d bytes from %s\n", len, macStr);
 
+  Serial.printf("[BUZZER] Received command: type=%d, target=%d, my_id=%d\n", cmd.command, cmd.targetDevice, DEVICE_ID);
+
   if (cmd.targetDevice == 0 || cmd.targetDevice == DEVICE_ID) {
+    Serial.printf("[BUZZER] Command accepted - processing\n");
     handleCommand(cmd);
+  } else {
+    Serial.printf("[BUZZER] Command rejected - target %d != my_id %d\n", cmd.targetDevice, DEVICE_ID);
   }
 }
 

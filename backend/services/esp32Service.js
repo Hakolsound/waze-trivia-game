@@ -463,9 +463,13 @@ class ESP32Service extends EventEmitter {
     }
     buffer[7] = checksum;
 
-    console.log(`Sending binary command: type=${command}, target=${targetDevice}, gameId=${gameId}, buffer=${buffer.toString('hex')}`);
+    console.log(`[ESP32] Sending binary command: type=${command}, target=${targetDevice}, gameId=${gameId}, buffer=${buffer.toString('hex')}`);
     const writeResult = this.serialPort.write(buffer);
-    console.log(`Serial write result: ${writeResult}`);
+    console.log(`[ESP32] Serial write result: ${writeResult}, port writable: ${this.serialPort.writable}`);
+
+    if (!writeResult) {
+      console.error(`[ESP32] Serial write failed for command type=${command}`);
+    }
 
     return writeResult;
   }
@@ -633,9 +637,12 @@ class ESP32Service extends EventEmitter {
     console.log(`[ESP32] Sending correct answer feedback to buzzer ${buzzerId}`);
     const success = this.sendBinaryCommand(this.COMMAND_TYPES.CORRECT_ANSWER, buzzerId, parseInt(this.currentGameId) || 0);
 
-    // Add a delay to ensure command is processed before sending more
     if (success) {
+      console.log(`[ESP32] CORRECT_ANSWER command sent successfully to buzzer ${buzzerId} (hardware connected)`);
+      // Add a delay to ensure command is processed before sending more
       await new Promise(resolve => setTimeout(resolve, 100));
+    } else {
+      console.error(`[ESP32] CORRECT_ANSWER command sent to buzzer ${buzzerId} (hardware disconnected - simulated)`);
     }
 
     return {

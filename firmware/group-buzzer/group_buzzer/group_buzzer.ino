@@ -76,12 +76,6 @@ uint8_t pressRetryCount = 0;
 #define PRESS_ACK_TIMEOUT_MS 300  // Increased from 100ms to 300ms for reliability in crowded environments
 #define MAX_PRESS_RETRIES 5       // Increased from 3 to 5 retries
 
-// Duplicate command detection (by command type + target, not just sequence ID)
-uint8_t lastCommandType = 0;
-uint8_t lastCommandTarget = 0;
-unsigned long lastCommandTime = 0;
-#define DUPLICATE_WINDOW_MS 2000  // Ignore duplicate command types within 2 seconds
-
 // Battery monitoring variables
 float batteryVoltage = 0.0;
 uint8_t batteryPercentage = 0;
@@ -132,7 +126,7 @@ unsigned long correctAnswerStartTime = 0;
 CRGB leds[NUM_LEDS];
 
 // Device configuration
-#define DEVICE_ID 14  // Change this for each group buzzer (1, 2, 3, etc.)
+#define DEVICE_ID 6  // Change this for each group buzzer (1, 2, 3, etc.)
 #define MAX_GROUPS 15
 // Previous coordinator MAC address (backup)
 // #define COORDINATOR_MAC {0x78, 0xE3, 0x6D, 0x1B, 0x13, 0x28}
@@ -951,25 +945,6 @@ void sendCommandAck(uint16_t sequenceId) {
 void handleCommand(Command cmd) {
   Serial.printf("[CMD] Device %d received command: %d for target: %d, seq: %d, current state: %d\n",
                 DEVICE_ID, cmd.command, cmd.targetDevice, cmd.sequenceId, currentState);
-
-  // DUPLICATE DETECTION: Ignore same command type + target within time window
-  // This prevents executing DISARM/ARM multiple times during coordinator retry storms
-  // even when sequence IDs are different (new commands vs retries)
-  unsigned long now = millis();
-  if (cmd.command == lastCommandType &&
-      cmd.targetDevice == lastCommandTarget &&
-      (now - lastCommandTime) < DUPLICATE_WINDOW_MS) {
-    Serial.printf("[CMD] DUPLICATE detected: cmd=%d target=%d already processed %lums ago - ignoring but sending ACK\n",
-                  cmd.command, cmd.targetDevice, now - lastCommandTime);
-    // Send ACK to acknowledge receipt even though we're ignoring execution
-    sendCommandAck(cmd.sequenceId);
-    return;
-  }
-
-  // Update last command tracking
-  lastCommandType = cmd.command;
-  lastCommandTarget = cmd.targetDevice;
-  lastCommandTime = now;
 
   // Validate command based on current state
   if (!validateCommandForState(cmd)) {

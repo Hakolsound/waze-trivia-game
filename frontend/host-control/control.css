@@ -3774,7 +3774,7 @@ kbd {
 
 .channel-bar-fill {
     flex: 1;
-    height: 8px;
+    height: 16px; /* Increased from 8px to 16px for better visibility */
     background: rgba(255, 255, 255, 0.1);
     border-radius: 4px;
     position: relative;
@@ -3913,7 +3913,7 @@ kbd {
 
 .channel-bar-fill {
     flex: 1;
-    height: 8px;
+    height: 16px; /* Increased from 8px to 16px for better visibility */
     background: #374151;
     border-radius: 4px;
     margin: 0 12px;

@@ -1323,25 +1323,37 @@ class HostControl {
         }
 
         try {
+            // IMPORTANT: End the current question first to clear all RED buzzer states
+            // This ensures END_ROUND command is sent before starting the next question
+            console.log('[NEXT_QUESTION] Ending current question before advancing');
+            const endResponse = await fetch(`/api/games/${this.currentGame.id}/end-question`, {
+                method: 'POST'
+            });
+
+            if (!endResponse.ok) {
+                const errorData = await endResponse.json();
+                throw new Error(errorData.error || 'Failed to end current question');
+            }
+
             // Disarm buzzers when navigating to next question
             if (this.isBuzzersArmed) {
                 await this.disarmBuzzers(true, 'navigation');
             }
-            
+
             // Clear on-air state when moving to different question
             this.activeQuestionIndex = -1;
             this.isQuestionActive = false;
-            
+
             // Reset toggles for idle state when advancing to next question
             this.resetTogglesForIdleState();
-            
+
             const newQuestionIndex = this.currentQuestionIndex + 1;
-            
+
             // Call backend to update server state
             const response = await fetch(`/api/games/${this.currentGame.id}/navigate-to-question/${newQuestionIndex}`, {
                 method: 'POST'
             });
-            
+
             if (response.ok) {
                 this.currentQuestionIndex = newQuestionIndex;
                 // Update current game's server state for consistency
@@ -1355,7 +1367,7 @@ class HostControl {
                 const errorData = await response.json();
                 throw new Error(errorData.error || 'Failed to navigate to next question');
             }
-            
+
         } catch (error) {
             console.error('Failed to navigate to next question:', error);
             this.showToast('Failed to navigate to next question', 'error');

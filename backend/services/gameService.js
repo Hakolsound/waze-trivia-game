@@ -445,23 +445,35 @@ class GameService {
       };
     }
 
-    // Send LED feedback to the buzzer
+    // Send LED feedback to the buzzer (only for physical buzzers)
     if (this.esp32Service) {
-      // Use the actual buzzer device ID from the buzzer press event
-      const buzzerDeviceId = parseInt(buzzerEntry.buzzer_id) || buzzerEntry.buzzer_id;
-      console.log(`[EVAL] Sending LED feedback to buzzer ${buzzerDeviceId} (correct: ${isCorrect})`);
+      // Check if this is a virtual buzzer (starts with 'virtual_')
+      const isVirtualBuzzer = buzzerEntry.buzzer_id && buzzerEntry.buzzer_id.toString().startsWith('virtual_');
 
-      if (isCorrect) {
-        console.log(`[EVAL] Calling sendCorrectAnswerFeedback for buzzer ${buzzerDeviceId}`);
-        await this.esp32Service.sendCorrectAnswerFeedback(buzzerDeviceId);
-        console.log(`[EVAL] sendCorrectAnswerFeedback completed for buzzer ${buzzerDeviceId}`);
+      if (isVirtualBuzzer) {
+        console.log(`[EVAL] Skipping hardware feedback for virtual buzzer ${buzzerEntry.buzzer_id}`);
       } else {
-        console.log(`[EVAL] Calling sendWrongAnswerFeedback for buzzer ${buzzerDeviceId}`);
-        await this.esp32Service.sendWrongAnswerFeedback(buzzerDeviceId);
-        console.log(`[EVAL] sendWrongAnswerFeedback completed for buzzer ${buzzerDeviceId}`);
-        // Wait briefly to ensure wrong answer feedback reaches and is processed by the buzzer
-        // before sending re-arm commands to other buzzers
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Use the actual buzzer device ID from the buzzer press event
+        const buzzerDeviceId = parseInt(buzzerEntry.buzzer_id);
+
+        if (isNaN(buzzerDeviceId)) {
+          console.log(`[EVAL] WARNING: Cannot parse buzzer ID '${buzzerEntry.buzzer_id}' as a number - skipping hardware feedback`);
+        } else {
+          console.log(`[EVAL] Sending LED feedback to buzzer ${buzzerDeviceId} (correct: ${isCorrect})`);
+
+          if (isCorrect) {
+            console.log(`[EVAL] Calling sendCorrectAnswerFeedback for buzzer ${buzzerDeviceId}`);
+            await this.esp32Service.sendCorrectAnswerFeedback(buzzerDeviceId);
+            console.log(`[EVAL] sendCorrectAnswerFeedback completed for buzzer ${buzzerDeviceId}`);
+          } else {
+            console.log(`[EVAL] Calling sendWrongAnswerFeedback for buzzer ${buzzerDeviceId}`);
+            await this.esp32Service.sendWrongAnswerFeedback(buzzerDeviceId);
+            console.log(`[EVAL] sendWrongAnswerFeedback completed for buzzer ${buzzerDeviceId}`);
+            // Wait briefly to ensure wrong answer feedback reaches and is processed by the buzzer
+            // before sending re-arm commands to other buzzers
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+        }
       }
     } else {
       console.log(`[EVAL] WARNING: esp32Service not available, cannot send LED feedback!`);

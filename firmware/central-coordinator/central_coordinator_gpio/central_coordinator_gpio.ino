@@ -303,13 +303,17 @@ void processBinaryCommands() {
       CommandMessage* cmd = (CommandMessage*)commandBuffer;
 
       // Verify checksum
+      uint8_t calculatedChecksum = calculateChecksum((uint8_t*)cmd, sizeof(CommandMessage) - 1);
+      uint8_t receivedChecksum = ((uint8_t*)cmd)[sizeof(CommandMessage) - 1];
+
       if (verifyChecksum((uint8_t*)cmd, sizeof(CommandMessage))) {
-        Serial.printf("[COORD] Binary command received: type=%d, target=%d, gameId=%d\n", cmd->command, cmd->targetDevice, cmd->gameId);
+        Serial.printf("[COORD] Binary command received: type=%d, target=%d, gameId=%d (checksum OK: calc=0x%02X, recv=0x%02X)\n",
+                     cmd->command, cmd->targetDevice, cmd->gameId, calculatedChecksum, receivedChecksum);
         Serial.printf("[COORD] Processing command type %d...\n", cmd->command);
         handleBinaryCommand(*cmd);
         Serial.printf("[COORD] Command type %d processed\n", cmd->command);
       } else {
-        Serial.println("ERROR:Invalid command checksum");
+        Serial.printf("ERROR:Invalid command checksum - calc=0x%02X, recv=0x%02X\n", calculatedChecksum, receivedChecksum);
         Serial.printf("Received command: header=0x%02X, cmd=%d, target=%d, gameId=%d\n",
                      cmd->header, cmd->command, cmd->targetDevice, cmd->gameId);
       }
@@ -511,7 +515,7 @@ void loop() {
   // Check for serial commands from Raspberry Pi
   if (Serial.available()) {
     if (TEXT_DEBUG_ENABLED) {
-      Serial.printf("Serial data available: %d bytes\n", Serial.available());
+      Serial.printf("[COORD] Serial data available: %d bytes at time %lu\n", Serial.available(), currentTime);
     }
     if (BINARY_PROTOCOL_ENABLED) {
       processBinaryCommands();

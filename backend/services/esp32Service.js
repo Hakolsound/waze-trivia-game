@@ -620,6 +620,11 @@ class ESP32Service extends EventEmitter {
     console.log(`[ESP32] Ending round for device ${targetDevice === 0 ? 'all' : targetDevice}`);
     const success = this.sendBinaryCommand(this.COMMAND_TYPES.END_ROUND, targetDevice, parseInt(this.currentGameId) || 0);
 
+    // Add a delay to ensure command is processed before sending more
+    if (success) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
     return {
       success: true,
       targetDevice,

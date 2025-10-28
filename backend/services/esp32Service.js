@@ -105,8 +105,8 @@ class ESP32Service extends EventEmitter {
       });
 
       this.parser.on('data', (data) => {
-        // Log ALL incoming data from coordinator for debugging
-        console.log('[COORD MONITOR]', data.toString().replace(/\n/g, '\\n').replace(/\r/g, '\\r'));
+        // Don't log raw binary data - it corrupts console output
+        // console.log('[COORD MONITOR]', data.toString().replace(/\n/g, '\\n').replace(/\r/g, '\\r'));
 
         if (this.binaryProtocolEnabled) {
           this.handleBinaryData(data);

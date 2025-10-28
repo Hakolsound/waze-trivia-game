@@ -115,8 +115,8 @@ unsigned long endRoundStartTime = 0;
 
 // Acknowledgment system configuration
 #define MAX_PENDING_COMMANDS 20
-#define ACK_TIMEOUT_MS 300  // Reduced from 500ms for faster retry in race scenarios
-#define MAX_RETRIES 3
+#define ACK_TIMEOUT_MS 500  // Increased to prevent unnecessary retries when multiple commands are queued
+#define MAX_RETRIES 2  // Reduced from 3 - with longer timeout, fewer retries needed
 #define RETRY_DELAY_MS 100
 
 // Commands that require acknowledgment (critical commands only)

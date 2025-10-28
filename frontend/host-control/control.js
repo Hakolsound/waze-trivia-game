@@ -3570,8 +3570,22 @@ class HostControl {
         }
     }
 
-    displayChannelResults(channels, recommendation) {
+    displayChannelResults(data, recommendation) {
         if (!this.elements.channelQualityList || !this.elements.wifiResults) return;
+
+        // Handle both API response format and socket event format
+        let channels;
+        if (Array.isArray(data)) {
+            // Socket event format: data is channels array, recommendation is separate
+            channels = data;
+        } else if (data && data.channels) {
+            // API response format: data has channels property
+            channels = data.channels;
+            recommendation = data.recommendation;
+        } else {
+            console.error('Invalid channel data format:', data);
+            return;
+        }
 
         // Show results section
         this.elements.wifiResults.classList.remove('hidden');
@@ -3639,7 +3653,13 @@ class HostControl {
         if (!recommendationDiv) {
             recommendationDiv = document.createElement('div');
             recommendationDiv.className = 'channel-recommendation';
-            this.elements.wifiResults.insertBefore(recommendationDiv, this.elements.channelQualityList);
+            // Insert at the beginning of wifi-results, after current-channel-display
+            const currentChannelDisplay = this.elements.wifiResults.querySelector('.current-channel-display');
+            if (currentChannelDisplay && currentChannelDisplay.nextSibling) {
+                this.elements.wifiResults.insertBefore(recommendationDiv, currentChannelDisplay.nextSibling);
+            } else {
+                this.elements.wifiResults.appendChild(recommendationDiv);
+            }
         }
 
         recommendationDiv.innerHTML = `

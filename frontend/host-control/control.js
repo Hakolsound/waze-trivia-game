@@ -3615,8 +3615,18 @@ class HostControl {
             // -90 dBm (very weak) = ((90-90)/60)*100 = 0%
             const signalPercent = Math.max(0, Math.min(100, ((90 + channel.signal) / 60) * 100));
 
+            // Determine signal quality class for appropriate color
+            let signalQualityClass = 'signal-poor';
+            if (signalPercent >= 67) {
+                signalQualityClass = 'signal-excellent';
+            } else if (signalPercent >= 50) {
+                signalQualityClass = 'signal-good';
+            } else if (signalPercent >= 33) {
+                signalQualityClass = 'signal-fair';
+            }
+
             // Debug logging for signal calculation
-            console.log(`WiFi Channel ${channel.channel}: ${channel.signal}dBm → ${signalPercent.toFixed(1)}%`);
+            console.log(`WiFi Channel ${channel.channel}: ${channel.signal}dBm → ${signalPercent.toFixed(1)}% (${signalQualityClass})`);
 
             channelBar.innerHTML = `
                 <div class="channel-info">
@@ -3624,7 +3634,7 @@ class HostControl {
                     <div class="channel-quality">${channel.quality || 'unknown'}</div>
                 </div>
                 <div class="channel-bar-fill">
-                    <div class="channel-bar-progress" style="width: ${signalPercent}%"></div>
+                    <div class="channel-bar-progress ${signalQualityClass}" style="width: ${signalPercent}%"></div>
                 </div>
                 <div class="channel-details">
                     <div class="channel-signal">${channel.signal}dBm</div>

@@ -3784,9 +3784,25 @@ kbd {
 
 .channel-bar-progress {
     height: 100%;
-    background: linear-gradient(90deg, #ef4444, #f59e0b, #22c55e);
     border-radius: 4px;
     transition: width 0.3s ease;
+}
+
+/* Signal quality colors */
+.channel-bar-progress.signal-excellent {
+    background: #22c55e; /* Green - excellent signal */
+}
+
+.channel-bar-progress.signal-good {
+    background: #f59e0b; /* Orange/Yellow - good signal */
+}
+
+.channel-bar-progress.signal-fair {
+    background: #f97316; /* Orange - fair signal */
+}
+
+.channel-bar-progress.signal-poor {
+    background: #ef4444; /* Red - poor signal */
 }
 
 .channel-signal {
@@ -3923,8 +3939,24 @@ kbd {
 
 .channel-bar-progress {
     height: 100%;
-    background: linear-gradient(90deg, #ef4444 0%, #f97316 50%, #22c55e 100%);
     transition: width 0.3s ease;
+}
+
+/* Signal quality colors */
+.channel-bar-progress.signal-excellent {
+    background: #22c55e; /* Green - excellent signal */
+}
+
+.channel-bar-progress.signal-good {
+    background: #f59e0b; /* Orange/Yellow - good signal */
+}
+
+.channel-bar-progress.signal-fair {
+    background: #f97316; /* Orange - fair signal */
+}
+
+.channel-bar-progress.signal-poor {
+    background: #ef4444; /* Red - poor signal */
 }
 
 .channel-details {

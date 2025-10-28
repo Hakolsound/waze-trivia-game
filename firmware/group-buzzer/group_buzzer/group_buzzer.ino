@@ -294,15 +294,15 @@ bool validateCommandForState(Command cmd) {
       isValid = true;
       break;
 
-    case 5: // CORRECT_ANSWER
-      // Can be in answering state or disarmed (if disarmed before evaluation)
-      isValid = (currentState == STATE_ANSWERING_NOW || currentState == STATE_DISARMED);
-      break;
+        case 5: // CORRECT_ANSWER
+          // Can be in answering state, disarmed, or already correct (allow multiple correct commands)
+          isValid = (currentState == STATE_ANSWERING_NOW || currentState == STATE_DISARMED || currentState == STATE_CORRECT_ANSWER);
+          break;
 
-    case 6: // WRONG_ANSWER
-      // Can be in answering state or disarmed (if disarmed before evaluation)
-      isValid = (currentState == STATE_ANSWERING_NOW || currentState == STATE_DISARMED);
-      break;
+        case 6: // WRONG_ANSWER
+          // Can be in answering state, disarmed, or already wrong (allow multiple wrong commands)
+          isValid = (currentState == STATE_ANSWERING_NOW || currentState == STATE_DISARMED || currentState == STATE_WRONG_ANSWER);
+          break;
 
     case 7: // END_ROUND
       // Can end round from any state

@@ -1122,7 +1122,8 @@ void resetBuzzer() {
 void correctAnswerFeedback() {
   Serial.println("Correct answer feedback");
   setBuzzerState(STATE_CORRECT_ANSWER);
-  buzzerPressed = false; // Reset buzzer press state
+  // DON'T clear buzzerPressed - state validation needs it true to keep CORRECT_ANSWER state valid
+  // buzzerPressed will be cleared by endRoundReset() when END_ROUND command is received
   waitingForAnswerFeedback = false; // Clear timeout
   correctAnswerStartTime = millis(); // Start 2-second green decay timer
 
@@ -1134,7 +1135,8 @@ void wrongAnswerFeedback() {
   Serial.printf("[WRONG_ANSWER] Device %d receiving wrong answer feedback - switching to red state\n", DEVICE_ID);
   setBuzzerState(STATE_WRONG_ANSWER);
   isArmed = false; // Disarm the buzzer when wrong answer is received
-  buzzerPressed = false; // Reset buzzer press state
+  // DON'T clear buzzerPressed - state validation needs it true to keep WRONG_ANSWER state valid
+  // buzzerPressed will be cleared by endRoundReset() when END_ROUND command is received
   waitingForAnswerFeedback = false; // Clear timeout
 
   // Note: LED update is handled automatically by setBuzzerState() for critical state changes

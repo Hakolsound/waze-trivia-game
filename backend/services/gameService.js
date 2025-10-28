@@ -707,11 +707,16 @@ class GameService {
         const allGroups = await this.db.all('SELECT buzzer_id FROM groups WHERE game_id = ?', [gameId]);
         const allBuzzerIds = allGroups.map(g => g.buzzer_id).filter(id => id); // Remove null/empty buzzer IDs
 
-        // Filter out the buzzer that just pressed (it stays armed for evaluation)
+        // Filter out:
+        // 1. The buzzer that just pressed (it stays armed for evaluation)
+        // 2. Buzzers that already answered (they're in RED state and should stay RED until END_ROUND)
         const buzzingBuzzerId = buzzerIdStr;
-        const buzzersToDisarm = allBuzzerIds.filter(buzzerId => buzzerId !== buzzingBuzzerId);
+        const alreadyAnsweredBuzzers = gameState.answeredBuzzers || [];
+        const buzzersToDisarm = allBuzzerIds.filter(buzzerId =>
+          buzzerId !== buzzingBuzzerId && !alreadyAnsweredBuzzers.includes(buzzerId)
+        );
 
-        console.log(`[BUZZ] Disarming buzzers: [${buzzersToDisarm.join(', ')}], keeping armed: ${buzzingBuzzerId}`);
+        console.log(`[BUZZ] Disarming buzzers: [${buzzersToDisarm.join(', ')}], keeping armed/answered: ${buzzingBuzzerId}, already answered: [${alreadyAnsweredBuzzers.join(', ')}]`);
 
         if (buzzersToDisarm.length > 0) {
           await this.esp32Service.disarmSpecificBuzzers(gameId, buzzersToDisarm);

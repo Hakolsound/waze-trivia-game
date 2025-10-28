@@ -582,36 +582,21 @@ class ESP32Service extends EventEmitter {
       };
     }
 
-    // OPTIMIZATION: If disarming many buzzers (>5), use broadcast DISARM instead of individual commands
-    // This prevents ACK retry storms and is much faster
-    // Buzzers that should stay armed (buzzing one, RED ones) won't be affected by DISARM broadcast
-    if (buzzerIds.length > 5) {
-      console.log(`[ESP32] Disarming ${buzzerIds.length} buzzers using broadcast DISARM (faster, prevents ACK retry storm)`);
-      const commandSuccess = this.sendBinaryCommand(this.COMMAND_TYPES.DISARM, 0, 0); // target=0 broadcasts to all
-      success = commandSuccess;
-
-      if (success) {
-        console.log(`[ESP32] Successfully disarmed buzzers via broadcast: [${buzzerIds.join(', ')}]`);
-      } else {
-        console.log(`[ESP32] Broadcast disarm failed for buzzers: [${buzzerIds.join(', ')}]`);
+    // Send disarm command to each buzzer individually
+    console.log(`[ESP32] Disarming specific buzzers: [${buzzerIds.join(', ')}]`);
+    for (const buzzerId of buzzerIds) {
+      const commandSuccess = this.sendBinaryCommand(this.COMMAND_TYPES.DISARM, buzzerId, parseInt(gameId) || 0);
+      if (!commandSuccess) {
+        success = false;
       }
+      // Small delay between commands - reduced to 10ms for faster re-arming
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+
+    if (success) {
+      console.log(`[ESP32] Successfully disarmed buzzers: [${buzzerIds.join(', ')}]`);
     } else {
-      // Send disarm command to each buzzer individually (only for small lists)
-      console.log(`[ESP32] Disarming specific buzzers individually: [${buzzerIds.join(', ')}]`);
-      for (const buzzerId of buzzerIds) {
-        const commandSuccess = this.sendBinaryCommand(this.COMMAND_TYPES.DISARM, buzzerId, parseInt(gameId) || 0);
-        if (!commandSuccess) {
-          success = false;
-        }
-        // Small delay between commands to prevent overwhelming ACK system
-        await new Promise(resolve => setTimeout(resolve, 50));
-      }
-
-      if (success) {
-        console.log(`[ESP32] Successfully disarmed buzzers: [${buzzerIds.join(', ')}]`);
-      } else {
-        console.log(`[ESP32] Some disarms failed for buzzers: [${buzzerIds.join(', ')}]`);
-      }
+      console.log(`[ESP32] Some disarms failed for buzzers: [${buzzerIds.join(', ')}]`);
     }
 
     return {

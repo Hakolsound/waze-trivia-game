@@ -306,22 +306,35 @@ void processBinaryCommands() {
       }
       Serial.println();
 
-      CommandMessage* cmd = (CommandMessage*)commandBuffer;
+      // Extract fields manually to avoid struct casting issues
+      uint8_t header = commandBuffer[0];
+      uint8_t command = commandBuffer[1];
+      uint8_t targetDevice = commandBuffer[2];
+      uint32_t gameId = (commandBuffer[6] << 24) | (commandBuffer[5] << 16) | (commandBuffer[4] << 8) | commandBuffer[3]; // little endian
+      uint8_t receivedChecksum = commandBuffer[7];
 
       // Verify checksum
-      uint8_t calculatedChecksum = calculateChecksum((uint8_t*)cmd, sizeof(CommandMessage) - 1);
-      uint8_t receivedChecksum = ((uint8_t*)cmd)[sizeof(CommandMessage) - 1];
+      uint8_t calculatedChecksum = calculateChecksum(commandBuffer, sizeof(CommandMessage) - 1);
 
-      if (verifyChecksum((uint8_t*)cmd, sizeof(CommandMessage))) {
+      if (verifyChecksum(commandBuffer, sizeof(CommandMessage))) {
         Serial.printf("[COORD] Binary command received: type=%d, target=%d, gameId=%d (checksum OK: calc=0x%02X, recv=0x%02X)\n",
-                     cmd->command, cmd->targetDevice, cmd->gameId, calculatedChecksum, receivedChecksum);
-        Serial.printf("[COORD] Processing command type %d...\n", cmd->command);
-        handleBinaryCommand(*cmd);
-        Serial.printf("[COORD] Command type %d processed\n", cmd->command);
+                     command, targetDevice, gameId, calculatedChecksum, receivedChecksum);
+        Serial.printf("[COORD] Processing command type %d...\n", command);
+
+        // Create CommandMessage struct for handleBinaryCommand
+        CommandMessage cmd;
+        cmd.header = header;
+        cmd.command = command;
+        cmd.targetDevice = targetDevice;
+        cmd.gameId = gameId;
+        cmd.checksum = receivedChecksum;
+
+        handleBinaryCommand(cmd);
+        Serial.printf("[COORD] Command type %d processed\n", command);
       } else {
         Serial.printf("ERROR:Invalid command checksum - calc=0x%02X, recv=0x%02X\n", calculatedChecksum, receivedChecksum);
         Serial.printf("Received command: header=0x%02X, cmd=%d, target=%d, gameId=%d\n",
-                     cmd->header, cmd->command, cmd->targetDevice, cmd->gameId);
+                     header, command, targetDevice, gameId);
       }
 
       commandBufferPos = 0;

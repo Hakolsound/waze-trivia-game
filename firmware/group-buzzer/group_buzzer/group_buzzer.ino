@@ -76,11 +76,6 @@ uint8_t pressRetryCount = 0;
 #define PRESS_ACK_TIMEOUT_MS 300  // Increased from 100ms to 300ms for reliability in crowded environments
 #define MAX_PRESS_RETRIES 5       // Increased from 3 to 5 retries
 
-// Duplicate command detection
-uint16_t lastProcessedSequenceId = 0;
-unsigned long lastCommandTime = 0;
-#define DUPLICATE_WINDOW_MS 2000  // Ignore duplicates within 2 seconds
-
 // Battery monitoring variables
 float batteryVoltage = 0.0;
 uint8_t batteryPercentage = 0;
@@ -131,7 +126,7 @@ unsigned long correctAnswerStartTime = 0;
 CRGB leds[NUM_LEDS];
 
 // Device configuration
-#define DEVICE_ID 14  // Change this for each group buzzer (1, 2, 3, etc.)
+#define DEVICE_ID 6  // Change this for each group buzzer (1, 2, 3, etc.)
 #define MAX_GROUPS 15
 // Previous coordinator MAC address (backup)
 // #define COORDINATOR_MAC {0x78, 0xE3, 0x6D, 0x1B, 0x13, 0x28}
@@ -950,24 +945,6 @@ void sendCommandAck(uint16_t sequenceId) {
 void handleCommand(Command cmd) {
   Serial.printf("[CMD] Device %d received command: %d for target: %d, seq: %d, current state: %d\n",
                 DEVICE_ID, cmd.command, cmd.targetDevice, cmd.sequenceId, currentState);
-
-  // DUPLICATE DETECTION: Ignore commands with same sequence ID within time window
-  // This prevents executing the same command multiple times due to coordinator retries
-  unsigned long now = millis();
-  if (cmd.sequenceId != 0 && cmd.sequenceId == lastProcessedSequenceId &&
-      (now - lastCommandTime) < DUPLICATE_WINDOW_MS) {
-    Serial.printf("[CMD] DUPLICATE detected: seq=%d already processed %lums ago - ignoring but sending ACK\n",
-                  cmd.sequenceId, now - lastCommandTime);
-    // Send ACK to stop coordinator from retrying
-    sendCommandAck(cmd.sequenceId);
-    return;
-  }
-
-  // Update last processed tracking (only for commands with sequence IDs)
-  if (cmd.sequenceId != 0) {
-    lastProcessedSequenceId = cmd.sequenceId;
-    lastCommandTime = now;
-  }
 
   // Validate command based on current state
   if (!validateCommandForState(cmd)) {

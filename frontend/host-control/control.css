@@ -3804,6 +3804,184 @@ kbd {
     font-weight: 700;
 }
 
+/* Channel Recommendation Section */
+.channel-recommendation {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 215, 0, 0.05) 100%);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 16px;
+}
+
+.recommendation-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.recommendation-icon {
+    font-size: 1.2rem;
+}
+
+.recommendation-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #fbbf24;
+    margin: 0;
+}
+
+.recommendation-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.recommended-channel {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #fbbf24;
+}
+
+.recommendation-quality {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    text-transform: capitalize;
+}
+
+.recommendation-reason {
+    font-size: 0.75rem;
+    color: #6b7280;
+    font-style: italic;
+    margin: 4px 0;
+}
+
+.apply-recommendation-btn {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    color: #000;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+
+.apply-recommendation-btn:hover {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    transform: translateY(-1px);
+}
+
+/* Updated Channel Bar Layout */
+.channel-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border: 1px solid #374151;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    background: #1f2937;
+    transition: all 0.2s ease;
+}
+
+.channel-bar:hover {
+    background: #374151;
+    border-color: #4b5563;
+}
+
+.channel-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 60px;
+}
+
+.channel-number {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #e5e7eb;
+}
+
+.channel-quality {
+    font-size: 0.7rem;
+    color: #9ca3af;
+    text-transform: capitalize;
+}
+
+.channel-bar-fill {
+    flex: 1;
+    height: 8px;
+    background: #374151;
+    border-radius: 4px;
+    margin: 0 12px;
+    overflow: hidden;
+}
+
+.channel-bar-progress {
+    height: 100%;
+    background: linear-gradient(90deg, #ef4444 0%, #f97316 50%, #22c55e 100%);
+    transition: width 0.3s ease;
+}
+
+.channel-details {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    min-width: 80px;
+}
+
+.channel-signal {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    font-weight: 500;
+}
+
+.channel-networks {
+    font-size: 0.7rem;
+    color: #6b7280;
+}
+
+.channel-select-btn {
+    background: #374151;
+    color: #e5e7eb;
+    border: 1px solid #4b5563;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-left: 8px;
+}
+
+.channel-select-btn:hover {
+    background: #4b5563;
+    border-color: #6b7280;
+}
+
+/* Recommended and Current Channel Highlights */
+.channel-bar.recommended-channel {
+    border-color: #fbbf24;
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(251, 191, 36, 0.05) 100%);
+}
+
+.channel-bar.recommended-channel .channel-number {
+    color: #fbbf24;
+    font-weight: 700;
+}
+
+.channel-bar.current-channel {
+    border-color: #22c55e;
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%);
+}
+
+.channel-bar.current-channel .channel-number {
+    color: #22c55e;
+    font-weight: 700;
+}
+
 .wifi-scan-error {
     display: flex;
     align-items: center;

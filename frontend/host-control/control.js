@@ -534,6 +534,17 @@ class HostControl {
         this.socket.on('game-completed', (data) => {
             this.handleGameCompleted(data);
         });
+
+        // WiFi channel change listeners
+        this.socket.on('wifi-channel-changed', (data) => {
+            console.log('WiFi channel changed to:', data.channel);
+            this.updateCurrentChannelDisplay(data.channel);
+        });
+
+        this.socket.on('wifi-scan-results', (data) => {
+            console.log('WiFi scan results received:', data);
+            this.displayChannelResults(data.results, data.recommendation);
+        });
     }
 
     setupEventListeners() {
@@ -656,7 +667,7 @@ class HostControl {
             this.elements.scanWifiChannelsBtn.addEventListener('click', () => this.scanWifiChannels());
         }
         if (this.elements.applyBestChannelBtn) {
-            this.elements.applyBestChannelBtn.addEventListener('click', () => this.confirmChannelChange());
+            this.elements.applyBestChannelBtn.addEventListener('click', () => this.confirmChannelChange(null, true));
         }
         
         // Keyboard shortcuts
@@ -3559,52 +3570,57 @@ class HostControl {
         }
     }
 
-    displayChannelResults(results) {
+    displayChannelResults(channels, recommendation) {
         if (!this.elements.channelQualityList || !this.elements.wifiResults) return;
 
         // Show results section
         this.elements.wifiResults.classList.remove('hidden');
         this.elements.channelQualityList.innerHTML = '';
 
-        // Find best channel
-        let bestChannel = null;
-        let bestSignal = -100;
-
-        results.channels.forEach(channel => {
-            if (channel.signal > bestSignal) {
-                bestSignal = channel.signal;
-                bestChannel = channel;
-            }
-        });
+        // Display recommendation if available
+        if (recommendation) {
+            this.showChannelRecommendation(recommendation);
+        }
 
         // Display each channel
-        results.channels.forEach(channel => {
+        channels.forEach(channel => {
             const channelBar = document.createElement('div');
-            channelBar.className = `channel-bar ${channel.channel === bestChannel?.channel ? 'best-channel' : ''}`;
+            const isRecommended = recommendation && channel.channel === recommendation.channel;
+            const isCurrent = channel.channel === 13; // Current channel from backend
+
+            channelBar.className = `channel-bar ${isRecommended ? 'recommended-channel' : ''} ${isCurrent ? 'current-channel' : ''}`;
 
             // Calculate signal strength percentage (signal is in dBm, typically -30 to -90)
             // -30 dBm = excellent (100%), -90 dBm = poor (0%)
             const signalPercent = Math.max(0, Math.min(100, ((90 + channel.signal) / 60) * 100));
 
             channelBar.innerHTML = `
-                <div class="channel-number">${channel.channel}</div>
+                <div class="channel-info">
+                    <div class="channel-number">${channel.channel}</div>
+                    <div class="channel-quality">${channel.quality || 'unknown'}</div>
+                </div>
                 <div class="channel-bar-fill">
                     <div class="channel-bar-progress" style="width: ${signalPercent}%"></div>
                 </div>
-                <div class="channel-signal">${channel.signal}dBm</div>
+                <div class="channel-details">
+                    <div class="channel-signal">${channel.signal}dBm</div>
+                    <div class="channel-networks">${channel.networkCount} networks</div>
+                </div>
+                <button class="channel-select-btn" onclick="window.hostControl.selectChannel(${channel.channel})">
+                    Select
+                </button>
             `;
 
             this.elements.channelQualityList.appendChild(channelBar);
         });
 
-        // Update current channel display
-        if (this.elements.currentChannelDisplay) {
-            this.elements.currentChannelDisplay.textContent = `CH ${results.currentChannel}`;
-        }
+        // Update current channel display (we'll get this from the API response)
+        // For now, keep it as is until we get the current channel from the scan response
 
-        // Show apply button if we have results
-        if (this.elements.applyBestChannelBtn) {
+        // Show apply button for recommendation if available
+        if (this.elements.applyBestChannelBtn && recommendation) {
             this.elements.applyBestChannelBtn.classList.remove('hidden');
+            this.elements.applyBestChannelBtn.textContent = `🚀 Apply Best (CH ${recommendation.channel})`;
         }
     }
 
@@ -3617,49 +3633,92 @@ class HostControl {
         this.showToast('WiFi scan failed: ' + message, 'error');
     }
 
-    confirmChannelChange() {
-        // Get the best channel info
-        const bestChannelBar = this.elements.channelQualityList?.querySelector('.best-channel');
-        if (!bestChannelBar) {
-            this.showToast('No channel data available', 'warning');
+    showChannelRecommendation(recommendation) {
+        // Create or update recommendation display
+        let recommendationDiv = document.querySelector('.channel-recommendation');
+        if (!recommendationDiv) {
+            recommendationDiv = document.createElement('div');
+            recommendationDiv.className = 'channel-recommendation';
+            this.elements.wifiResults.insertBefore(recommendationDiv, this.elements.channelQualityList);
+        }
+
+        recommendationDiv.innerHTML = `
+            <div class="recommendation-header">
+                <span class="recommendation-icon">⭐</span>
+                <span class="recommendation-title">Recommended Channel</span>
+            </div>
+            <div class="recommendation-details">
+                <div class="recommended-channel">CH ${recommendation.channel}</div>
+                <div class="recommendation-quality">${recommendation.quality}</div>
+                <div class="recommendation-reason">${recommendation.reason}</div>
+            </div>
+            <button class="apply-recommendation-btn" onclick="window.hostControl.applyBestChannel(${recommendation.channel})">
+                Apply Recommended
+            </button>
+        `;
+    }
+
+    selectChannel(channelNumber) {
+        // Show confirmation modal for manual channel selection
+        this.confirmChannelChange(channelNumber, false);
+    }
+
+    confirmChannelChange(channelNumber, isRecommendation = true) {
+        // If no channel number provided, try to get it from the best channel
+        if (!channelNumber) {
+            const bestChannelBar = this.elements.channelQualityList?.querySelector('.recommended-channel');
+            if (bestChannelBar) {
+                channelNumber = bestChannelBar.querySelector('.channel-number')?.textContent;
+            }
+        }
+
+        if (!channelNumber) {
+            this.showToast('No channel selected', 'warning');
             return;
         }
 
-        const channelNumber = bestChannelBar.querySelector('.channel-number')?.textContent;
-        const signalStrength = bestChannelBar.querySelector('.channel-signal')?.textContent;
+        // Get channel details from the scan results
+        const channelBars = this.elements.channelQualityList?.querySelectorAll('.channel-bar');
+        let selectedChannelData = null;
 
-        if (!channelNumber || !signalStrength) {
-            this.showToast('Unable to determine best channel', 'warning');
-            return;
-        }
+        channelBars?.forEach(bar => {
+            const channelNum = bar.querySelector('.channel-number')?.textContent;
+            if (channelNum == channelNumber) {
+                const signalStrength = bar.querySelector('.channel-signal')?.textContent;
+                const quality = bar.querySelector('.channel-quality')?.textContent;
+                selectedChannelData = { channel: channelNumber, signal: signalStrength, quality: quality };
+            }
+        });
 
-        const currentChannel = this.elements.currentChannelDisplay?.textContent?.replace('CH ', '') || 'Unknown';
+        const currentChannel = this.elements.currentChannelDisplay?.textContent?.replace('CH ', '') || '13';
 
-        // Determine quality badge
-        const signalValue = parseInt(signalStrength);
-        let qualityClass = 'poor';
-        let qualityText = 'Poor';
-
-        if (signalValue > -50) {
-            qualityClass = 'excellent';
-            qualityText = 'Excellent';
-        } else if (signalValue > -65) {
-            qualityClass = 'good';
-            qualityText = 'Good';
+        // Determine quality text if not available
+        let qualityText = selectedChannelData?.quality || 'Unknown';
+        if (qualityText === 'unknown') {
+            const signalValue = selectedChannelData?.signal ? parseInt(selectedChannelData.signal) : -70;
+            if (signalValue > -50) qualityText = 'Excellent';
+            else if (signalValue > -65) qualityText = 'Good';
+            else if (signalValue > -80) qualityText = 'Fair';
+            else qualityText = 'Poor';
         }
 
         // Create confirmation modal
         const modal = document.createElement('div');
         modal.className = 'wifi-confirmation-modal';
+        const modalTitle = isRecommendation ? 'Apply Recommended Channel' : 'Change WiFi Channel';
+        const confirmButtonText = isRecommendation ? 'Apply Recommended' : 'Change Channel';
+
         modal.innerHTML = `
             <div class="wifi-confirmation-content">
                 <div class="wifi-confirmation-header">
-                    <span class="wifi-confirmation-icon">📡</span>
-                    <h3 class="wifi-confirmation-title">Change WiFi Channel</h3>
+                    <span class="wifi-confirmation-icon">${isRecommendation ? '⭐' : '📡'}</span>
+                    <h3 class="wifi-confirmation-title">${modalTitle}</h3>
                 </div>
 
                 <p class="wifi-confirmation-message">
-                    Are you sure you want to change the WiFi channel? This will affect all connected buzzers and may temporarily disconnect devices.
+                    ${isRecommendation ?
+                        'Apply the recommended WiFi channel for optimal performance?' :
+                        'Change to the selected WiFi channel?'} This will affect all connected buzzers and may temporarily disconnect devices.
                 </p>
 
                 <div class="wifi-channel-details">
@@ -3673,13 +3732,13 @@ class HostControl {
                     </div>
                     <div class="channel-quality-indicator">
                         <span class="channel-change-label">Signal Quality:</span>
-                        <span class="quality-badge ${qualityClass}">${qualityText} (${signalStrength})</span>
+                        <span class="quality-badge">${qualityText}${selectedChannelData?.signal ? ` (${selectedChannelData.signal})` : ''}</span>
                     </div>
                 </div>
 
                 <div class="wifi-confirmation-actions">
                     <button class="wifi-cancel-btn" onclick="this.closest('.wifi-confirmation-modal').remove()">Cancel</button>
-                    <button class="wifi-confirm-btn" onclick="window.hostControl.applyBestChannel('${channelNumber}')">Change Channel</button>
+                    <button class="wifi-confirm-btn" onclick="window.hostControl.applyBestChannel('${channelNumber}')">${confirmButtonText}</button>
                 </div>
             </div>
         `;

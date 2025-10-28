@@ -7,7 +7,7 @@ const router = express.Router();
 // Import ESP32Service - we'll need to pass it as a parameter when creating the router
 module.exports = (esp32Service) => {
 
-// WiFi scan endpoint - returns simulated channel data
+// WiFi scan endpoint - returns simulated channel data with recommendations
 router.post('/scan', async (req, res) => {
   try {
     // Simulate WiFi channel scan results
@@ -34,15 +34,61 @@ router.post('/scan', async (req, res) => {
       signal: ch.signal + Math.floor(Math.random() * 10 - 5) // +/- 5 dBm variation
     }));
 
+    // Calculate channel scores and find recommendation
+    // Score = (signal strength bonus) - (interference penalty) + (non-overlapping bonus)
+    const scoredChannels = results.map(ch => {
+      // Signal strength score: better signal = higher score
+      const signalScore = Math.max(0, 80 + ch.signal); // -80 dBm = 0, better signal = higher
+
+      // Interference penalty: more networks = lower score
+      const interferencePenalty = ch.networkCount * 5;
+
+      // Non-overlapping channel bonus (1, 6, 11 are preferred)
+      const nonOverlappingBonus = [1, 6, 11].includes(ch.channel) ? 15 : 0;
+
+      const totalScore = signalScore - interferencePenalty + nonOverlappingBonus;
+
+      return {
+        ...ch,
+        score: totalScore,
+        quality: totalScore > 60 ? 'excellent' :
+                 totalScore > 40 ? 'good' :
+                 totalScore > 20 ? 'fair' : 'poor'
+      };
+    });
+
+    // Find the best channel
+    const bestChannel = scoredChannels.reduce((best, current) =>
+      current.score > best.score ? current : best
+    );
+
+    console.log('WiFi scan results:', scoredChannels.map(ch =>
+      `CH${ch.channel}: ${ch.score}pts (${ch.quality})`
+    ));
+    console.log('Recommended channel:', bestChannel.channel, 'with score:', bestChannel.score);
+
     res.json({
       success: true,
       currentChannel: 13,
-      channels: results
+      channels: scoredChannels,
+      recommendation: {
+        channel: bestChannel.channel,
+        score: bestChannel.score,
+        quality: bestChannel.quality,
+        reason: bestChannel.quality === 'excellent' ?
+          'Best overall performance with low interference' :
+          bestChannel.quality === 'good' ?
+          'Good balance of signal and low interference' :
+          'Acceptable performance, consider other options'
+      }
     });
 
     // Emit results to control panel clients
     if (req.app.get('io')) {
-      req.app.get('io').to('control-panel').emit('wifi-scan-results', { results });
+      req.app.get('io').to('control-panel').emit('wifi-scan-results', {
+        results: scoredChannels,
+        recommendation: bestChannel
+      });
     }
   } catch (error) {
     console.error('Error scanning WiFi channels:', error);

@@ -263,7 +263,7 @@ void sendBinaryStatus() {
 
 void processBinaryCommands() {
   if (TEXT_DEBUG_ENABLED) {
-    Serial.println("Processing binary commands...");
+    Serial.printf("Processing binary commands... (%d bytes available)\n", Serial.available());
   }
 
   // Check if first byte is text (ARM_SPECIFIC starts with 'A' = 0x41)
@@ -283,6 +283,11 @@ void processBinaryCommands() {
       Serial.printf("Read byte: 0x%02X (pos=%d)\n", byte, commandBufferPos);
     }
 
+    // Special debug for command header
+    if (byte == 0xBB && commandBufferPos == 0) {
+      Serial.printf("[COORD] Command header 0xBB detected - starting new command\n");
+    }
+
     // Wait for command header
     if (commandBufferPos == 0 && byte != 0xBB) {
       if (TEXT_DEBUG_ENABLED) {
@@ -300,7 +305,9 @@ void processBinaryCommands() {
       // Verify checksum
       if (verifyChecksum((uint8_t*)cmd, sizeof(CommandMessage))) {
         Serial.printf("[COORD] Binary command received: type=%d, target=%d, gameId=%d\n", cmd->command, cmd->targetDevice, cmd->gameId);
+        Serial.printf("[COORD] Processing command type %d...\n", cmd->command);
         handleBinaryCommand(*cmd);
+        Serial.printf("[COORD] Command type %d processed\n", cmd->command);
       } else {
         Serial.println("ERROR:Invalid command checksum");
         Serial.printf("Received command: header=0x%02X, cmd=%d, target=%d, gameId=%d\n",

@@ -443,14 +443,22 @@ class GameService {
     if (this.esp32Service) {
       // Use the actual buzzer device ID from the buzzer press event
       const buzzerDeviceId = parseInt(buzzerEntry.buzzer_id) || buzzerEntry.buzzer_id;
+      console.log(`[EVAL] Sending LED feedback to buzzer ${buzzerDeviceId} (correct: ${isCorrect})`);
+
       if (isCorrect) {
+        console.log(`[EVAL] Calling sendCorrectAnswerFeedback for buzzer ${buzzerDeviceId}`);
         await this.esp32Service.sendCorrectAnswerFeedback(buzzerDeviceId);
+        console.log(`[EVAL] sendCorrectAnswerFeedback completed for buzzer ${buzzerDeviceId}`);
       } else {
+        console.log(`[EVAL] Calling sendWrongAnswerFeedback for buzzer ${buzzerDeviceId}`);
         await this.esp32Service.sendWrongAnswerFeedback(buzzerDeviceId);
+        console.log(`[EVAL] sendWrongAnswerFeedback completed for buzzer ${buzzerDeviceId}`);
         // Wait briefly to ensure wrong answer feedback reaches and is processed by the buzzer
         // before sending re-arm commands to other buzzers
         await new Promise(resolve => setTimeout(resolve, 100));
       }
+    } else {
+      console.log(`[EVAL] WARNING: esp32Service not available, cannot send LED feedback!`);
     }
 
     // Track that this buzzer has answered (correctly or incorrectly)
@@ -509,19 +517,8 @@ class GameService {
         questionComplete: isCorrect
       };
     } else {
-      // Wrong answer - keep buzzer RED but send END_ROUND to that specific buzzer only
-      console.log(`[EVAL] Wrong answer - sending END_ROUND to buzzer ${buzzerEntry.buzzer_id} to ensure it resets properly`);
-
-      // Send END_ROUND to the specific wrong buzzer to ensure it eventually resets
-      // (it will stay RED now, but will be ready for next question)
-      if (this.esp32Service) {
-        try {
-          await this.esp32Service.endRound(parseInt(buzzerEntry.buzzer_id));
-          console.log(`[EVAL] END_ROUND sent to wrong buzzer ${buzzerEntry.buzzer_id}`);
-        } catch (error) {
-          console.error('[EVAL] Failed to send END_ROUND to wrong buzzer:', error);
-        }
-      }
+      // Wrong answer - keep buzzer RED until round ends (don't send END_ROUND yet)
+      console.log(`[EVAL] Wrong answer - buzzer ${buzzerEntry.buzzer_id} stays RED until round ends`);
 
       // Clear buzzer order and resume timer for fresh attempts
       console.log(`[EVAL] Clearing buzzer order and resuming timer for remaining buzzers`);
@@ -538,16 +535,20 @@ class GameService {
         const allGroups = await this.db.all('SELECT buzzer_id FROM groups WHERE game_id = ?', [gameId]);
         const allBuzzerIds = allGroups.map(g => g.buzzer_id).filter(id => id); // Remove null/empty buzzer IDs
 
-        // Filter out buzzers that have already answered
-        const answeredBuzzerIds = gameState.answeredBuzzers.map(ab => ab.buzzer_id);
-        const availableBuzzerIds = allBuzzerIds.filter(buzzerI => !answeredBuzzerIds.includes(buzzerI));
+        // Filter out buzzers that have already answered - convert to strings for comparison
+        const answeredBuzzerIds = gameState.answeredBuzzers.map(ab => String(ab.buzzer_id));
+        const availableBuzzerIds = allBuzzerIds.filter(buzzerId => !answeredBuzzerIds.includes(String(buzzerId)));
 
         console.log(`[EVAL] Re-arming only available buzzers after wrong answer:`);
         console.log(`[EVAL] All buzzers: [${allBuzzerIds.join(', ')}]`);
         console.log(`[EVAL] Already answered: [${answeredBuzzerIds.join(', ')}]`);
         console.log(`[EVAL] Available to arm: [${availableBuzzerIds.join(', ')}]`);
 
-        await this.esp32Service.armSpecificBuzzers(gameId, availableBuzzerIds);
+        if (availableBuzzerIds.length > 0) {
+          await this.esp32Service.armSpecificBuzzers(gameId, availableBuzzerIds);
+        } else {
+          console.log(`[EVAL] No buzzers available to re-arm - all have already answered`);
+        }
       }
     }
 

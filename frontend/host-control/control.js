@@ -1658,12 +1658,10 @@ class HostControl {
             this.showBuzzerControlStatus(`Arming ${selectedBuzzers.length} selected buzzer(s)...`);
             this.setBuzzerControlButtonsDisabled(true);
 
-            // For now, arm all selected buzzers individually
-            // TODO: Implement selective arming API endpoint
             const buzzerIds = selectedBuzzers.map(b => b.buzzerId);
             console.log('Selected buzzers to arm:', buzzerIds);
 
-            // Temporarily arm all online buzzers (until selective API is implemented)
+            // For now, arm all online buzzers (until selective API is implemented)
             const response = await fetch(`/api/buzzers/arm/${this.currentGame.id}`, {
                 method: 'POST'
             });
@@ -1672,6 +1670,12 @@ class HostControl {
                 this.showToast(`Armed ${selectedBuzzers.length} selected buzzer(s) successfully`, 'success');
                 this.isBuzzersArmed = true;
                 this.updateBuzzerControlButtons();
+
+                // Clear all checkboxes after successful arming
+                const allCheckboxes = this.elements.onlineBuzzers.querySelectorAll('.buzzer-checkbox:checked');
+                allCheckboxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                });
             } else {
                 throw new Error('Failed to arm selected buzzers');
             }
@@ -1685,22 +1689,21 @@ class HostControl {
     }
 
     getSelectedBuzzers() {
-        // For now, return all online buzzers as "selected"
-        // TODO: Implement actual selection UI with checkboxes
-        const onlineBuzzers = [];
+        const selectedBuzzers = [];
         if (this.elements.onlineBuzzers) {
-            const buzzerItems = this.elements.onlineBuzzers.querySelectorAll('.buzzer-item.online');
-            buzzerItems.forEach(item => {
-                const buzzerId = item.querySelector('.buzzer-id')?.textContent?.replace('#', '');
+            // Find all checked checkboxes in online buzzer items
+            const checkedBoxes = this.elements.onlineBuzzers.querySelectorAll('.buzzer-checkbox:checked:not(:disabled)');
+            checkedBoxes.forEach(checkbox => {
+                const buzzerId = checkbox.getAttribute('data-buzzer-id');
                 if (buzzerId) {
-                    onlineBuzzers.push({
+                    selectedBuzzers.push({
                         buzzerId: buzzerId,
-                        element: item
+                        element: checkbox.closest('.buzzer-item')
                     });
                 }
             });
         }
-        return onlineBuzzers;
+        return selectedBuzzers;
     }
 
     async disarmAllBuzzers() {
@@ -2901,6 +2904,9 @@ class HostControl {
             const batteryStatus = this.formatBatteryStatus(device.battery_percentage, device.battery_voltage);
 
             buzzerElement.innerHTML = `
+                <div class="buzzer-selection">
+                    <input type="checkbox" class="buzzer-checkbox" data-buzzer-id="${device.device_id}" ${isOnline ? '' : 'disabled'}>
+                </div>
                 <div class="buzzer-info">
                     <div class="buzzer-header">
                         <span class="buzzer-id">#${device.device_id}</span>

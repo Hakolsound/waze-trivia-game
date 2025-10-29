@@ -378,6 +378,7 @@ class GameService {
   }
 
   async evaluateAnswer(gameId, isCorrect, buzzerPosition = 0) {
+    const evalStartTime = Date.now();
     console.log(`[EVAL] Starting evaluation - gameId: ${gameId}, buzzerPosition: ${buzzerPosition}, isCorrect: ${isCorrect}`);
 
     const gameState = this.activeGames.get(gameId);

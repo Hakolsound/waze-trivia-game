@@ -3028,6 +3028,25 @@ kbd {
     border-color: rgba(76, 175, 80, 0.3);
 }
 
+.buzzer-selection {
+    display: flex;
+    align-items: center;
+    margin-right: 8px;
+}
+
+.buzzer-checkbox {
+    width: 16px;
+    height: 16px;
+    accent-color: #4CAF50;
+    cursor: pointer;
+    margin: 0;
+}
+
+.buzzer-checkbox:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
 .buzzer-item.online.armed {
     background: rgba(255, 193, 7, 0.15);
     border-color: rgba(255, 193, 7, 0.4);

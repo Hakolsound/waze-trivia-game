@@ -1267,7 +1267,8 @@ void armSpecificBuzzersByBitmask(uint16_t bitmask) {
             Serial.printf("[ARM_SPECIFIC] Failed to arm device %d\n", deviceId);
           }
           found = true;
-          delay(20); // Increased delay to reduce RF congestion with 15 buzzers
+          // No delay - send commands as fast as possible for instant re-arm
+          // ACK system handles reliability without artificial delays
           break;
         }
       }

@@ -349,6 +349,13 @@ class HostControl {
             virtualBuzzers: document.getElementById('virtual-buzzers'),
             offlineBuzzers: document.getElementById('offline-buzzers'),
 
+            // Buzzer control elements
+            armAllBuzzersBtn: document.getElementById('arm-all-buzzers-btn'),
+            armSelectedBuzzersBtn: document.getElementById('arm-selected-buzzers-btn'),
+            disarmAllBuzzersBtn: document.getElementById('disarm-all-buzzers-btn'),
+            buzzerControlStatus: document.getElementById('buzzer-control-status'),
+            buzzerStatusMessage: document.getElementById('buzzer-status-message'),
+
             // WiFi Channel Optimization
             wifiSection: document.querySelector('.wifi-section'),
             toggleWifiSectionBtn: document.getElementById('toggle-wifi-section'),
@@ -576,6 +583,11 @@ class HostControl {
         // Buzzer controls
         if (this.elements.armBuzzersBtn) this.elements.armBuzzersBtn.addEventListener('click', () => this.armBuzzers());
         if (this.elements.disarmBuzzersBtn) this.elements.disarmBuzzersBtn.addEventListener('click', () => this.disarmBuzzers());
+
+        // Buzzer control buttons
+        if (this.elements.armAllBuzzersBtn) this.elements.armAllBuzzersBtn.addEventListener('click', () => this.armAllBuzzers());
+        if (this.elements.armSelectedBuzzersBtn) this.elements.armSelectedBuzzersBtn.addEventListener('click', () => this.armSelectedBuzzers());
+        if (this.elements.disarmAllBuzzersBtn) this.elements.disarmAllBuzzersBtn.addEventListener('click', () => this.disarmAllBuzzers());
         
         
         // Answer evaluation modal
@@ -1178,17 +1190,45 @@ class HostControl {
         if (this.elements.buzzersArmedStatus) {
             this.elements.buzzersArmedStatus.textContent = this.isBuzzersArmed ? 'Armed' : 'Disarmed';
         }
-        
+
         // Update buzzer sidebar header armed state
         const buzzerSidebarHeader = document.querySelector('.buzzer-sidebar-header');
         if (buzzerSidebarHeader) {
             buzzerSidebarHeader.classList.toggle('armed', this.isBuzzersArmed);
         }
-        
+
+        // Update buzzer control buttons state
+        this.updateBuzzerControlButtons();
+
         // Refresh buzzer sidebar to show/hide armed states on individual items
         this.updateBuzzerSidebar();
-        
+
         this.updateQuestionControls();
+    }
+
+    updateBuzzerControlButtons() {
+        const hasGame = !!this.currentGame;
+
+        // Enable/disable buttons based on game state
+        if (this.elements.armAllBuzzersBtn) {
+            this.elements.armAllBuzzersBtn.disabled = !hasGame;
+        }
+        if (this.elements.armSelectedBuzzersBtn) {
+            this.elements.armSelectedBuzzersBtn.disabled = !hasGame;
+        }
+        if (this.elements.disarmAllBuzzersBtn) {
+            this.elements.disarmAllBuzzersBtn.disabled = !hasGame || !this.isBuzzersArmed;
+        }
+
+        // Update button styles based on armed state
+        if (this.elements.armAllBuzzersBtn) {
+            this.elements.armAllBuzzersBtn.classList.toggle('btn-success', !this.isBuzzersArmed);
+            this.elements.armAllBuzzersBtn.classList.toggle('btn-secondary', this.isBuzzersArmed);
+        }
+        if (this.elements.disarmAllBuzzersBtn) {
+            this.elements.disarmAllBuzzersBtn.classList.toggle('btn-danger', this.isBuzzersArmed);
+            this.elements.disarmAllBuzzersBtn.classList.toggle('btn-secondary', !this.isBuzzersArmed);
+        }
     }
 
     clearArmedIndicators() {
@@ -1568,6 +1608,97 @@ class HostControl {
             this.showToast(message, 'info');
             this.pendingDisarmSources.clear();
         }, 100); // 100ms delay to group rapid calls
+    }
+
+    // Buzzer control functions
+    async armAllBuzzers() {
+        if (!this.currentGame) {
+            this.showToast('No active game', 'error');
+            return;
+        }
+
+        try {
+            this.showBuzzerControlStatus('Arming all buzzers...');
+            this.setBuzzerControlButtonsDisabled(true);
+
+            const response = await fetch(`/api/buzzers/arm/${this.currentGame.id}`, {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                this.showToast('All buzzers armed successfully', 'success');
+                this.isBuzzersArmed = true;
+                this.updateBuzzerControlsState();
+            } else {
+                throw new Error('Failed to arm buzzers');
+            }
+        } catch (error) {
+            console.error('Failed to arm all buzzers:', error);
+            this.showToast('Failed to arm all buzzers', 'error');
+        } finally {
+            this.hideBuzzerControlStatus();
+            this.setBuzzerControlButtonsDisabled(false);
+        }
+    }
+
+    async armSelectedBuzzers() {
+        if (!this.currentGame) {
+            this.showToast('No active game', 'error');
+            return;
+        }
+
+        // For now, this will arm all online buzzers. In the future, this could show a selection dialog
+        // to let the user choose which specific buzzers to arm.
+        this.showToast('Arm Selected feature - select buzzers from the online list above', 'info');
+    }
+
+    async disarmAllBuzzers() {
+        if (!this.currentGame) {
+            this.showToast('No active game', 'error');
+            return;
+        }
+
+        try {
+            this.showBuzzerControlStatus('Disarming all buzzers...');
+            this.setBuzzerControlButtonsDisabled(true);
+
+            const response = await fetch('/api/buzzers/disarm', {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                this.showToast('All buzzers disarmed successfully', 'success');
+                this.isBuzzersArmed = false;
+                this.updateBuzzerControlsState();
+            } else {
+                throw new Error('Failed to disarm buzzers');
+            }
+        } catch (error) {
+            console.error('Failed to disarm all buzzers:', error);
+            this.showToast('Failed to disarm all buzzers', 'error');
+        } finally {
+            this.hideBuzzerControlStatus();
+            this.setBuzzerControlButtonsDisabled(false);
+        }
+    }
+
+    showBuzzerControlStatus(message) {
+        if (this.elements.buzzerControlStatus && this.elements.buzzerStatusMessage) {
+            this.elements.buzzerStatusMessage.textContent = message;
+            this.elements.buzzerControlStatus.classList.remove('hidden');
+        }
+    }
+
+    hideBuzzerControlStatus() {
+        if (this.elements.buzzerControlStatus) {
+            this.elements.buzzerControlStatus.classList.add('hidden');
+        }
+    }
+
+    setBuzzerControlButtonsDisabled(disabled) {
+        if (this.elements.armAllBuzzersBtn) this.elements.armAllBuzzersBtn.disabled = disabled;
+        if (this.elements.armSelectedBuzzersBtn) this.elements.armSelectedBuzzersBtn.disabled = disabled;
+        if (this.elements.disarmAllBuzzersBtn) this.elements.disarmAllBuzzersBtn.disabled = disabled;
     }
 
     async testBuzzers() {

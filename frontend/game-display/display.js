@@ -1005,13 +1005,14 @@ class GameDisplay {
     // Leaderboard Methods
     showLeaderboard(view = 'all') {
         console.log('DEBUG: showLeaderboard called with view:', view);
+        console.log('DEBUG: current game teams count:', this.currentGame?.groups?.length || 0);
         if (!this.currentGame || !this.currentGame.groups) {
             console.log('No game or teams available for leaderboard');
             return;
         }
 
         // Show immediately with current data
-        console.log('DEBUG: Showing leaderboard with current data');
+        console.log('DEBUG: Showing leaderboard with current data for view:', view);
         this.displayLeaderboardWithCurrentData(view);
 
         // Also request fresh data to update if available
@@ -1046,32 +1047,39 @@ class GameDisplay {
         // Filter teams based on view
         let teamsToShow = allTeams;
         let hasMoreTeams = false;
+        console.log('DEBUG: Processing view:', view, 'showingAllTeams:', this.showingAllTeams);
         switch (view) {
             case 'top3':
                 teamsToShow = allTeams.slice(0, 3);
+                console.log('DEBUG: top3 view - showing 3 teams');
                 break;
             case 'top5':
                 teamsToShow = allTeams.slice(0, 5);
+                console.log('DEBUG: top5 view - showing 5 teams');
                 break;
             case 'all':
             default:
+                console.log('DEBUG: all view - processing all teams');
                 // For performance, limit to 20 teams initially with option to show more
                 // But if this is called from showAllTeams, show everything
                 const MAX_INITIAL_TEAMS = 20;
                 const showAllRequested = this.showingAllTeams;
+                console.log('DEBUG: allTeams.length:', allTeams.length, 'MAX_INITIAL_TEAMS:', MAX_INITIAL_TEAMS, 'showAllRequested:', showAllRequested);
                 if (allTeams.length > MAX_INITIAL_TEAMS && !showAllRequested) {
                     teamsToShow = allTeams.slice(0, MAX_INITIAL_TEAMS);
                     hasMoreTeams = true;
+                    console.log('DEBUG: Limiting to first', MAX_INITIAL_TEAMS, 'teams, hasMoreTeams:', hasMoreTeams);
                 } else {
                     teamsToShow = allTeams;
                     hasMoreTeams = false;
                     this.showingAllTeams = true; // Mark that we're showing all teams now
+                    console.log('DEBUG: Showing all teams, hasMoreTeams:', hasMoreTeams, 'showingAllTeams set to:', this.showingAllTeams);
                 }
                 break;
         }
 
         const teamCount = teamsToShow.length;
-        console.log('DEBUG: teamsToShow length:', teamCount);
+        console.log('DEBUG: Final teamsToShow length:', teamCount, 'for view:', view);
 
         // Apply view-specific styling to overlay
         this.applyViewSpecificStyling(view, teamCount);

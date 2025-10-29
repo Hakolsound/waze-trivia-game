@@ -1050,25 +1050,30 @@ bool sendCommandNoAck(uint8_t targetDevice, uint8_t command) {
 
 void syncDeviceState(uint8_t deviceId) {
   // Send current system state to a specific device
-  Command cmd;
-  cmd.command = systemArmed ? 1 : 2; // 1=ARM, 2=DISARM
-  cmd.targetDevice = deviceId;
-  cmd.timestamp = millis();
+  // IMPORTANT: Use per-device state, NOT global systemArmed!
+  // Global systemArmed doesn't reflect individual buzzer states during gameplay.
 
-  // Find device MAC address
+  // Find device and get its current state
   uint8_t* targetMAC = nullptr;
+  bool deviceIsArmed = false;
   for (int i = 0; i < registeredDeviceCount; i++) {
     if (devices[i].deviceId == deviceId) {
       targetMAC = devices[i].macAddress;
+      deviceIsArmed = devices[i].isArmed;  // Use per-device state!
       break;
     }
   }
 
   if (targetMAC) {
+    Command cmd;
+    cmd.command = deviceIsArmed ? 1 : 2; // 1=ARM, 2=DISARM based on device state
+    cmd.targetDevice = deviceId;
+    cmd.timestamp = millis();
+
     esp_err_t result = esp_now_send(targetMAC, (uint8_t*)&cmd, sizeof(cmd));
     Serial.printf("State sync sent to device %d (%s): %s\n",
                   deviceId,
-                  systemArmed ? "ARM" : "DISARM",
+                  deviceIsArmed ? "ARM" : "DISARM",
                   result == ESP_OK ? "SUCCESS" : "FAILED");
   } else {
     Serial.printf("Error: Could not find MAC address for device %d\n", deviceId);

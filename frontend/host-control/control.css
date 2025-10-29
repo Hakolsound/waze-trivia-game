@@ -235,16 +235,19 @@ body {
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
-  display: grid;
-  grid-template-rows: auto 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
+  height: calc(100vh - 120px); /* Full viewport minus header */
 }
 
-/* Primary Control Section */
+/* Primary Control Section - Split into 3 equal sections */
 .primary-control {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  flex: 1;
+  min-height: 0; /* Allow flex children to shrink */
 }
 
 .question-card {
@@ -255,7 +258,11 @@ body {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.2);
   transition: all var(--md-sys-motion-duration-medium) var(--md-sys-motion-easing-standard);
-  margin-bottom: 16px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .question-card:hover {
@@ -540,10 +547,13 @@ body {
   border: 2px solid var(--waze-primary);
   border-radius: 20px;
   padding: 20px;
-  margin: 16px 0;
   backdrop-filter: blur(10px);
   box-shadow: var(--md-sys-elevation-level2);
   animation: answeringPulse 2s ease-in-out infinite;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .answerer-badge {
@@ -1101,12 +1111,13 @@ body {
   align-items: center;
   justify-content: center;
   gap: 32px;
-  margin: 16px 0;
   padding: 24px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 12px;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
+  flex: 1;
+  min-height: 0;
 }
 
 .controls-row {
@@ -1430,11 +1441,14 @@ kbd {
   box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.2);
 }
 
-/* Secondary Panels */
+/* Secondary Panels - Takes 1/3 of viewport */
 .secondary-panels {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .panel {

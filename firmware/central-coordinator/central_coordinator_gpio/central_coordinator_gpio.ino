@@ -589,13 +589,12 @@ void loop() {
 
   // Send periodic status updates
   static unsigned long lastStatusUpdate = 0;
-  if (currentTime - lastStatusUpdate > 10000) {  // Increased from 5000ms to 10000ms to reduce overhead
-    // Temporarily disable automatic status to reduce serial noise during debugging
-    // if (BINARY_PROTOCOL_ENABLED) {
-    //   sendBinaryStatus();
-    // } else {
-    //   sendStatusToSerial();
-    // }
+  if (currentTime - lastStatusUpdate > 10000) {  // Every 10 seconds
+    if (BINARY_PROTOCOL_ENABLED) {
+      sendBinaryStatus();
+    } else {
+      sendStatusToSerial();
+    }
     lastStatusUpdate = currentTime;
   }
 

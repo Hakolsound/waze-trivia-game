@@ -1087,8 +1087,12 @@ void checkDeviceTimeouts(unsigned long currentTime) {
   for (int i = 0; i < registeredDeviceCount; i++) {
     if (devices[i].isOnline && (currentTime - devices[i].lastHeartbeat > HEARTBEAT_TIMEOUT)) {
       devices[i].isOnline = false;
-      devices[i].isArmed = false;   // Clear armed state when device times out
-      devices[i].isPressed = false; // Clear pressed state when device times out
+      // IMPORTANT: Don't clear armed/pressed state on timeout!
+      // Timeout only means we haven't received heartbeats, not that the buzzer's state changed.
+      // The buzzer may still be armed/pressed physically.
+      // Only clear state when we receive explicit commands or buzzer events.
+      // devices[i].isArmed = false;   // REMOVED - don't clear armed state on timeout
+      // devices[i].isPressed = false; // REMOVED - don't clear pressed state on timeout
       Serial.print("TIMEOUT:");
       Serial.println(devices[i].deviceId);
       Serial.print("Device timeout: ");

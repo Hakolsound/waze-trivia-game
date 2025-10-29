@@ -1058,6 +1058,18 @@ h1.question-text,
   max-height: 100%;
 }
 
+/* Hide scrollbars for top5 and all teams views - use mouse wheel/hand gestures */
+.view-top5 .ranked-teams-list::-webkit-scrollbar,
+.view-all .ranked-teams-list::-webkit-scrollbar {
+  display: none;
+}
+
+.view-top5 .ranked-teams-list,
+.view-all .ranked-teams-list {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
 .ranked-team-item {
   position: relative;
   display: flex;

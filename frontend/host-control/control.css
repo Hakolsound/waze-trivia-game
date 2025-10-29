@@ -539,11 +539,15 @@ body {
   background: linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(138, 43, 226, 0.15));
   border: 2px solid var(--waze-primary);
   border-radius: 20px;
-  padding: 20px;
-  margin: 16px 0;
+  padding: 24px;
+  margin: 24px 0;
   backdrop-filter: blur(10px);
   box-shadow: var(--md-sys-elevation-level2);
   animation: answeringPulse 2s ease-in-out infinite;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .answerer-badge {
@@ -1435,6 +1439,8 @@ kbd {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 24px;
+  min-height: 400px;
+  margin-top: 24px;
 }
 
 .panel {

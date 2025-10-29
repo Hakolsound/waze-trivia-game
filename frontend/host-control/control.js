@@ -1628,7 +1628,7 @@ class HostControl {
             if (response.ok) {
                 this.showToast('All buzzers armed successfully', 'success');
                 this.isBuzzersArmed = true;
-                this.updateBuzzerControlsState();
+                this.updateBuzzerControlButtons();
             } else {
                 throw new Error('Failed to arm buzzers');
             }
@@ -1647,9 +1647,60 @@ class HostControl {
             return;
         }
 
-        // For now, this will arm all online buzzers. In the future, this could show a selection dialog
-        // to let the user choose which specific buzzers to arm.
-        this.showToast('Arm Selected feature - select buzzers from the online list above', 'info');
+        // Get selected buzzers from the online buzzers list
+        const selectedBuzzers = this.getSelectedBuzzers();
+        if (selectedBuzzers.length === 0) {
+            this.showToast('Please select buzzers from the online list above first', 'warning');
+            return;
+        }
+
+        try {
+            this.showBuzzerControlStatus(`Arming ${selectedBuzzers.length} selected buzzer(s)...`);
+            this.setBuzzerControlButtonsDisabled(true);
+
+            // For now, arm all selected buzzers individually
+            // TODO: Implement selective arming API endpoint
+            const buzzerIds = selectedBuzzers.map(b => b.buzzerId);
+            console.log('Selected buzzers to arm:', buzzerIds);
+
+            // Temporarily arm all online buzzers (until selective API is implemented)
+            const response = await fetch(`/api/buzzers/arm/${this.currentGame.id}`, {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                this.showToast(`Armed ${selectedBuzzers.length} selected buzzer(s) successfully`, 'success');
+                this.isBuzzersArmed = true;
+                this.updateBuzzerControlButtons();
+            } else {
+                throw new Error('Failed to arm selected buzzers');
+            }
+        } catch (error) {
+            console.error('Failed to arm selected buzzers:', error);
+            this.showToast('Failed to arm selected buzzers', 'error');
+        } finally {
+            this.hideBuzzerControlStatus();
+            this.setBuzzerControlButtonsDisabled(false);
+        }
+    }
+
+    getSelectedBuzzers() {
+        // For now, return all online buzzers as "selected"
+        // TODO: Implement actual selection UI with checkboxes
+        const onlineBuzzers = [];
+        if (this.elements.onlineBuzzers) {
+            const buzzerItems = this.elements.onlineBuzzers.querySelectorAll('.buzzer-item.online');
+            buzzerItems.forEach(item => {
+                const buzzerId = item.querySelector('.buzzer-id')?.textContent?.replace('#', '');
+                if (buzzerId) {
+                    onlineBuzzers.push({
+                        buzzerId: buzzerId,
+                        element: item
+                    });
+                }
+            });
+        }
+        return onlineBuzzers;
     }
 
     async disarmAllBuzzers() {
@@ -1669,7 +1720,7 @@ class HostControl {
             if (response.ok) {
                 this.showToast('All buzzers disarmed successfully', 'success');
                 this.isBuzzersArmed = false;
-                this.updateBuzzerControlsState();
+                this.updateBuzzerControlButtons();
             } else {
                 throw new Error('Failed to disarm buzzers');
             }

@@ -264,7 +264,7 @@ class ESP32Service extends EventEmitter {
 
   processStatusMessage(buffer) {
     if (!this.verifyChecksum(buffer)) {
-      console.warn('Invalid status message checksum');
+      console.warn('[ESP32] Invalid status message checksum');
       return;
     }
 
@@ -274,7 +274,7 @@ class ESP32Service extends EventEmitter {
     const timestamp = buffer.readUInt32LE(8);
     const gameId = buffer.readUInt32LE(12);
 
-    // console.log(`Binary Status: devices=0x${deviceMask.toString(16)}, armed=0x${armedMask.toString(16)}, pressed=0x${pressedMask.toString(16)}`);  // Too verbose
+    console.log(`[ESP32] STATUS received: deviceMask=0x${deviceMask.toString(16).padStart(4, '0')}, armed=0x${armedMask.toString(16).padStart(4, '0')}, pressed=0x${pressedMask.toString(16).padStart(4, '0')}`);
 
     // Update device states from bitmasks
     this.updateDeviceStatesFromMasks(deviceMask, armedMask, pressedMask);

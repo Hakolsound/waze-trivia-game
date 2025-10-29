@@ -405,9 +405,11 @@ class GameService {
     console.log(`[EVAL] Found buzzer entry at position ${buzzerPosition}: groupId=${buzzerEntry.groupId}, deltaMs=${buzzerEntry.deltaMs}`);
 
     // Get team name for logging
+    const t1 = Date.now();
     const teams = await this.db.all('SELECT id, name FROM groups WHERE game_id = ?', [gameId]);
     const currentTeam = teams.find(t => t.id === buzzerEntry.groupId);
     console.log(`[EVAL] Evaluating team: ${currentTeam?.name || 'Unknown'} (${buzzerEntry.groupId})`);
+    console.log(`[EVAL TIMING] DB query for team name: ${Date.now() - t1}ms`);
 
     // Calculate points based on time-based scoring setting
     let pointsToAward;
@@ -445,7 +447,9 @@ class GameService {
 
     // Award or deduct points
     console.log(`[EVAL] About to award ${pointsToAward} points to groupId: ${buzzerEntry.groupId}`);
+    const t2 = Date.now();
     await this.awardPoints(gameId, buzzerEntry.groupId, pointsToAward);
+    console.log(`[EVAL TIMING] Award points: ${Date.now() - t2}ms`);
     
     // Mark this buzzer entry as evaluated
     buzzerEntry.evaluated = true;
@@ -487,12 +491,16 @@ class GameService {
             await this.esp32Service.sendCorrectAnswerFeedback(buzzerDeviceId);
             console.log(`[EVAL] sendCorrectAnswerFeedback completed for buzzer ${buzzerDeviceId}`);
           } else {
+            const t3 = Date.now();
             console.log(`[EVAL] Calling sendWrongAnswerFeedback for buzzer ${buzzerDeviceId}`);
             await this.esp32Service.sendWrongAnswerFeedback(buzzerDeviceId);
             console.log(`[EVAL] sendWrongAnswerFeedback completed for buzzer ${buzzerDeviceId}`);
+            console.log(`[EVAL TIMING] Send wrong answer feedback: ${Date.now() - t3}ms`);
             // Wait briefly to ensure wrong answer feedback reaches and is processed by the buzzer
             // before sending re-arm commands to other buzzers
+            const t4 = Date.now();
             await new Promise(resolve => setTimeout(resolve, 100));
+            console.log(`[EVAL TIMING] 100ms safety delay: ${Date.now() - t4}ms`);
           }
         }
       }
@@ -570,8 +578,11 @@ class GameService {
 
       // RE-ARM ONLY BUZZERS that haven't answered yet (exclude buzzers that already answered wrong)
       if (this.esp32Service) {
+        const t5 = Date.now();
         // Get all groups for this game to find their buzzer IDs
         const allGroups = await this.db.all('SELECT buzzer_id FROM groups WHERE game_id = ?', [gameId]);
+        console.log(`[EVAL TIMING] DB query for buzzer IDs: ${Date.now() - t5}ms`);
+
         const allBuzzerIds = allGroups.map(g => g.buzzer_id).filter(id => id); // Remove null/empty buzzer IDs
 
         // Filter out buzzers that have already answered - convert to strings for comparison
@@ -584,11 +595,15 @@ class GameService {
         console.log(`[EVAL] Available to arm: [${availableBuzzerIds.join(', ')}]`);
 
         if (availableBuzzerIds.length > 0) {
+          const t6 = Date.now();
           await this.esp32Service.armSpecificBuzzers(gameId, availableBuzzerIds);
+          console.log(`[EVAL TIMING] ARM_SPECIFIC command: ${Date.now() - t6}ms`);
         } else {
           console.log(`[EVAL] No buzzers available to re-arm - all have already answered`);
         }
       }
+
+      console.log(`[EVAL TIMING] Total evaluation time: ${Date.now() - evalStartTime}ms`);
     }
 
     return {

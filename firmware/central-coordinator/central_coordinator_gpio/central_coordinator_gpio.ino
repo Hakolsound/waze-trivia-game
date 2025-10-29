@@ -245,6 +245,8 @@ void sendBinaryStatus() {
   // Calculate checksum for all bytes except the last
   buffer[16] = calculateChecksum(buffer, 16);
 
+  Serial.printf("[STATUS] Sending binary status: devices=%d, deviceMask=0x%04X, armedMask=0x%04X, pressedMask=0x%04X\n",
+                registeredDeviceCount, deviceMask, armedMask, pressedMask);
   Serial.write(buffer, 17);  // Total message size is 17 bytes
   Serial.flush();
 

@@ -2085,6 +2085,9 @@ class HostControl {
                 device.battery_voltage = data.battery_voltage;
             }
             this.buzzerDevices.set(deviceId, device);
+
+            // Update UI after battery data changes
+            this.updateBuzzerSidebar();
         } else {
             // Create new device entry from heartbeat
             this.buzzerDevices.set(deviceId, {
@@ -2095,6 +2098,9 @@ class HostControl {
                 last_online: data.online === true ? now : null, // Set last_online only if actually online
                 ...data
             });
+
+            // Update UI for new device
+            this.updateBuzzerSidebar();
         }
     }
 

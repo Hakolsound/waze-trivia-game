@@ -3028,23 +3028,20 @@ kbd {
     border-color: rgba(76, 175, 80, 0.3);
 }
 
-.buzzer-selection {
-    display: flex;
-    align-items: center;
-    margin-right: 8px;
-}
-
-.buzzer-checkbox {
-    width: 16px;
-    height: 16px;
-    accent-color: #4CAF50;
+.buzzer-item.selectable {
     cursor: pointer;
-    margin: 0;
+    transition: all 0.2s ease;
 }
 
-.buzzer-checkbox:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
+.buzzer-item.selectable:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.buzzer-item.selected {
+    background: rgba(33, 150, 243, 0.15) !important;
+    border-color: rgba(33, 150, 243, 0.4) !important;
+    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.3);
 }
 
 .buzzer-item.online.armed {

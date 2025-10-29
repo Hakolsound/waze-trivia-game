@@ -21,6 +21,9 @@ class HostControl {
         // Modal event listeners flag
         this.modalEventListenersAttached = false;
 
+        // Buzzer selection state (persists through list updates)
+        this.selectedBuzzers = new Set();
+
         // Show Correct Answer state
         this.answerShown = false;
         this.keyPressCount = { 'A': 0, lastTime: 0 };
@@ -352,6 +355,7 @@ class HostControl {
             // Buzzer control elements
             armAllBuzzersBtn: document.getElementById('arm-all-buzzers-btn'),
             armSelectedBuzzersBtn: document.getElementById('arm-selected-buzzers-btn'),
+            deselectAllBuzzersBtn: document.getElementById('deselect-all-buzzers-btn'),
             disarmAllBuzzersBtn: document.getElementById('disarm-all-buzzers-btn'),
             buzzerControlStatus: document.getElementById('buzzer-control-status'),
             buzzerStatusMessage: document.getElementById('buzzer-status-message'),
@@ -587,6 +591,7 @@ class HostControl {
         // Buzzer control buttons
         if (this.elements.armAllBuzzersBtn) this.elements.armAllBuzzersBtn.addEventListener('click', () => this.armAllBuzzers());
         if (this.elements.armSelectedBuzzersBtn) this.elements.armSelectedBuzzersBtn.addEventListener('click', () => this.armSelectedBuzzers());
+        if (this.elements.deselectAllBuzzersBtn) this.elements.deselectAllBuzzersBtn.addEventListener('click', () => this.deselectAllBuzzers());
         if (this.elements.disarmAllBuzzersBtn) this.elements.disarmAllBuzzersBtn.addEventListener('click', () => this.disarmAllBuzzers());
         
         
@@ -1213,8 +1218,13 @@ class HostControl {
         if (this.elements.armAllBuzzersBtn) {
             this.elements.armAllBuzzersBtn.disabled = !hasGame;
         }
+        const hasSelectedBuzzers = this.selectedBuzzers.size > 0;
+
         if (this.elements.armSelectedBuzzersBtn) {
-            this.elements.armSelectedBuzzersBtn.disabled = !hasGame;
+            this.elements.armSelectedBuzzersBtn.disabled = !hasGame || !hasSelectedBuzzers;
+        }
+        if (this.elements.deselectAllBuzzersBtn) {
+            this.elements.deselectAllBuzzersBtn.disabled = !hasSelectedBuzzers;
         }
         if (this.elements.disarmAllBuzzersBtn) {
             this.elements.disarmAllBuzzersBtn.disabled = !hasGame || !this.isBuzzersArmed;
@@ -1675,11 +1685,8 @@ class HostControl {
                 this.isBuzzersArmed = true;
                 this.updateBuzzerControlButtons();
 
-                // Clear all checkboxes after successful arming
-                const allCheckboxes = this.elements.onlineBuzzers.querySelectorAll('.buzzer-checkbox:checked');
-                allCheckboxes.forEach(checkbox => {
-                    checkbox.checked = false;
-                });
+                // Clear all selections after successful arming
+                this.deselectAllBuzzers();
             } else {
                 const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.error || 'Failed to arm selected buzzers');
@@ -1693,17 +1700,54 @@ class HostControl {
         }
     }
 
+    toggleBuzzerSelection(buzzerId) {
+        if (this.selectedBuzzers.has(buzzerId)) {
+            this.selectedBuzzers.delete(buzzerId);
+        } else {
+            this.selectedBuzzers.add(buzzerId);
+        }
+
+        // Update the visual state of the buzzer item
+        this.updateBuzzerItemSelection(buzzerId);
+        this.updateBuzzerControlButtons();
+    }
+
+    updateBuzzerItemSelection(buzzerId) {
+        if (!this.elements.onlineBuzzers) return;
+
+        const buzzerItem = this.elements.onlineBuzzers.querySelector(`.buzzer-item[data-buzzer-id="${buzzerId}"]`);
+        if (buzzerItem) {
+            if (this.selectedBuzzers.has(buzzerId)) {
+                buzzerItem.classList.add('selected');
+            } else {
+                buzzerItem.classList.remove('selected');
+            }
+        }
+    }
+
+    deselectAllBuzzers() {
+        this.selectedBuzzers.clear();
+
+        // Update all buzzer item visuals
+        if (this.elements.onlineBuzzers) {
+            const buzzerItems = this.elements.onlineBuzzers.querySelectorAll('.buzzer-item.selected');
+            buzzerItems.forEach(item => item.classList.remove('selected'));
+        }
+
+        this.updateBuzzerControlButtons();
+    }
+
     getSelectedBuzzers() {
         const selectedBuzzers = [];
         if (this.elements.onlineBuzzers) {
-            // Find all checked checkboxes in online buzzer items
-            const checkedBoxes = this.elements.onlineBuzzers.querySelectorAll('.buzzer-checkbox:checked:not(:disabled)');
-            checkedBoxes.forEach(checkbox => {
-                const buzzerId = checkbox.getAttribute('data-buzzer-id');
+            // Find all selected buzzer items
+            const selectedItems = this.elements.onlineBuzzers.querySelectorAll('.buzzer-item.selected');
+            selectedItems.forEach(item => {
+                const buzzerId = item.querySelector('.buzzer-id')?.textContent?.replace('#', '');
                 if (buzzerId) {
                     selectedBuzzers.push({
                         buzzerId: buzzerId,
-                        element: checkbox.closest('.buzzer-item')
+                        element: item
                     });
                 }
             });
@@ -1757,6 +1801,7 @@ class HostControl {
     setBuzzerControlButtonsDisabled(disabled) {
         if (this.elements.armAllBuzzersBtn) this.elements.armAllBuzzersBtn.disabled = disabled;
         if (this.elements.armSelectedBuzzersBtn) this.elements.armSelectedBuzzersBtn.disabled = disabled;
+        if (this.elements.deselectAllBuzzersBtn) this.elements.deselectAllBuzzersBtn.disabled = disabled;
         if (this.elements.disarmAllBuzzersBtn) this.elements.disarmAllBuzzersBtn.disabled = disabled;
     }
 
@@ -2888,7 +2933,8 @@ class HostControl {
             const buzzerElement = document.createElement('div');
             // Add armed class to online buzzers when buzzers are armed
             const armedClass = (isOnline && this.isBuzzersArmed) ? ' armed' : '';
-            buzzerElement.className = `buzzer-item ${isOnline ? 'online' : 'offline'}${armedClass}`;
+            buzzerElement.className = `buzzer-item ${isOnline ? 'online' : 'offline'}${armedClass}${selectedClass}`;
+            buzzerElement.setAttribute('data-buzzer-id', device.device_id.toString());
             
             const teamName = this.getTeamNameByBuzzerId(device.device_id);
             // For online devices: show last_seen (live stream), for offline: show last_online (when last online)
@@ -2908,10 +2954,11 @@ class HostControl {
 
             const batteryStatus = this.formatBatteryStatus(device.battery_percentage, device.battery_voltage);
 
+            // Add selected class if this buzzer is in the selection set
+            const isSelected = this.selectedBuzzers.has(device.device_id.toString());
+            const selectedClass = isSelected ? ' selected' : '';
+
             buzzerElement.innerHTML = `
-                <div class="buzzer-selection">
-                    <input type="checkbox" class="buzzer-checkbox" data-buzzer-id="${device.device_id}" ${isOnline ? '' : 'disabled'}>
-                </div>
                 <div class="buzzer-info">
                     <div class="buzzer-header">
                         <span class="buzzer-id">#${device.device_id}</span>
@@ -2924,6 +2971,14 @@ class HostControl {
                     </div>
                 </div>
             `;
+
+            // Add click handler for selection (only for online buzzers)
+            if (isOnline) {
+                buzzerElement.classList.add('selectable');
+                buzzerElement.addEventListener('click', () => {
+                    this.toggleBuzzerSelection(device.device_id.toString());
+                });
+            }
             
             container.appendChild(buzzerElement);
         });

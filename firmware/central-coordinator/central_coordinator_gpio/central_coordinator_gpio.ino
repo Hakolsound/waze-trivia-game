@@ -403,9 +403,12 @@ void handleBinaryCommand(CommandMessage cmd) {
       break;
     case 8: // ARM_SPECIFIC
       {
-        // Extract bitmask from bytes 2-3
-        uint16_t bitmask = cmd.targetDevice | (cmd.gameId & 0xFF) << 8;
-        uint32_t gameId = cmd.gameId >> 8;
+        // Backend sends bitmask as 16-bit LE in bytes 2-3, gameId in bytes 4-7
+        // cmd.targetDevice is actually the LOW byte of bitmask (byte 2)
+        // cmd.gameId contains: [byte 3][byte 4][byte 5][byte 6] as a 32-bit LE value
+        // So bitmask = byte 2 | (byte 3 << 8)
+        uint16_t bitmask = cmd.targetDevice | ((cmd.gameId & 0xFF) << 8);
+        uint32_t gameId = cmd.gameId >> 8;  // Shift out the bitmask high byte
         currentGameId = String(gameId);
 
         Serial.printf("[ARM_SPECIFIC] Binary command received: bitmask=0x%04X, gameId=%lu\n", bitmask, gameId);

@@ -2077,9 +2077,11 @@ class HostControl {
             }
             // Update battery data from heartbeat
             if (data.battery_percentage !== undefined) {
+                console.log(`[BATTERY HEARTBEAT] Device ${deviceId}: battery_percentage=${data.battery_percentage} (was ${device.battery_percentage})`);
                 device.battery_percentage = data.battery_percentage;
             }
             if (data.battery_voltage !== undefined) {
+                console.log(`[BATTERY HEARTBEAT] Device ${deviceId}: battery_voltage=${data.battery_voltage} (was ${device.battery_voltage})`);
                 device.battery_voltage = data.battery_voltage;
             }
             this.buzzerDevices.set(deviceId, device);
@@ -3012,11 +3014,20 @@ class HostControl {
                         // Preserve battery data from heartbeats if server doesn't provide it
                         const preservedData = {};
                         if (existingDevice) {
+                            // Debug logging for battery data preservation
+                            console.log(`[BATTERY PRESERVE] Device ${deviceId}: server_battery=${device.battery_percentage}, existing_battery=${existingDevice.battery_percentage}`);
+
                             if (device.battery_percentage === null || device.battery_percentage === undefined) {
-                                preservedData.battery_percentage = existingDevice.battery_percentage;
+                                if (existingDevice.battery_percentage !== null && existingDevice.battery_percentage !== undefined) {
+                                    preservedData.battery_percentage = existingDevice.battery_percentage;
+                                    console.log(`[BATTERY PRESERVE] Preserving battery_percentage=${existingDevice.battery_percentage} for device ${deviceId}`);
+                                }
                             }
                             if (device.battery_voltage === null || device.battery_voltage === undefined) {
-                                preservedData.battery_voltage = existingDevice.battery_voltage;
+                                if (existingDevice.battery_voltage !== null && existingDevice.battery_voltage !== undefined) {
+                                    preservedData.battery_voltage = existingDevice.battery_voltage;
+                                    console.log(`[BATTERY PRESERVE] Preserving battery_voltage=${existingDevice.battery_voltage} for device ${deviceId}`);
+                                }
                             }
                         }
 

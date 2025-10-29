@@ -2077,11 +2077,9 @@ class HostControl {
             }
             // Update battery data from heartbeat
             if (data.battery_percentage !== undefined) {
-                console.log(`[BATTERY HEARTBEAT] Device ${deviceId}: battery_percentage=${data.battery_percentage} (was ${device.battery_percentage})`);
                 device.battery_percentage = data.battery_percentage;
             }
             if (data.battery_voltage !== undefined) {
-                console.log(`[BATTERY HEARTBEAT] Device ${deviceId}: battery_voltage=${data.battery_voltage} (was ${device.battery_voltage})`);
                 device.battery_voltage = data.battery_voltage;
             }
             this.buzzerDevices.set(deviceId, device);
@@ -2114,6 +2112,22 @@ class HostControl {
     getTeamNameByBuzzerId(buzzerId) {
         const team = this.teams.find(team => team.buzzer_id === buzzerId);
         return team ? team.name : null;
+    }
+
+    formatUpTime(milliseconds) {
+        const seconds = Math.floor(milliseconds / 1000);
+
+        if (seconds < 60) {
+            return `${seconds}s`;
+        } else if (seconds < 3600) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${minutes}m ${remainingSeconds}s`;
+        } else {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            return `${hours}h ${minutes}m`;
+        }
     }
 
     formatLastSeen(milliseconds) {
@@ -2950,16 +2964,19 @@ class HostControl {
             buzzerElement.setAttribute('data-buzzer-id', device.device_id.toString());
 
             const teamName = this.getTeamNameByBuzzerId(device.device_id);
-            // For online devices: show last_seen (live stream), for offline: show last_online (when last online)
-            let timeSinceDisplay, lastSeenText;
+
+            // Calculate display text based on online status
+            let timeSinceDisplay, statusText, showHeartbeatDot = false;
             if (isOnline) {
-                // Online: show last server update (live stream effect)
-                timeSinceDisplay = device.last_seen ? Date.now() - device.last_seen : null;
-                lastSeenText = timeSinceDisplay ? this.formatLastSeen(timeSinceDisplay) : 'now';
-            } else {
-                // Offline: show when device was last online
+                // Online: show "up since" (how long continuously connected)
                 timeSinceDisplay = device.last_online ? Date.now() - device.last_online : null;
-                lastSeenText = timeSinceDisplay ? this.formatLastSeen(timeSinceDisplay) : 'never';
+                statusText = timeSinceDisplay ? `Up ${this.formatUpTime(timeSinceDisplay)}` : 'Connected now';
+                showHeartbeatDot = true; // Show blinking heartbeat for online devices
+            } else {
+                // Offline: show "last seen" (when went offline)
+                timeSinceDisplay = device.last_online ? Date.now() - device.last_online : null;
+                statusText = timeSinceDisplay ? `Last seen ${this.formatLastSeen(timeSinceDisplay)} ago` : 'Never seen';
+                showHeartbeatDot = false; // No heartbeat for offline devices
             }
 
             // Add armed class to status dot when buzzers are armed
@@ -2971,11 +2988,12 @@ class HostControl {
                 <div class="buzzer-info">
                     <div class="buzzer-header">
                         <span class="buzzer-id">#${device.device_id}</span>
+                        ${showHeartbeatDot ? '<span class="heartbeat-dot">🔴</span>' : ''}
                         <span class="buzzer-status-dot ${isOnline ? 'online' : 'offline'}${dotArmedClass}"></span>
                     </div>
                     <div class="buzzer-details">
                         ${teamName ? `<div class="team-name">${teamName}</div>` : '<div class="no-team">No team assigned</div>'}
-                        <div class="last-seen">${lastSeenText}</div>
+                        <div class="connection-status">${statusText}</div>
                         ${batteryStatus}
                     </div>
                 </div>
@@ -3020,19 +3038,14 @@ class HostControl {
                         // Preserve battery data from heartbeats if server doesn't provide it
                         const preservedData = {};
                         if (existingDevice) {
-                            // Debug logging for battery data preservation
-                            console.log(`[BATTERY PRESERVE] Device ${deviceId}: server_battery=${device.battery_percentage}, existing_battery=${existingDevice.battery_percentage}`);
-
                             if (device.battery_percentage === null || device.battery_percentage === undefined) {
                                 if (existingDevice.battery_percentage !== null && existingDevice.battery_percentage !== undefined) {
                                     preservedData.battery_percentage = existingDevice.battery_percentage;
-                                    console.log(`[BATTERY PRESERVE] Preserving battery_percentage=${existingDevice.battery_percentage} for device ${deviceId}`);
                                 }
                             }
                             if (device.battery_voltage === null || device.battery_voltage === undefined) {
                                 if (existingDevice.battery_voltage !== null && existingDevice.battery_voltage !== undefined) {
                                     preservedData.battery_voltage = existingDevice.battery_voltage;
-                                    console.log(`[BATTERY PRESERVE] Preserving battery_voltage=${existingDevice.battery_voltage} for device ${deviceId}`);
                                 }
                             }
                         }

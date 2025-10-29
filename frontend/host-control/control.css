@@ -555,30 +555,32 @@ body {
   align-items: center;
   gap: 16px;
   margin-bottom: 12px;
+  justify-content: flex-end;
 }
 
 .answerer-badge .position {
   background: linear-gradient(135deg, var(--waze-accent), #FFA726);
   color: white;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 1.125rem;
   text-shadow: 0 1px 2px rgba(0,0,0,0.3);
   box-shadow: var(--md-sys-elevation-level1);
 }
 
 .answerer-info {
   flex: 1;
+  text-align: right;
 }
 
 .answerer-info strong {
   display: block;
-  font-size: 1.1rem;
+  font-size: 1.25rem;
   font-weight: 600;
   color: var(--md-sys-color-on-surface);
   margin-bottom: 4px;
@@ -586,12 +588,12 @@ body {
 
 .answerer-info small {
   color: var(--md-sys-color-outline);
-  font-size: 0.9rem;
+  font-size: 1rem;
 }
 
 .answerer-status {
-  text-align: center;
-  padding: 8px 16px;
+  text-align: right;
+  padding: 10px 20px;
   background: rgba(255, 255, 255, 0.8);
   border-radius: 12px;
   backdrop-filter: blur(10px);
@@ -600,7 +602,7 @@ body {
 .status-text {
   font-weight: 600;
   color: var(--waze-primary);
-  font-size: 0.95rem;
+  font-size: 1.125rem;
 }
 
 /* Answer Result Feedback */

@@ -2931,11 +2931,16 @@ class HostControl {
         
         buzzers.forEach(device => {
             const buzzerElement = document.createElement('div');
+
+            // Add selected class if this buzzer is in the selection set
+            const isSelected = this.selectedBuzzers.has(device.device_id.toString());
+            const selectedClass = isSelected ? ' selected' : '';
+
             // Add armed class to online buzzers when buzzers are armed
             const armedClass = (isOnline && this.isBuzzersArmed) ? ' armed' : '';
             buzzerElement.className = `buzzer-item ${isOnline ? 'online' : 'offline'}${armedClass}${selectedClass}`;
             buzzerElement.setAttribute('data-buzzer-id', device.device_id.toString());
-            
+
             const teamName = this.getTeamNameByBuzzerId(device.device_id);
             // For online devices: show last_seen (live stream), for offline: show last_online (when last online)
             let timeSinceDisplay, lastSeenText;
@@ -2948,15 +2953,11 @@ class HostControl {
                 timeSinceDisplay = device.last_online ? Date.now() - device.last_online : null;
                 lastSeenText = timeSinceDisplay ? this.formatLastSeen(timeSinceDisplay) : 'never';
             }
-            
+
             // Add armed class to status dot when buzzers are armed
             const dotArmedClass = (isOnline && this.isBuzzersArmed) ? ' armed' : '';
 
             const batteryStatus = this.formatBatteryStatus(device.battery_percentage, device.battery_voltage);
-
-            // Add selected class if this buzzer is in the selection set
-            const isSelected = this.selectedBuzzers.has(device.device_id.toString());
-            const selectedClass = isSelected ? ' selected' : '';
 
             buzzerElement.innerHTML = `
                 <div class="buzzer-info">

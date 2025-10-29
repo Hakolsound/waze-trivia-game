@@ -1256,15 +1256,15 @@ class GameDisplay {
             return;
         }
 
-        container.innerHTML = teams.map((team, index) => {
+        let teamsHtml = teams.map((team, index) => {
             const position = index + 1;
             const isTop3 = position <= 3;
             const isWinner = position === 1;
-            
+
             // Get position icon and styling
             let positionIcon = '';
             let rankClass = '';
-            
+
             if (position === 1) {
                 positionIcon = '👑';
                 rankClass = 'rank-first';
@@ -1281,9 +1281,9 @@ class GameDisplay {
                 positionIcon = '📍';
                 rankClass = 'rank-standard';
             }
-            
+
             return `
-                <div class="ranked-team-item ${rankClass} ${isTop3 ? 'top-three' : ''} ${isWinner ? 'winner' : ''}" 
+                <div class="ranked-team-item ${rankClass} ${isTop3 ? 'top-three' : ''} ${isWinner ? 'winner' : ''}"
                      style="animation-delay: ${index * 100}ms">
                     <div class="team-rank-section">
                         <div class="position-icon">${positionIcon}</div>

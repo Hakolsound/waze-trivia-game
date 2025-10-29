@@ -363,6 +363,13 @@ void handleBinaryCommand(CommandMessage cmd) {
         // Disarm specific buzzer
         Serial.printf("[COORD] Received DISARM command for device %d - forwarding to buzzer\n", cmd.targetDevice);
         if (sendCommandWithAck(cmd.targetDevice, CMD_DISARM)) {
+          // Update coordinator's internal state immediately when command is sent
+          for (int i = 0; i < registeredDeviceCount; i++) {
+            if (devices[i].deviceId == cmd.targetDevice) {
+              devices[i].isArmed = false;
+              break;
+            }
+          }
           Serial.printf("[COORD] DISARM command forwarded to device %d\n", cmd.targetDevice);
         } else {
           Serial.printf("[COORD] ERROR: Failed to disarm device %d\n", cmd.targetDevice);
@@ -721,8 +728,12 @@ void handleHeartbeat(Message msg) {
     if (devices[i].deviceId == msg.deviceId) {
       devices[i].lastHeartbeat = millis();
       devices[i].isOnline = true;
-      devices[i].isArmed = (msg.data[0] == 1);
-      devices[i].isPressed = (msg.data[1] == 1);
+      // IMPORTANT: Don't update armed/pressed state from heartbeats!
+      // Coordinator is the source of truth for device states.
+      // Only command ACKs should confirm state changes.
+      // This prevents race conditions where heartbeats arrive before commands.
+      // devices[i].isArmed = (msg.data[0] == 1);  // REMOVED
+      // devices[i].isPressed = (msg.data[1] == 1);  // REMOVED
 
       // Parse battery data (added in group buzzer firmware)
       devices[i].batteryPercentage = msg.data[2];
@@ -753,8 +764,12 @@ void handleStatusUpdate(Message msg) {
     if (devices[i].deviceId == msg.deviceId) {
       devices[i].lastHeartbeat = millis();
       devices[i].isOnline = true;
-      devices[i].isArmed = (msg.data[0] == 1);
-      devices[i].isPressed = (msg.data[1] == 1);
+      // IMPORTANT: Don't update armed/pressed state from status updates!
+      // Coordinator is the source of truth for device states.
+      // Only command ACKs should confirm state changes.
+      // This prevents race conditions where status updates arrive before commands.
+      // devices[i].isArmed = (msg.data[0] == 1);  // REMOVED
+      // devices[i].isPressed = (msg.data[1] == 1);  // REMOVED
 
       // Parse battery data from status update (uses data[3] and data[4], data[5] for battery)
       devices[i].batteryPercentage = msg.data[3];
@@ -1098,6 +1113,8 @@ void armAllBuzzers() {
   for (int i = 0; i < registeredDeviceCount; i++) {
     if (devices[i].isRegistered) {
       if (sendCommandWithAck(devices[i].deviceId, CMD_ARM)) {
+        // Update coordinator's internal state immediately when command is sent
+        devices[i].isArmed = true;
         sent++;
       } else {
         failed++;
@@ -1124,6 +1141,8 @@ void disarmAllBuzzers() {
   for (int i = 0; i < registeredDeviceCount; i++) {
     if (devices[i].isOnline) {
       if (sendCommandWithAck(devices[i].deviceId, CMD_DISARM)) {
+        // Update coordinator's internal state immediately when command is sent
+        devices[i].isArmed = false;
         sent++;
       } else {
         failed++;
@@ -1196,6 +1215,8 @@ void armSpecificBuzzers(String deviceList) {
           Serial.println(i);
 
           if (sendCommandWithAck(deviceId, CMD_ARM)) {
+            // Update coordinator's internal state immediately when command is sent
+            devices[i].isArmed = true;
             armedCount++;
             sent++;
             Serial.print("DEBUG:Successfully armed device ");
@@ -1260,6 +1281,8 @@ void armSpecificBuzzersByBitmask(uint16_t bitmask) {
           Serial.printf("[ARM_SPECIFIC] Found device %d online, sending ARM\n", deviceId);
 
           if (sendCommandWithAck(deviceId, CMD_ARM)) {
+            // Update coordinator's internal state immediately when command is sent
+            devices[i].isArmed = true;
             armedCount++;
             sent++;
           } else {

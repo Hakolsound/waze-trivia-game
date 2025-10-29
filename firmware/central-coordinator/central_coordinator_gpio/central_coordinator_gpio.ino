@@ -1280,32 +1280,28 @@ void armSpecificBuzzersByBitmask(uint16_t bitmask) {
   for (uint8_t deviceId = 1; deviceId <= 15; deviceId++) {
     // Check if this device's bit is set in the bitmask
     if (bitmask & (1 << deviceId)) {
-      Serial.printf("[ARM_SPECIFIC] Bitmask bit %d set, looking for device %d\n", deviceId, deviceId);
+      Serial.printf("[ARM_SPECIFIC] Bitmask bit %d set, arming device %d\n", deviceId, deviceId);
 
-      // Find device by ID and send ARM command
-      bool found = false;
-      for (int i = 0; i < registeredDeviceCount; i++) {
-        if (devices[i].deviceId == deviceId && devices[i].isOnline) {
-          Serial.printf("[ARM_SPECIFIC] Found device %d online, sending ARM\n", deviceId);
-
-          if (sendCommandWithAck(deviceId, CMD_ARM)) {
-            // Update coordinator's internal state immediately when command is sent
+      // Send ARM command directly without checking online status
+      // The ACK system will handle retries if device is offline
+      // This ensures instant re-arm for all devices in bitmask
+      if (sendCommandWithAck(deviceId, CMD_ARM)) {
+        // Update coordinator's internal state immediately when command is sent
+        // Find device in array to update state
+        for (int i = 0; i < registeredDeviceCount; i++) {
+          if (devices[i].deviceId == deviceId) {
             devices[i].isArmed = true;
-            armedCount++;
-            sent++;
-          } else {
-            failed++;
-            Serial.printf("[ARM_SPECIFIC] Failed to arm device %d\n", deviceId);
+            break;
           }
-          found = true;
-          // No delay - send commands as fast as possible for instant re-arm
-          // ACK system handles reliability without artificial delays
-          break;
         }
+        armedCount++;
+        sent++;
+      } else {
+        failed++;
+        Serial.printf("[ARM_SPECIFIC] Failed to send ARM to device %d\n", deviceId);
       }
-      if (!found) {
-        Serial.printf("[ARM_SPECIFIC] Device %d not found in registered/online devices\n", deviceId);
-      }
+      // No delay - send commands as fast as possible for instant re-arm
+      // ACK system handles reliability without artificial delays
     }
   }
 

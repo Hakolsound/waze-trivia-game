@@ -207,7 +207,7 @@ body {
   background: rgba(255, 255, 255, 0.08);
   padding: 1px 3px;
   border-radius: 3px;
-  font-size: 6px;
+  font-size: 8px;
   gap: 0;
 }
 
@@ -3102,7 +3102,7 @@ kbd {
 
 .buzzer-id {
     font-weight: 600;
-    font-size: 11px;
+    font-size: 13px;
     color: #ffffff;
     line-height: 1;
     background: none;
@@ -3119,7 +3119,7 @@ kbd {
 }
 
 .team-name {
-    font-size: 8px;
+    font-size: 10px;
     font-weight: 500;
     color: #ffffff;
     line-height: 1;
@@ -3131,7 +3131,7 @@ kbd {
 }
 
 .no-team {
-    font-size: 7px;
+    font-size: 9px;
     color: var(--md-sys-color-outline);
     font-style: italic;
     line-height: 1;
@@ -3140,7 +3140,7 @@ kbd {
 }
 
 .connection-status {
-    font-size: 6px;
+    font-size: 8px;
     color: var(--md-sys-color-outline);
     line-height: 1;
     margin: 0;
@@ -3641,7 +3641,7 @@ kbd {
     display: flex;
     align-items: center;
     gap: 1px;
-    font-size: 6px;
+    font-size: 8px;
     font-weight: 500;
     margin-top: 1px;
     padding: 1px 2px;
@@ -3680,7 +3680,7 @@ kbd {
 }
 
 .battery-icon {
-    font-size: 6px;
+    font-size: 8px;
     line-height: 1;
 }
 

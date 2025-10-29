@@ -3007,12 +3007,25 @@ class HostControl {
                     // Only accept numeric device IDs (1, 2, 3, 4) not text ones (buzzer_1, etc)
                     if (deviceId && /^\d+$/.test(deviceId.toString())) {
                         const existingDevice = this.buzzerDevices.get(deviceId);
+
+                        // Preserve battery data from heartbeats if server doesn't provide it
+                        const preservedData = {};
+                        if (existingDevice) {
+                            if (device.battery_percentage === null || device.battery_percentage === undefined) {
+                                preservedData.battery_percentage = existingDevice.battery_percentage;
+                            }
+                            if (device.battery_voltage === null || device.battery_voltage === undefined) {
+                                preservedData.battery_voltage = existingDevice.battery_voltage;
+                            }
+                        }
+
                         this.buzzerDevices.set(deviceId, {
                             // Default to offline
                             status: 'offline',
                             online: false,
                             ...existingDevice, // Keep existing data (like last_seen from socket events)
                             ...device, // Overlay server data
+                            ...preservedData, // Preserve battery data that wasn't provided by server
                             server_reported: true,
                             last_online: device.last_online // Preserve last_online from backend
                         });

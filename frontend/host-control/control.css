@@ -3822,7 +3822,7 @@ kbd {
 }
 
 /* Buzzer Controls Section */
-.buzzer-controls {
+.buzzer-control-buttons {
     display: flex;
     flex-direction: column;
     gap: 8px;

@@ -1661,9 +1661,13 @@ class HostControl {
             const buzzerIds = selectedBuzzers.map(b => b.buzzerId);
             console.log('Selected buzzers to arm:', buzzerIds);
 
-            // For now, arm all online buzzers (until selective API is implemented)
-            const response = await fetch(`/api/buzzers/arm/${this.currentGame.id}`, {
-                method: 'POST'
+            // Send only the selected buzzer IDs to the selective arming endpoint
+            const response = await fetch(`/api/buzzers/arm-selected/${this.currentGame.id}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ buzzerIds })
             });
 
             if (response.ok) {
@@ -1677,7 +1681,8 @@ class HostControl {
                     checkbox.checked = false;
                 });
             } else {
-                throw new Error('Failed to arm selected buzzers');
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to arm selected buzzers');
             }
         } catch (error) {
             console.error('Failed to arm selected buzzers:', error);

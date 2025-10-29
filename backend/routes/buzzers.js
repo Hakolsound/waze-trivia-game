@@ -68,5 +68,20 @@ module.exports = (esp32Service) => {
     }
   });
 
+  // Arm specific buzzers
+  router.post('/arm-selected/:gameId', async (req, res) => {
+    try {
+      const { buzzerIds } = req.body;
+      if (!buzzerIds || !Array.isArray(buzzerIds) || buzzerIds.length === 0) {
+        return res.status(400).json({ error: 'buzzerIds array is required' });
+      }
+
+      const result = await esp32Service.armSpecificBuzzers(req.params.gameId, buzzerIds);
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   return router;
 };

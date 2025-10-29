@@ -5,6 +5,20 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 const path = require('path');
 
+// Add timestamps to all console output
+const originalLog = console.log;
+const originalError = console.error;
+const originalWarn = console.warn;
+
+const getTimestamp = () => {
+  const now = new Date();
+  return now.toISOString().split('T')[1].split('.')[0] + '.' + now.getMilliseconds().toString().padStart(3, '0');
+};
+
+console.log = (...args) => originalLog(`[${getTimestamp()}]`, ...args);
+console.error = (...args) => originalError(`[${getTimestamp()}]`, ...args);
+console.warn = (...args) => originalWarn(`[${getTimestamp()}]`, ...args);
+
 const Database = require('./services/database');
 const GameService = require('./services/gameService');
 const ESP32Service = require('./services/esp32Service');

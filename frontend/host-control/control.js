@@ -3184,9 +3184,18 @@ class HostControl {
                 this.buzzerDevices = new Map();
             }
             
-            // Get existing device data to preserve last_online timestamp
+            // Get existing device data to preserve last_online timestamp and battery data
             const existingDevice = this.buzzerDevices.get(deviceId) || {};
-            
+
+            // Preserve battery data from heartbeats if it exists
+            const preservedData = {};
+            if (existingDevice.battery_percentage !== undefined && existingDevice.battery_percentage !== null) {
+                preservedData.battery_percentage = existingDevice.battery_percentage;
+            }
+            if (existingDevice.battery_voltage !== undefined && existingDevice.battery_voltage !== null) {
+                preservedData.battery_voltage = existingDevice.battery_voltage;
+            }
+
             const deviceData = {
                 device_id: deviceId,
                 name: `Buzzer ${deviceId}`,
@@ -3200,7 +3209,9 @@ class HostControl {
                 reported_online: reportedOnline,
                 time_since_last_seen: timeSinceLastSeen,
                 // Preserve or update last_online timestamp
-                last_online: actuallyOnline ? (existingDevice.last_online || now) : existingDevice.last_online
+                last_online: actuallyOnline ? (existingDevice.last_online || now) : existingDevice.last_online,
+                // Preserve battery data from heartbeats
+                ...preservedData
             };
             
             this.buzzerDevices.set(deviceId, deviceData);

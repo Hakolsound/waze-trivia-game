@@ -160,11 +160,18 @@ class GameService {
       console.log(`[START] FORCE clearing previous answered buzzers: [${existingGameState.answeredBuzzers.map(ab => ab.buzzer_id).join(', ')}]`);
     }
 
-    // Set up the new timeout - just notify when time is up, don't auto-end
+    // Set up the new timeout - notify when time is up, then auto-end after 5 seconds
     const timeoutId = setTimeout(() => {
-      console.log(`[TIMER] Time expired for game ${gameId} - waiting for host to manually advance`);
+      console.log(`[TIMER] Time expired for game ${gameId} - will auto-end in 5 seconds`);
       this.io.to(`game-${gameId}`).emit('timer-expired', { gameId });
       this.io.to('control-panel').emit('timer-expired', { gameId });
+
+      // Auto-end round 5 seconds after timer expiration
+      setTimeout(async () => {
+        console.log(`[TIMER] Auto-ending round for game ${gameId} after 5 second grace period`);
+        await this.endQuestion(gameId);
+        await this.prepareNextQuestion(gameId);
+      }, 5000);
     }, currentQuestion.time_limit * 1000);
 
     this.activeGames.set(gameId, {
@@ -271,15 +278,28 @@ class GameService {
 
       if (remainingTime > 0) {
         gameState.timeoutId = setTimeout(() => {
-          console.log(`[TIMER] Time expired for game ${gameId} - waiting for host to manually advance`);
+          console.log(`[TIMER] Time expired for game ${gameId} - will auto-end in 5 seconds`);
           this.io.to(`game-${gameId}`).emit('timer-expired', { gameId });
           this.io.to('control-panel').emit('timer-expired', { gameId });
+
+          // Auto-end round 5 seconds after timer expiration
+          setTimeout(async () => {
+            console.log(`[TIMER] Auto-ending round for game ${gameId} after 5 second grace period`);
+            await this.endQuestion(gameId);
+            await this.prepareNextQuestion(gameId);
+          }, 5000);
         }, remainingTime);
       } else {
-        // Time already expired, just notify
-        console.log(`[TIMER] Time already expired for game ${gameId} - waiting for host to manually advance`);
+        // Time already expired, auto-end immediately (no 5 second wait since time already passed)
+        console.log(`[TIMER] Time already expired for game ${gameId} - auto-ending immediately`);
         this.io.to(`game-${gameId}`).emit('timer-expired', { gameId });
         this.io.to('control-panel').emit('timer-expired', { gameId });
+
+        setTimeout(async () => {
+          console.log(`[TIMER] Auto-ending round for game ${gameId}`);
+          await this.endQuestion(gameId);
+          await this.prepareNextQuestion(gameId);
+        }, 0);
         return;
       }
 

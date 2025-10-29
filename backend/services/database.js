@@ -156,7 +156,16 @@ class Database {
         console.error('Error adding allow_negative_scores column:', error.message);
       }
     }
-    
+
+    // Add display_font_size column to existing games if it doesn't exist
+    try {
+      await this.run('ALTER TABLE games ADD COLUMN display_font_size INTEGER DEFAULT 100');
+    } catch (error) {
+      if (!error.message.includes('duplicate column name')) {
+        console.error('Error adding display_font_size column:', error.message);
+      }
+    }
+
     // Add branding columns to existing games if they don't exist
     const brandingColumns = [
       ['logo_url', 'TEXT'],

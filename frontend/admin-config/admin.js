@@ -3382,7 +3382,7 @@ class AdminConfig {
     enableHardwareFailureDetection() {
         this.hardwareFailureDetection.enabled = true;
         console.log('Hardware failure detection enabled');
-        this.showToast('Hardware failure detection enabled - virtual buzzers will automatically activate for failed devices', 'info');
+        // Toast notification removed - this is expected behavior when virtual buzzers are enabled
     }
 
     disableHardwareFailureDetection() {

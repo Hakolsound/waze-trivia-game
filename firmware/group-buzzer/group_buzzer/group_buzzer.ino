@@ -139,7 +139,7 @@ unsigned long correctAnswerStartTime = 0;
 CRGB leds[NUM_LEDS];
 
 // Device configuration
-#define DEVICE_ID 3  // Change this for each group buzzer (1, 2, 3, etc.)
+#define DEVICE_ID 5  // Change this for each group buzzer (1, 2, 3, etc.)
 #define MAX_GROUPS 15
 // Previous coordinator MAC address (backup)
 // #define COORDINATOR_MAC {0x78, 0xE3, 0x6D, 0x1B, 0x13, 0x28}
@@ -964,9 +964,19 @@ void sendChannelChangeAck() {
   memset(ackMsg.data, 0, sizeof(ackMsg.data));
   ackMsg.data[0] = currentWifiChannel; // Include current channel for verification
 
+  Serial.printf("[CHANNEL_ACK] *** SENDING CHANNEL_CHANGE_ACK *** to coordinator, device %d, channel %d\n",
+                DEVICE_ID, currentWifiChannel);
+  Serial.printf("[CHANNEL_ACK] Coordinator MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
+                coordinatorMAC[0], coordinatorMAC[1], coordinatorMAC[2],
+                coordinatorMAC[3], coordinatorMAC[4], coordinatorMAC[5]);
+
   esp_err_t result = esp_now_send(coordinatorMAC, (uint8_t*)&ackMsg, sizeof(ackMsg));
-  Serial.printf("[CHANNEL_ACK] Sent channel change ACK for channel %d, result: %s\n",
-                currentWifiChannel, result == ESP_OK ? "SUCCESS" : "FAILED");
+  Serial.printf("[CHANNEL_ACK] Send result: %s (error code: %d)\n",
+                result == ESP_OK ? "SUCCESS" : "FAILED", result);
+
+  if (result != ESP_OK) {
+    Serial.printf("[CHANNEL_ACK] ESP-NOW send failed with error: %s\n", esp_err_to_name(result));
+  }
 }
 
 void handleCommand(Command cmd) {
@@ -1048,11 +1058,14 @@ void handleCommand(Command cmd) {
 
       // CRITICAL: Send ACK BEFORE changing channel to avoid communication loss
       // Once we change channel, we can't communicate with coordinator on old channel
-      Serial.printf("[CMD] Sending ACK before channel change to %d\n", cmd.targetDevice);
+      Serial.printf("[CMD] Sending ACK for channel change to %d (current channel: %d)\n",
+                   cmd.targetDevice, currentWifiChannel);
       sendChannelChangeAck();
 
       // Small delay to ensure ACK is sent before channel change
-      delay(50);
+      Serial.println("[CMD] Waiting 100ms for ACK to be sent...");
+      delay(100);
+      Serial.println("[CMD] Now proceeding with channel change...");
 
       // Now change the channel
       if (setWifiChannel(cmd.targetDevice)) {

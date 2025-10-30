@@ -641,7 +641,7 @@ void OnDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *data, int l
            recv_info->src_addr[3], recv_info->src_addr[4], recv_info->src_addr[5]);
 
   if (channelChangeState.inProgress) {
-    Serial.printf("[ESP-NOW] Received %d bytes from: %s (channel change in progress)\n", len, macStr);
+    Serial.printf("[ESP-NOW] *** MESSAGE RECEIVED DURING CHANNEL CHANGE *** %d bytes from: %s\n", len, macStr);
   } else if (TEXT_DEBUG_ENABLED) {
     Serial.printf("Received %d bytes from: %s\n", len, macStr);
   }
@@ -677,7 +677,7 @@ void OnDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *data, int l
         handleEndRoundAck(msg.deviceId);
         break;
       case 9: // CHANNEL_CHANGE_ACK
-        Serial.printf("[ESP-NOW] Processing CHANNEL_CHANGE_ACK from device %d\n", msg.deviceId);
+        Serial.printf("[ESP-NOW] *** CHANNEL_CHANGE_ACK RECEIVED *** from device %d\n", msg.deviceId);
         handleChannelChangeAck(msg.deviceId);
         break;
       default:

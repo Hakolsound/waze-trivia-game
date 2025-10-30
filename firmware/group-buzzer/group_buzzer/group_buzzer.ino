@@ -851,7 +851,9 @@ void loop() {
   checkBatteryLevel();
 
   // Send periodic heartbeat
-  if (currentTime - lastHeartbeat > HEARTBEAT_INTERVAL_MS) {
+  // During channel scanning, send more frequently to quickly detect coordinator
+  unsigned long heartbeatInterval = isScanning ? 500 : HEARTBEAT_INTERVAL_MS; // 500ms during scan, 5s normally
+  if (currentTime - lastHeartbeat > heartbeatInterval) {
     sendHeartbeat();
     lastHeartbeat = currentTime;
   }

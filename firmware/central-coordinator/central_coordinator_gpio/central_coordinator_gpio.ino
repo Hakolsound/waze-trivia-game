@@ -449,7 +449,9 @@ void sendBinaryStatus() {
 }
 
 void processBinaryCommands() {
-  if (TEXT_DEBUG_ENABLED) {
+  if (channelChangeState.inProgress) {
+    Serial.printf("[COORD] *** PROCESSING BINARY COMMANDS DURING CHANNEL CHANGE *** (%d bytes available)\n", Serial.available());
+  } else if (TEXT_DEBUG_ENABLED) {
     Serial.printf("[COORD] Processing binary commands... (%d bytes available)\n", Serial.available());
   }
 
@@ -766,7 +768,9 @@ void loop() {
 
   if (Serial.available()) {
     serialTimeoutLogged = false; // Reset timeout flag when we see data
-    if (TEXT_DEBUG_ENABLED) {
+    if (channelChangeState.inProgress) {
+      Serial.printf("[COORD] *** SERIAL DATA DETECTED DURING CHANNEL CHANGE *** %d bytes available\n", Serial.available());
+    } else if (TEXT_DEBUG_ENABLED) {
       Serial.printf("[COORD] Serial data detected: %d bytes available at time %lu (gap: %lu ms)\n",
                    Serial.available(), currentTime, currentTime - lastSerialCheck);
     }

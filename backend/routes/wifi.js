@@ -173,7 +173,7 @@ router.post('/channel', async (req, res) => {
     const changePromise = new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error('Channel change timeout - ESP32 coordinator not responding'));
-      }, 10000); // 10 second timeout for channel change
+      }, 3000); // 3 second timeout for channel change (ESP-NOW is fast)
 
       const onChangeComplete = (data) => {
         clearTimeout(timeout);

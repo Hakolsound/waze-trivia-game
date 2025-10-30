@@ -260,8 +260,9 @@ bool startChannelChange(uint8_t targetChannel) {
 
   Serial.printf("[CHANNEL] Notified %d/%d online devices\n", notified, registeredDeviceCount);
 
-  // Small delay to allow notifications to be sent before channel change
-  delay(50);
+  // Delay to ensure all notifications are sent and received before channel change
+  // 200ms allows time for ESP-NOW transmission and buzzer processing
+  delay(200);
 
   // Change coordinator channel immediately
   esp_err_t result = esp_wifi_set_channel(targetChannel, WIFI_SECOND_CHAN_NONE);

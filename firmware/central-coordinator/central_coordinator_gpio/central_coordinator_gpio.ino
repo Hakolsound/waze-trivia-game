@@ -111,12 +111,6 @@ EndRoundStatus endRoundTracking[MAX_GROUPS];
 bool endRoundInProgress = false;
 unsigned long endRoundStartTime = 0;
 
-// Global WiFi management state
-WifiScanState wifiScanState = {false, 0, 0, {}, 0};
-ChannelChangeState channelChangeState = {false, 0, 0, 0, 0, false};
-
-// Current WiFi channel (global variable)
-uint8_t currentWifiChannel = 13; // Default channel
 #define END_ROUND_RETRY_INTERVAL_MS 200  // Retry every 200ms
 #define END_ROUND_MAX_RETRIES 5          // Up to 5 retries (1 second total)
 
@@ -186,6 +180,13 @@ typedef struct {
   bool isActive;
 } PendingCommand;
 
+// Global WiFi management state
+WifiScanState wifiScanState = {false, 0, 0, {}, 0};
+ChannelChangeState channelChangeState = {false, 0, 0, 0, 0, false};
+
+// Current WiFi channel (global variable)
+uint8_t currentWifiChannel = 13; // Default channel
+
 PendingCommand pendingCommands[MAX_PENDING_COMMANDS];
 uint16_t nextSequenceId = 1;
 
@@ -210,6 +211,28 @@ bool verifyChecksum(uint8_t* data, int len) {
 // =========================================
 // WiFi Channel Management Functions
 // =========================================
+
+// Set WiFi channel for coordinator
+bool setWifiChannel(uint8_t channel) {
+  // Validate channel range
+  if (channel < 1 || channel > 13) {
+    Serial.printf("[CHANNEL] ERROR: Invalid channel %d - must be 1-13\n", channel);
+    return false;
+  }
+
+  // Always attempt to set the channel
+  Serial.printf("[CHANNEL] Setting coordinator channel to %d (was %d)\n", channel, currentWifiChannel);
+
+  esp_err_t result = esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
+  if (result != ESP_OK) {
+    Serial.printf("[CHANNEL] ERROR: Failed to set coordinator channel %d (ESP error %d)\n", channel, result);
+    return false;
+  }
+
+  currentWifiChannel = channel;
+  Serial.printf("[CHANNEL] SUCCESS: Coordinator channel set to %d\n", channel);
+  return true;
+}
 
 // Calculate channel quality score (0-100)
 uint8_t calculateChannelQuality(int8_t rssi, uint8_t networkCount) {
@@ -327,16 +350,12 @@ bool startWifiScan() {
     .bssid = NULL,
     .channel = 0, // Scan all channels
     .show_hidden = false,
-    .scan_type = WIFI_SCAN_TYPE_ACTIVE,
-    .scan_time.active = {
-      .min = WIFI_SCAN_DURATION_MS / 1000,
-      .max = WIFI_SCAN_DURATION_MS / 1000
-    },
-    .scan_time.passive = {
-      .min = 0,
-      .max = 0
-    }
+    .scan_type = WIFI_SCAN_TYPE_ACTIVE
   };
+  scanConfig.scan_time.active.min = WIFI_SCAN_DURATION_MS / 1000;
+  scanConfig.scan_time.active.max = WIFI_SCAN_DURATION_MS / 1000;
+  scanConfig.scan_time.passive.min = 0;
+  scanConfig.scan_time.passive.max = 0;
 
   wifiScanState.inProgress = true;
   wifiScanState.startTime = millis();

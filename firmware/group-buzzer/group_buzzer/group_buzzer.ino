@@ -373,6 +373,14 @@ void OnDataSent(const wifi_tx_info_t *tx_info, esp_now_send_status_t status) {
 void OnDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *incomingData, int len) {
   Serial.printf("ESP-NOW received %d bytes\n", len);
 
+  // If we're scanning and received ANY data from coordinator, we found it!
+  if (isScanning) {
+    Serial.printf("[CHANNEL] Received data from coordinator on channel %d - stopping scan\n", currentWifiChannel);
+    stopChannelScan();
+    consecutiveHeartbeatFailures = 0;
+    lastSuccessfulHeartbeat = millis();
+  }
+
   // Distinguish between Message (16 bytes) and Command (12 bytes) by length
   // Message: 1 (type) + 1 (deviceId) + 4 (timestamp) + 8 (data) + 2 (padding) = 16 bytes
   // Command: 1 (command) + 1 (target) + 4 (timestamp) + 2 (seq) + 1 (retry) + 1 (reserved) = 12 bytes
@@ -1579,18 +1587,21 @@ void sendHeartbeat() {
       startChannelScan();
     }
   } else {
-    // Heartbeat succeeded - reset failure counter
-    if (consecutiveHeartbeatFailures > 0) {
-      Serial.printf("[CHANNEL] Heartbeat succeeded - resetting failure counter (was %d)\n", consecutiveHeartbeatFailures);
-    }
-    consecutiveHeartbeatFailures = 0;
-    lastSuccessfulHeartbeat = millis();
+    // Heartbeat send queued successfully (ESP_OK)
+    // NOTE: ESP_OK means "queued for sending", NOT "delivered successfully"
+    // The actual delivery confirmation comes from OnDataSent callback
+    // We should NOT stop scanning based on ESP_OK alone!
 
-    // If we were scanning, stop now - we found the coordinator
-    if (isScanning) {
-      Serial.printf("[CHANNEL] Coordinator found on channel %d - stopping scan\n", currentWifiChannel);
-      stopChannelScan();
+    // During scanning, ignore ESP_OK - only stop when we receive data FROM coordinator
+    if (!isScanning) {
+      // Not scanning - normal operation, reset failure counter
+      if (consecutiveHeartbeatFailures > 0) {
+        Serial.printf("[CHANNEL] Heartbeat queued - resetting failure counter (was %d)\n", consecutiveHeartbeatFailures);
+      }
+      consecutiveHeartbeatFailures = 0;
+      lastSuccessfulHeartbeat = millis();
     }
+    // If scanning, don't reset failure counter - let OnDataRecv handle it when we receive confirmation
   }
 }
 

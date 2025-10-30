@@ -29,6 +29,10 @@ router.post('/scan', async (req, res) => {
     // Parse iwlist output
     const channels = parseIwlistOutput(stdout);
 
+    // Debug: show how many networks were found
+    const totalNetworks = channels.reduce((sum, ch) => sum + ch.networkCount, 0);
+    console.log(`Total WiFi networks found: ${totalNetworks}`);
+
     console.log('Parsed WiFi scan results:', channels.map(ch =>
       `CH${ch.channel}: ${ch.score}pts (${ch.quality}) - RSSI:${ch.signal}dBm, Networks:${ch.networkCount}`
     ));
@@ -195,9 +199,10 @@ router.post('/channel', async (req, res) => {
 
 // Parse iwlist scan output
 function parseIwlistOutput(output) {
+  console.log('Raw iwlist output (first 200 chars):', output.substring(0, 200));
+
   const lines = output.split('\n');
   const channels = [];
-  let currentCell = null;
 
   // Initialize channels 1-13 with default values
   for (let i = 1; i <= 13; i++) {
@@ -210,57 +215,72 @@ function parseIwlistOutput(output) {
     };
   }
 
+  let currentCell = null;
+
   for (const line of lines) {
     const trimmed = line.trim();
 
-    // Start of a new cell
+    // Start of a new cell - iwlist format: "Cell XX - Address: ..."
     if (trimmed.startsWith('Cell ')) {
+      // Save previous cell if it exists
+      if (currentCell && currentCell.channel) {
+        const channel = currentCell.channel;
+        if (channel >= 1 && channel <= 13) {
+          channels[channel].networkCount++;
+          if (currentCell.signalDbm && currentCell.signalDbm > channels[channel].signal) {
+            channels[channel].signal = currentCell.signalDbm;
+          }
+        }
+      }
+
       currentCell = {};
     }
 
-    // Channel information
-    else if (trimmed.startsWith('Channel:')) {
+    // Channel information - format: "Channel:X"
+    else if (trimmed.startsWith('Channel:') && currentCell) {
       const channelMatch = trimmed.match(/Channel:(\d+)/);
-      if (channelMatch && currentCell) {
+      if (channelMatch) {
         currentCell.channel = parseInt(channelMatch[1]);
       }
     }
 
-    // Signal level (quality)
-    else if (trimmed.startsWith('Quality=')) {
-      const qualityMatch = trimmed.match(/Quality=(\d+)\/(\d+)\s+Signal level=(-?\d+)/);
-      if (qualityMatch && currentCell) {
+    // Signal level - multiple possible formats:
+    // "Quality=X/Y  Signal level=Z dBm"
+    // "Signal level=Z/Y"
+    else if (currentCell) {
+      // Try different signal level patterns
+      let signalMatch = trimmed.match(/Signal level[=:](\d+)\/(\d+)/);
+      if (signalMatch) {
+        // Signal level format: "65/100" - convert to dBm approximation
+        const signal = parseInt(signalMatch[1]);
+        const maxSignal = parseInt(signalMatch[2]);
+        currentCell.signalDbm = -100 + (signal * 50 / maxSignal); // Rough conversion
+      } else {
+        // Try direct dBm format: "Signal level=-45 dBm"
+        signalMatch = trimmed.match(/Signal level[:=]\s*(-?\d+)\s*dBm/);
+        if (signalMatch) {
+          currentCell.signalDbm = parseInt(signalMatch[1]);
+        }
+      }
+
+      // Also try Quality format as fallback
+      const qualityMatch = trimmed.match(/Quality[=:](\d+)\/(\d+)/);
+      if (qualityMatch && !currentCell.signalDbm) {
         const quality = parseInt(qualityMatch[1]);
         const maxQuality = parseInt(qualityMatch[2]);
-        const signalLevel = parseInt(qualityMatch[3]);
-
-        currentCell.quality = quality;
-        currentCell.maxQuality = maxQuality;
-        currentCell.signalLevel = signalLevel;
-
-        // Convert to dBm if needed (iwlist sometimes shows different formats)
-        if (signalLevel > 0) {
-          // Convert quality percentage to approximate dBm
-          currentCell.signalDbm = -100 + (signalLevel * 0.5); // Rough approximation
-        } else {
-          currentCell.signalDbm = signalLevel; // Already in dBm
-        }
+        currentCell.signalDbm = -100 + (quality * 50 / maxQuality); // Rough conversion
       }
     }
+  }
 
-    // End of cell - process it
-    else if (trimmed === '' && currentCell && currentCell.channel) {
-      const channel = currentCell.channel;
-      if (channel >= 1 && channel <= 13) {
-        // Count networks per channel
-        channels[channel].networkCount++;
-
-        // Use strongest signal for this channel
-        if (currentCell.signalDbm > channels[channel].signal) {
-          channels[channel].signal = currentCell.signalDbm;
-        }
+  // Process the last cell
+  if (currentCell && currentCell.channel) {
+    const channel = currentCell.channel;
+    if (channel >= 1 && channel <= 13) {
+      channels[channel].networkCount++;
+      if (currentCell.signalDbm && currentCell.signalDbm > channels[channel].signal) {
+        channels[channel].signal = currentCell.signalDbm;
       }
-      currentCell = null;
     }
   }
 

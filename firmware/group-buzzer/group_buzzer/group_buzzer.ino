@@ -182,7 +182,7 @@ uint8_t currentWifiChannel = DEFAULT_WIFI_CHANNEL;
 bool channelScanEnabled = false;
 unsigned long lastSuccessfulHeartbeat = 0;
 uint8_t consecutiveHeartbeatFailures = 0;
-#define MAX_HEARTBEAT_FAILURES 3  // Start scanning after 3 failed heartbeats
+#define MAX_HEARTBEAT_FAILURES 100  // Temporarily disable auto-scan (was 3) - TODO: fix race condition
 #define HEARTBEAT_SUCCESS_TIMEOUT_MS 15000  // 15 seconds without response triggers scan
 bool isScanning = false;
 uint8_t scanChannelIndex = 0;

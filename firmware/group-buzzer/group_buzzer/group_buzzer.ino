@@ -139,7 +139,7 @@ unsigned long correctAnswerStartTime = 0;
 CRGB leds[NUM_LEDS];
 
 // Device configuration
-#define DEVICE_ID 3  // Change this for each group buzzer (1, 2, 3, etc.)
+#define DEVICE_ID 6  // Change this for each group buzzer (1, 2, 3, etc.)
 #define MAX_GROUPS 15
 // Previous coordinator MAC address (backup)
 // #define COORDINATOR_MAC {0x78, 0xE3, 0x6D, 0x1B, 0x13, 0x28}
@@ -186,10 +186,12 @@ uint8_t consecutiveHeartbeatFailures = 0;
 #define HEARTBEAT_SUCCESS_TIMEOUT_MS 15000  // 15 seconds without response triggers scan
 bool isScanning = false;
 uint8_t scanChannelIndex = 0;
+uint8_t scanPassCount = 0;  // Track how many full scans completed
 unsigned long lastChannelScanTime = 0;
 #define CHANNEL_SCAN_INTERVAL_MS 2000  // Try each channel for 2 seconds
-uint8_t scanChannels[] = {13, 1, 6, 11};  // Channels to scan (default first, then common channels)
-#define SCAN_CHANNELS_COUNT 4
+#define MAX_SCAN_PASSES 3  // Scan all channels 3 times before giving up
+uint8_t scanChannels[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};  // Scan all 13 channels
+#define SCAN_CHANNELS_COUNT 13
 
 // Message structure for ESP-NOW communication
 typedef struct {
@@ -1072,14 +1074,19 @@ void handleCommand(Command cmd) {
 
     case CMD_CHANGE_CHANNEL: // 8 - CHANGE_CHANNEL
       Serial.printf("[CMD] Device %d RECEIVED CHANGE_CHANNEL notification - coordinator moving to channel %d\n", DEVICE_ID, cmd.targetDevice);
-      Serial.printf("[CMD] Starting immediate channel scan to find coordinator on new channel\n");
+      Serial.printf("[CMD] Will start channel scan after coordinator switches\n");
 
       // Send ACK to acknowledge we received the notification
       sendChannelChangeAck();
 
-      // Start channel scan immediately to find coordinator
+      // Wait for coordinator to switch channels before starting scan
+      // Coordinator waits 200ms after sending notifications, so we wait 300ms to be safe
+      Serial.println("[CMD] Waiting 300ms for coordinator to complete channel switch...");
+      delay(300);
+
+      // Start channel scan to find coordinator on new channel
       // This avoids waiting 15 seconds for heartbeat failures (3 failures x 5 seconds)
-      Serial.printf("[CMD] Triggering immediate channel scan (coordinator is switching now)\n");
+      Serial.printf("[CMD] Starting channel scan to find coordinator\n");
       consecutiveHeartbeatFailures = MAX_HEARTBEAT_FAILURES; // Trigger scan threshold
       startChannelScan();
       break;
@@ -1469,13 +1476,14 @@ void checkBatteryLevel() {
 
 // Channel scanning functions
 void startChannelScan() {
-  Serial.println("[CHANNEL SCAN] Starting coordinator search...");
+  Serial.println("[CHANNEL SCAN] Starting coordinator search - will scan all 13 channels, 3 passes");
   isScanning = true;
   scanChannelIndex = 0;
+  scanPassCount = 0;  // Reset pass counter
   lastChannelScanTime = millis();
 
   // Start with first scan channel
-  Serial.printf("[CHANNEL SCAN] Trying channel %d...\n", scanChannels[scanChannelIndex]);
+  Serial.printf("[CHANNEL SCAN] Pass 1/3 - Trying channel %d...\n", scanChannels[scanChannelIndex]);
   setWifiChannel(scanChannels[scanChannelIndex]);
 }
 
@@ -1483,6 +1491,7 @@ void stopChannelScan() {
   Serial.println("[CHANNEL SCAN] Stopping scan - coordinator found");
   isScanning = false;
   scanChannelIndex = 0;
+  scanPassCount = 0;
 }
 
 void processChannelScan() {
@@ -1496,21 +1505,36 @@ void processChannelScan() {
     scanChannelIndex++;
 
     if (scanChannelIndex >= SCAN_CHANNELS_COUNT) {
-      // Completed full scan without finding coordinator
-      Serial.println("[CHANNEL SCAN] Full scan complete - coordinator not found");
-      Serial.printf("[CHANNEL SCAN] Returning to default channel %d\n", DEFAULT_WIFI_CHANNEL);
+      // Completed one full pass through all channels
+      scanPassCount++;
+      Serial.printf("[CHANNEL SCAN] Pass %d/%d complete - coordinator not found\n", scanPassCount, MAX_SCAN_PASSES);
 
-      // Return to default channel and restart scan
-      scanChannelIndex = 0;
-      setWifiChannel(DEFAULT_WIFI_CHANNEL);
-      lastChannelScanTime = currentTime;
-      consecutiveHeartbeatFailures = 0;  // Reset counter to wait before next scan
+      if (scanPassCount >= MAX_SCAN_PASSES) {
+        // Completed all scan passes without finding coordinator
+        Serial.printf("[CHANNEL SCAN] All %d passes complete - coordinator not found after scanning all channels\n", MAX_SCAN_PASSES);
+        Serial.printf("[CHANNEL SCAN] Returning to default channel %d\n", DEFAULT_WIFI_CHANNEL);
 
-      // Stop scanning for now - will restart after more failures
-      isScanning = false;
+        // Return to default channel and stop scanning
+        scanChannelIndex = 0;
+        scanPassCount = 0;
+        setWifiChannel(DEFAULT_WIFI_CHANNEL);
+        lastChannelScanTime = currentTime;
+        consecutiveHeartbeatFailures = 0;  // Reset counter to wait before next scan
+
+        // Stop scanning for now - will restart after more failures
+        isScanning = false;
+      } else {
+        // Start next pass
+        Serial.printf("[CHANNEL SCAN] Starting pass %d/%d - Trying channel %d...\n",
+                     scanPassCount + 1, MAX_SCAN_PASSES, scanChannels[0]);
+        scanChannelIndex = 0;
+        setWifiChannel(scanChannels[scanChannelIndex]);
+        lastChannelScanTime = currentTime;
+      }
     } else {
-      // Try next channel
-      Serial.printf("[CHANNEL SCAN] Trying channel %d...\n", scanChannels[scanChannelIndex]);
+      // Try next channel in current pass
+      Serial.printf("[CHANNEL SCAN] Pass %d/%d - Trying channel %d...\n",
+                   scanPassCount + 1, MAX_SCAN_PASSES, scanChannels[scanChannelIndex]);
       setWifiChannel(scanChannels[scanChannelIndex]);
       lastChannelScanTime = currentTime;
     }

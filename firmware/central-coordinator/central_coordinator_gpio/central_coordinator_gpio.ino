@@ -449,10 +449,14 @@ void sendBinaryStatus() {
 }
 
 void processBinaryCommands() {
+  static unsigned long lastBinaryLog = 0;
+  unsigned long currentTime = millis();
+
   if (channelChangeState.inProgress) {
     Serial.printf("[COORD] *** PROCESSING BINARY COMMANDS DURING CHANNEL CHANGE *** (%d bytes available)\n", Serial.available());
-  } else if (TEXT_DEBUG_ENABLED) {
-    Serial.printf("[COORD] Processing binary commands... (%d bytes available)\n", Serial.available());
+  } else if (currentTime - lastBinaryLog > 5000) { // Log every 5 seconds
+    lastBinaryLog = currentTime;
+    Serial.printf("[COORD] Processing binary commands... (%d bytes available, time: %lu)\n", Serial.available(), currentTime);
   }
 
   // Check if first byte is text (ARM_SPECIFIC starts with 'A' = 0x41)
@@ -606,9 +610,15 @@ void handleBinaryCommand(CommandMessage cmd) {
       {
         // Channel is encoded in targetDevice (1-13)
         uint8_t targetChannel = cmd.targetDevice;
-        Serial.printf("[COORD] Received SET_CHANNEL command for channel %d\n", targetChannel);
-        if (startChannelChange(targetChannel)) {
+        Serial.printf("[COORD] *** RECEIVED SET_CHANNEL COMMAND *** for channel %d\n", targetChannel);
+        Serial.printf("[COORD] Starting channel change process...\n");
+
+        bool result = startChannelChange(targetChannel);
+        Serial.printf("[COORD] startChannelChange returned: %s\n", result ? "true" : "false");
+
+        if (result) {
           Serial.printf("WIFI_CHANNEL_CHANGE_STARTED:%d\n", targetChannel);
+          Serial.printf("[COORD] Channel change state set to inProgress: %s\n", channelChangeState.inProgress ? "true" : "false");
         } else {
           Serial.printf("WIFI_CHANNEL_CHANGE_FAILED:%d\n", targetChannel);
         }
@@ -760,6 +770,13 @@ void setup() {
 
 void loop() {
   unsigned long currentTime = millis();
+
+  // Debug: Log main loop execution during channel changes
+  static unsigned long lastLoopLog = 0;
+  if (channelChangeState.inProgress && currentTime - lastLoopLog > 500) {
+    lastLoopLog = currentTime;
+    Serial.printf("[COORD] *** MAIN LOOP RUNNING DURING CHANNEL CHANGE *** (time: %lu)\n", currentTime);
+  }
 
   // PRIORITY: Check for serial commands from Raspberry Pi FIRST
   // Process all available serial data immediately to prevent buffer overflow

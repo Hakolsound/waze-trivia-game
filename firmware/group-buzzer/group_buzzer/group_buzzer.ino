@@ -380,6 +380,23 @@ void OnDataSent(const wifi_tx_info_t *tx_info, esp_now_send_status_t status) {
 
   Serial.printf("ESP-NOW Send Status to %s: %s\n", macStr,
                 status == ESP_NOW_SEND_SUCCESS ? "Success" : "Fail");
+
+  // If we're in direct jump phase and send succeeded, coordinator ACKed!
+  if (isDirectJumpPhase && status == ESP_NOW_SEND_SUCCESS) {
+    Serial.printf("[PHASE 1] ✓✓✓ SUCCESS! Coordinator ACKed on channel %d via direct jump!\n", currentWifiChannel);
+    isDirectJumpPhase = false;
+    directJumpAttempts = 0;
+    consecutiveHeartbeatFailures = 0;
+    lastSuccessfulHeartbeat = millis();
+  }
+
+  // If we're scanning and send succeeded, coordinator found!
+  if (isScanning && status == ESP_NOW_SEND_SUCCESS) {
+    Serial.printf("[PHASE 2] ✓✓✓ Coordinator ACKed on channel %d during scan!\n", currentWifiChannel);
+    stopChannelScan();
+    consecutiveHeartbeatFailures = 0;
+    lastSuccessfulHeartbeat = millis();
+  }
 }
 
 // ESP-NOW callback for receiving data (ESP-IDF v5.x signature)
@@ -1640,24 +1657,18 @@ void sendHeartbeat() {
       startChannelScan();
     }
   } else {
-    // Heartbeat succeeded - reset failure counter
-    if (consecutiveHeartbeatFailures > 0) {
-      Serial.printf("[CHANNEL] Heartbeat succeeded - resetting failure counter (was %d)\n", consecutiveHeartbeatFailures);
-    }
-    consecutiveHeartbeatFailures = 0;
-    lastSuccessfulHeartbeat = millis();
+    // Heartbeat queued successfully (ESP_OK)
+    // NOTE: This only means "queued", NOT "delivered"
+    // Actual delivery confirmation comes from OnDataSent callback
+    // We do NOT stop scanning here - let the callback handle it
 
-    // If we were in direct jump phase, it succeeded!
-    if (isDirectJumpPhase) {
-      Serial.printf("[PHASE 1] ✓✓✓ SUCCESS! Coordinator found on channel %d via direct jump!\n", currentWifiChannel);
-      isDirectJumpPhase = false;
-      directJumpAttempts = 0;
-    }
-
-    // If we were scanning, stop now - we found the coordinator
-    if (isScanning) {
-      Serial.printf("[PHASE 2] ✓✓✓ Coordinator found on channel %d during scan\n", currentWifiChannel);
-      stopChannelScan();
+    // Only reset failure counter during normal operation (not during channel changes)
+    if (!isDirectJumpPhase && !isScanning) {
+      if (consecutiveHeartbeatFailures > 0) {
+        Serial.printf("[CHANNEL] Heartbeat queued - resetting failure counter (was %d)\n", consecutiveHeartbeatFailures);
+      }
+      consecutiveHeartbeatFailures = 0;
+      lastSuccessfulHeartbeat = millis();
     }
   }
 }

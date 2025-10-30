@@ -154,12 +154,33 @@ router.get('/channels/current', async (req, res) => {
 // Set WiFi channel endpoint
 router.post('/channel', async (req, res) => {
   try {
-    const { channel } = req.body;
+    const { channel, confirmed } = req.body;
 
     if (!channel || channel < 1 || channel > 13) {
       return res.status(400).json({
         success: false,
         message: 'Channel must be between 1 and 13'
+      });
+    }
+
+    // Check device status before allowing channel change
+    const deviceStatus = esp32Service.getDeviceStatus();
+    const registeredDevices = Object.values(deviceStatus).filter(d => d.deviceId > 0);
+    const onlineDevices = registeredDevices.filter(d => d.isOnline);
+
+    console.log(`Channel change request: ${onlineDevices.length}/${registeredDevices.length} devices online`);
+
+    // If not all devices online and not confirmed, return warning
+    if (!confirmed && onlineDevices.length < registeredDevices.length) {
+      return res.status(400).json({
+        success: false,
+        needsConfirmation: true,
+        message: `Only ${onlineDevices.length} of ${registeredDevices.length} buzzers are online`,
+        deviceStatus: {
+          total: registeredDevices.length,
+          online: onlineDevices.length,
+          offline: registeredDevices.length - onlineDevices.length
+        }
       });
     }
 

@@ -4081,7 +4081,7 @@ class HostControl {
         document.body.appendChild(modal);
     }
 
-    async applyBestChannel(channelNumber) {
+    async applyBestChannel(channelNumber, confirmed = false) {
         // Remove confirmation modal
         const modal = document.querySelector('.wifi-confirmation-modal');
         if (modal) modal.remove();
@@ -4090,7 +4090,7 @@ class HostControl {
             const response = await fetch('/api/wifi/channel', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ channel: parseInt(channelNumber) })
+                body: JSON.stringify({ channel: parseInt(channelNumber), confirmed })
             });
 
             if (response.ok) {
@@ -4103,12 +4103,59 @@ class HostControl {
                 }
             } else {
                 const error = await response.json();
-                this.showToast(`Failed to change channel: ${error.message}`, 'error');
+
+                // Check if this needs user confirmation due to offline devices
+                if (error.needsConfirmation) {
+                    this.showDeviceWarningModal(channelNumber, error.deviceStatus);
+                } else {
+                    this.showToast(`Failed to change channel: ${error.message}`, 'error');
+                }
             }
         } catch (error) {
             console.error('Failed to change WiFi channel:', error);
             this.showToast('Failed to change WiFi channel', 'error');
         }
+    }
+
+    showDeviceWarningModal(channelNumber, deviceStatus) {
+        const modal = document.createElement('div');
+        modal.className = 'wifi-confirmation-modal warning-modal';
+
+        modal.innerHTML = `
+            <div class="wifi-confirmation-content">
+                <div class="wifi-confirmation-header warning">
+                    <span class="wifi-confirmation-icon">⚠️</span>
+                    <h3 class="wifi-confirmation-title">Some Buzzers Are Offline</h3>
+                </div>
+
+                <p class="wifi-confirmation-message warning-text">
+                    Only <strong>${deviceStatus.online} of ${deviceStatus.total}</strong> buzzers are currently online.
+                    ${deviceStatus.offline} buzzer${deviceStatus.offline > 1 ? 's are' : ' is'} offline and cannot receive the channel change command.
+                </p>
+
+                <div class="warning-details">
+                    <div class="warning-item">
+                        <span class="warning-label">⚠️ Risk:</span>
+                        <span class="warning-value">Offline buzzers will remain on the old channel</span>
+                    </div>
+                    <div class="warning-item">
+                        <span class="warning-label">📡 Result:</span>
+                        <span class="warning-value">You'll need to manually restart offline buzzers</span>
+                    </div>
+                </div>
+
+                <p class="wifi-confirmation-question">
+                    <strong>Do you want to proceed anyway?</strong>
+                </p>
+
+                <div class="wifi-confirmation-actions">
+                    <button class="wifi-cancel-btn" onclick="this.closest('.wifi-confirmation-modal').remove()">Cancel - Wait for All Online</button>
+                    <button class="wifi-confirm-btn warning-confirm" onclick="window.hostControl.applyBestChannel('${channelNumber}', true)">Proceed Anyway</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
     }
 
     // =========================================

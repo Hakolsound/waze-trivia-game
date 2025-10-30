@@ -7,70 +7,74 @@ const router = express.Router();
 // Import ESP32Service - we'll need to pass it as a parameter when creating the router
 module.exports = (esp32Service) => {
 
-// WiFi scan endpoint - returns simulated channel data with recommendations
+// WiFi scan endpoint - communicates with ESP32 coordinator for real scanning
 router.post('/scan', async (req, res) => {
   try {
-    // Simulate WiFi channel scan results
-    // In a real implementation, this would communicate with the ESP32 coordinator
-    const channels = [
-      { channel: 1, signal: -65, networkCount: 3 },
-      { channel: 2, signal: -70, networkCount: 2 },
-      { channel: 3, signal: -55, networkCount: 1 },
-      { channel: 4, signal: -60, networkCount: 4 },
-      { channel: 5, signal: -75, networkCount: 2 },
-      { channel: 6, signal: -45, networkCount: 8 }, // Crowded
-      { channel: 7, signal: -50, networkCount: 6 },
-      { channel: 8, signal: -40, networkCount: 5 },
-      { channel: 9, signal: -35, networkCount: 3 },
-      { channel: 10, signal: -30, networkCount: 2 }, // Good
-      { channel: 11, signal: -25, networkCount: 1 }, // Best
-      { channel: 12, signal: -55, networkCount: 4 },
-      { channel: 13, signal: -60, networkCount: 3 }  // Current
-    ];
+    console.log('Starting WiFi scan via ESP32 coordinator...');
 
-    // Add slight randomization to make it feel more realistic
-    const results = channels.map(ch => ({
-      ...ch,
-      signal: ch.signal + Math.floor(Math.random() * 10 - 5) // +/- 5 dBm variation
-    }));
+    // Clear any previous scan results
+    esp32Service.channelScanResults = [];
 
-    // Calculate channel scores and find recommendation
-    // Score = (signal strength bonus) - (interference penalty) + (non-overlapping bonus)
-    const scoredChannels = results.map(ch => {
-      // Signal strength score: better signal = higher score
-      const signalScore = Math.max(0, 80 + ch.signal); // -80 dBm = 0, better signal = higher
+    // Send scan command to ESP32
+    const scanResult = await esp32Service.scanWifiChannels();
+    console.log('ESP32 scan command result:', scanResult);
 
-      // Interference penalty: more networks = lower score
-      const interferencePenalty = ch.networkCount * 5;
+    // Wait for scan completion (ESP32 will emit 'wifi-scan-complete' event)
+    const scanPromise = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Scan timeout - ESP32 coordinator not responding'));
+      }, 30000); // 30 second timeout
 
-      // Non-overlapping channel bonus (1, 6, 11 are preferred)
-      const nonOverlappingBonus = [1, 6, 11].includes(ch.channel) ? 15 : 0;
-
-      const totalScore = signalScore - interferencePenalty + nonOverlappingBonus;
-
-      return {
-        ...ch,
-        score: totalScore,
-        quality: totalScore > 60 ? 'excellent' :
-                 totalScore > 40 ? 'good' :
-                 totalScore > 20 ? 'fair' : 'poor'
+      const onScanComplete = (results) => {
+        clearTimeout(timeout);
+        esp32Service.removeListener('wifi-scan-complete', onScanComplete);
+        esp32Service.removeListener('wifi-scan-failed', onScanFailed);
+        resolve(results);
       };
+
+      const onScanFailed = () => {
+        clearTimeout(timeout);
+        esp32Service.removeListener('wifi-scan-complete', onScanComplete);
+        esp32Service.removeListener('wifi-scan-failed', onScanFailed);
+        reject(new Error('ESP32 scan failed'));
+      };
+
+      esp32Service.once('wifi-scan-complete', onScanComplete);
+      esp32Service.once('wifi-scan-failed', onScanFailed);
     });
 
-    // Find the best channel
-    const bestChannel = scoredChannels.reduce((best, current) =>
+    const scanData = await scanPromise;
+    console.log('Scan completed, processing results...');
+
+    // Get processed results from ESP32 service
+    const processedResults = await esp32Service.getChannelScanResults();
+
+    // Format results for frontend (matching expected format)
+    const channels = processedResults.results.map(ch => ({
+      channel: ch.channel,
+      signal: ch.signal,
+      networkCount: ch.networkCount,
+      score: ch.quality, // ESP32 quality score (0-100)
+      quality: ch.quality > 90 ? 'excellent' :
+              ch.quality > 75 ? 'good' :
+              ch.quality > 60 ? 'fair' : 'poor'
+    }));
+
+    console.log('Processed WiFi scan results:', channels.map(ch =>
+      `CH${ch.channel}: ${ch.score}pts (${ch.quality}) - RSSI:${ch.signal}dBm, Networks:${ch.networkCount}`
+    ));
+
+    // Find best channel for recommendation
+    const bestChannel = channels.reduce((best, current) =>
       current.score > best.score ? current : best
     );
 
-    console.log('WiFi scan results:', scoredChannels.map(ch =>
-      `CH${ch.channel}: ${ch.score}pts (${ch.quality})`
-    ));
     console.log('Recommended channel:', bestChannel.channel, 'with score:', bestChannel.score);
 
     res.json({
       success: true,
-      currentChannel: 13,
-      channels: scoredChannels,
+      currentChannel: 13, // Will be updated to read from ESP32
+      channels,
       recommendation: {
         channel: bestChannel.channel,
         score: bestChannel.score,
@@ -86,7 +90,7 @@ router.post('/scan', async (req, res) => {
     // Emit results to control panel clients
     if (req.app.get('io')) {
       req.app.get('io').to('control-panel').emit('wifi-scan-results', {
-        results: scoredChannels,
+        results: channels,
         recommendation: bestChannel
       });
     }
@@ -168,12 +172,38 @@ router.post('/channel', async (req, res) => {
       });
     }
 
-    // Simulate channel change delay (in real implementation, this would communicate with ESP32)
-    setTimeout(() => {
-      if (req.app.get('io')) {
-        req.app.get('io').to('control-panel').emit('wifi-channel-changed', { channel });
-      }
-    }, 2000); // 2 second delay to simulate the change
+    console.log(`Starting WiFi channel change to ${channel} via ESP32 coordinator...`);
+
+    // Send channel change command to ESP32
+    const changeResult = await esp32Service.setWifiChannel(channel);
+    console.log('ESP32 channel change command result:', changeResult);
+
+    // Wait for channel change completion
+    const changePromise = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Channel change timeout - ESP32 coordinator not responding'));
+      }, 10000); // 10 second timeout for channel change
+
+      const onChangeComplete = (data) => {
+        clearTimeout(timeout);
+        esp32Service.removeListener('wifi-channel-changed', onChangeComplete);
+        esp32Service.removeListener('wifi-channel-change-failed', onChangeFailed);
+        resolve(data);
+      };
+
+      const onChangeFailed = (data) => {
+        clearTimeout(timeout);
+        esp32Service.removeListener('wifi-channel-changed', onChangeComplete);
+        esp32Service.removeListener('wifi-channel-change-failed', onChangeFailed);
+        reject(new Error(`Channel change failed: ${data.channel}`));
+      };
+
+      esp32Service.once('wifi-channel-changed', onChangeComplete);
+      esp32Service.once('wifi-channel-change-failed', onChangeFailed);
+    });
+
+    const changeData = await changePromise;
+    console.log(`WiFi channel successfully changed to ${changeData.channel}`);
 
     res.json({
       success: true,
@@ -181,8 +211,9 @@ router.post('/channel', async (req, res) => {
       message: `WiFi channel changed to ${channel}`
     });
 
-    // Log the channel change
-    console.log(`WiFi channel changed to ${channel}`);
+    // Emit to control panel clients (already handled by ESP32 service event)
+    console.log(`WiFi channel changed to ${channel} - all devices coordinated`);
+
   } catch (error) {
     console.error('Error setting WiFi channel:', error);
     res.status(500).json({

@@ -182,6 +182,7 @@ uint8_t currentWifiChannel = DEFAULT_WIFI_CHANNEL;
 bool channelScanEnabled = false;
 unsigned long lastSuccessfulHeartbeat = 0;
 uint8_t consecutiveHeartbeatFailures = 0;
+volatile bool lastSendSuccess = false;  // Track last ESP-NOW send result from callback
 #define MAX_HEARTBEAT_FAILURES 3  // Start scanning after 3 failed heartbeats
 #define HEARTBEAT_SUCCESS_TIMEOUT_MS 15000  // 15 seconds without response triggers scan
 bool isScanning = false;
@@ -367,6 +368,17 @@ void OnDataSent(const wifi_tx_info_t *tx_info, esp_now_send_status_t status) {
 
   Serial.printf("ESP-NOW Send Status to %s: %s\n", macStr,
                 status == ESP_NOW_SEND_SUCCESS ? "Success" : "Fail");
+
+  // Track send result for channel scanning
+  lastSendSuccess = (status == ESP_NOW_SEND_SUCCESS);
+
+  // If scanning and send succeeded, we found the coordinator!
+  if (isScanning && lastSendSuccess) {
+    Serial.printf("[CHANNEL] Send succeeded on channel %d - coordinator found!\n", currentWifiChannel);
+    stopChannelScan();
+    consecutiveHeartbeatFailures = 0;
+    lastSuccessfulHeartbeat = millis();
+  }
 }
 
 // ESP-NOW callback for receiving data (ESP-IDF v5.x signature)

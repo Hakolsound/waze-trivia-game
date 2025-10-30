@@ -244,7 +244,7 @@ class ESP32Service extends EventEmitter {
             // Unknown message type, skip this byte
             this.binaryBuffer = this.binaryBuffer.slice(1);
           }
-        } else if (header === 0x44) { // 'D' - Check if this is a text "DEVICE:" line
+        } else if (header === 0x44 || header === 0x57) { // 'D' (DEVICE:) or 'W' (WIFI_) - Check if this is a text line
           // Look for newline to extract complete text line
           const newlineIndex = this.binaryBuffer.indexOf(0x0A); // '\n'
           if (newlineIndex !== -1) {
@@ -253,7 +253,7 @@ class ESP32Service extends EventEmitter {
             this.binaryBuffer = this.binaryBuffer.slice(newlineIndex + 1);
 
             // Process as text data
-            if (textLine.startsWith('DEVICE:')) {
+            if (textLine.startsWith('DEVICE:') || textLine.startsWith('WIFI_')) {
               this.handleSerialData(textLine);
             }
           } else {
@@ -261,8 +261,24 @@ class ESP32Service extends EventEmitter {
             break;
           }
         } else {
-          // Invalid header, skip this byte
-          this.binaryBuffer = this.binaryBuffer.slice(1);
+          // Check if it's any other text message (starting with printable ASCII)
+          if (header >= 0x20 && header <= 0x7E) {
+            // Looks like text, try to extract complete line
+            const newlineIndex = this.binaryBuffer.indexOf(0x0A);
+            if (newlineIndex !== -1) {
+              const textLine = this.binaryBuffer.slice(0, newlineIndex).toString('utf8').trim();
+              this.binaryBuffer = this.binaryBuffer.slice(newlineIndex + 1);
+              // Pass to text handler if it's a known text message format
+              if (textLine.includes(':') || textLine.startsWith('WIFI_') || textLine.startsWith('DEVICE:')) {
+                this.handleSerialData(textLine);
+              }
+            } else {
+              break; // Wait for complete line
+            }
+          } else {
+            // Invalid header, skip this byte
+            this.binaryBuffer = this.binaryBuffer.slice(1);
+          }
         }
       }
     } catch (error) {

@@ -286,11 +286,16 @@ bool startChannelChange(uint8_t targetChannel) {
 
 // Handle channel change ACK from buzzer
 void handleChannelChangeAck(uint8_t deviceId) {
-  if (!channelChangeState.inProgress) return;
+  Serial.printf("[CHANNEL] handleChannelChangeAck called for device %d\n", deviceId);
+
+  if (!channelChangeState.inProgress) {
+    Serial.printf("[CHANNEL] No channel change in progress, ignoring ACK from device %d\n", deviceId);
+    return;
+  }
 
   channelChangeState.ackCount++;
-  Serial.printf("[CHANNEL] Received ACK from device %d (%d/%d)\n",
-                deviceId, channelChangeState.ackCount, channelChangeState.totalDevices);
+  Serial.printf("[CHANNEL] ACK counted - device %d (%d/%d total ACKs expected %d)\n",
+                deviceId, channelChangeState.ackCount, channelChangeState.totalDevices, channelChangeState.totalDevices);
 
   // Only change coordinator channel if ALL devices ACK'd
   // This ensures no devices are left behind on old channel
@@ -629,14 +634,14 @@ void OnDataSent(const wifi_tx_info_t *tx_info, esp_now_send_status_t status) {
 
 // Handle incoming messages
 void OnDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len) {
-  // Always log during channel changes for debugging
+  // Log all messages during channel changes for debugging
   char macStr[18];
   snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
            recv_info->src_addr[0], recv_info->src_addr[1], recv_info->src_addr[2],
            recv_info->src_addr[3], recv_info->src_addr[4], recv_info->src_addr[5]);
 
   if (channelChangeState.inProgress) {
-    Serial.printf("[ESP-NOW] CHANNEL_CHANGE: Received %d bytes from: %s\n", len, macStr);
+    Serial.printf("[ESP-NOW] Received %d bytes from: %s (channel change in progress)\n", len, macStr);
   } else if (TEXT_DEBUG_ENABLED) {
     Serial.printf("Received %d bytes from: %s\n", len, macStr);
   }
@@ -672,6 +677,7 @@ void OnDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *data, int l
         handleEndRoundAck(msg.deviceId);
         break;
       case 9: // CHANNEL_CHANGE_ACK
+        Serial.printf("[ESP-NOW] Processing CHANNEL_CHANGE_ACK from device %d\n", msg.deviceId);
         handleChannelChangeAck(msg.deviceId);
         break;
       default:

@@ -1042,6 +1042,9 @@ void handleCommand(Command cmd) {
 
     case CMD_CHANGE_CHANNEL: // 8 - CHANGE_CHANNEL
       Serial.printf("[CMD] Device %d RECEIVED CHANGE_CHANNEL command for channel %d\n", DEVICE_ID, cmd.targetDevice);
+      Serial.printf("[CMD] Coordinator MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
+                   coordinatorMAC[0], coordinatorMAC[1], coordinatorMAC[2],
+                   coordinatorMAC[3], coordinatorMAC[4], coordinatorMAC[5]);
       // For now, assume coordinator sends channel as targetDevice (limited to 1-15)
       // In future, could extend Command struct to include channel data
       if (setWifiChannel(cmd.targetDevice)) {

@@ -942,6 +942,20 @@ void sendCommandAck(uint16_t sequenceId) {
                 result == ESP_OK ? "SUCCESS" : "FAILED");
 }
 
+void sendChannelChangeAck() {
+  // Send channel change acknowledgment to coordinator
+  Message ackMsg;
+  ackMsg.messageType = 9; // CHANNEL_CHANGE_ACK
+  ackMsg.deviceId = DEVICE_ID;
+  ackMsg.timestamp = millis();
+  memset(ackMsg.data, 0, sizeof(ackMsg.data));
+  ackMsg.data[0] = currentWifiChannel; // Include current channel for verification
+
+  esp_err_t result = esp_now_send(coordinatorMAC, (uint8_t*)&ackMsg, sizeof(ackMsg));
+  Serial.printf("[CHANNEL_ACK] Sent channel change ACK for channel %d, result: %s\n",
+                currentWifiChannel, result == ESP_OK ? "SUCCESS" : "FAILED");
+}
+
 void handleCommand(Command cmd) {
   Serial.printf("[CMD] Device %d received command: %d for target: %d, seq: %d, current state: %d\n",
                 DEVICE_ID, cmd.command, cmd.targetDevice, cmd.sequenceId, currentState);
@@ -1014,10 +1028,16 @@ void handleCommand(Command cmd) {
       break;
 
     case 8: // CHANGE_CHANNEL
-      Serial.printf("[CMD] Device %d executing CHANGE_CHANNEL command\n", DEVICE_ID);
+      Serial.printf("[CMD] Device %d executing CHANGE_CHANNEL command for channel %d\n", DEVICE_ID, cmd.targetDevice);
       // For now, assume coordinator sends channel as targetDevice (limited to 1-15)
       // In future, could extend Command struct to include channel data
-      setWifiChannel(cmd.targetDevice);
+      if (setWifiChannel(cmd.targetDevice)) {
+        // Channel change successful - send ACK to coordinator
+        Serial.printf("[CMD] Channel change to %d successful - sending ACK\n", cmd.targetDevice);
+        sendChannelChangeAck();
+      } else {
+        Serial.printf("[CMD] Channel change to %d failed - not sending ACK\n", cmd.targetDevice);
+      }
       break;
 
     default:

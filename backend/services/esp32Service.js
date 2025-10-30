@@ -20,6 +20,7 @@ class ESP32Service extends EventEmitter {
     this.isConnectedFlag = false;
     this.buzzerStates = new Map();
     this.currentGameId = null;
+    this.channelScanResults = []; // Store WiFi channel scan results
 
     this.serialPortPath = process.env.ESP32_SERIAL_PORT || '/dev/ttyUSB0';
     this.baudRate = parseInt(process.env.ESP32_BAUD_RATE) || 115200;
@@ -179,6 +180,33 @@ class ESP32Service extends EventEmitter {
         console.log('ESP32 Command acknowledged:', data.substring(4));
       } else if (data.startsWith('ERROR:')) {
         console.error('ESP32 Error:', data.substring(6));
+      } else if (data.startsWith('WIFI_SCAN_STARTED')) {
+        console.log('WiFi scan started by coordinator');
+        this.emit('wifi-scan-started');
+      } else if (data.startsWith('WIFI_SCAN_FAILED')) {
+        console.log('WiFi scan failed');
+        this.emit('wifi-scan-failed');
+      } else if (data.startsWith('[WIFI_SCAN_RESULTS]')) {
+        console.log('WiFi scan results received');
+        // Results will follow in subsequent lines
+      } else if (data.startsWith('CH:')) {
+        // Parse channel scan result: CH:1,RSSI:-45,NETS:3,QUAL:85
+        this.parseChannelScanResult(data);
+      } else if (data.startsWith('[WIFI_SCAN_COMPLETE]')) {
+        console.log('WiFi scan complete');
+        this.emit('wifi-scan-complete', this.channelScanResults);
+      } else if (data.startsWith('WIFI_CHANNEL_CHANGE_STARTED:')) {
+        const channel = parseInt(data.split(':')[1]);
+        console.log(`WiFi channel change started for channel ${channel}`);
+        this.emit('wifi-channel-change-started', { channel });
+      } else if (data.startsWith('WIFI_CHANNEL_CHANGED:')) {
+        const channel = parseInt(data.split(':')[1]);
+        console.log(`WiFi channel successfully changed to ${channel}`);
+        this.emit('wifi-channel-changed', { channel });
+      } else if (data.startsWith('WIFI_CHANNEL_CHANGE_FAILED:')) {
+        const channel = parseInt(data.split(':')[1]);
+        console.log(`WiFi channel change failed for channel ${channel}`);
+        this.emit('wifi-channel-change-failed', { channel });
       }
     } catch (error) {
       console.error('Error parsing ESP32 data:', error);
@@ -753,17 +781,29 @@ class ESP32Service extends EventEmitter {
 
   // WiFi Channel Management Methods
   async scanWifiChannels() {
-    const command = 'SCAN_CHANNELS';
-    return this.sendCommand(command);
+    // Use binary protocol command 9 (SCAN_CHANNELS)
+    return this.sendBinaryCommand(9, 0, 0); // command=9, targetDevice=0, gameId=0
   }
 
   async getChannelScanResults() {
-    // This would need to be implemented to parse channel scan results from coordinator
-    // For now, return placeholder
+    // Return the actual parsed channel scan results
+    const results = this.channelScanResults.filter(ch => ch !== undefined);
+
+    // Find recommended channel (highest quality)
+    let recommendedChannel = 13; // Default fallback
+    let bestQuality = 0;
+
+    results.forEach(channel => {
+      if (channel.quality > bestQuality) {
+        bestQuality = channel.quality;
+        recommendedChannel = channel.channel;
+      }
+    });
+
     return {
       success: true,
-      results: [],
-      recommended: 13,
+      results,
+      recommended: recommendedChannel,
       timestamp: Date.now()
     };
   }
@@ -774,13 +814,40 @@ class ESP32Service extends EventEmitter {
   }
 
   async setWifiChannel(channel) {
-    const command = `SET_CHANNEL:${channel}`;
-    return this.sendCommand(command);
+    // Use binary protocol command 10 (SET_CHANNEL)
+    // Channel is encoded in targetDevice field
+    return this.sendBinaryCommand(10, channel, 0); // command=10, targetDevice=channel, gameId=0
   }
 
   async getCurrentChannel() {
     const command = 'GET_CURRENT_CHANNEL';
     return this.sendCommand(command);
+  }
+
+  parseChannelScanResult(data) {
+    try {
+      // Parse format: CH:1,RSSI:-45,NETS:3,QUAL:85
+      const parts = data.split(',');
+      if (parts.length < 4) return;
+
+      const channel = parseInt(parts[0].split(':')[1]);
+      const rssi = parseInt(parts[1].split(':')[1]);
+      const networkCount = parseInt(parts[2].split(':')[1]);
+      const quality = parseInt(parts[3].split(':')[1]);
+
+      const channelData = {
+        channel,
+        signal: rssi,
+        networkCount,
+        quality
+      };
+
+      // Store result
+      this.channelScanResults[channel - 1] = channelData;
+      console.log(`Parsed channel ${channel}: RSSI=${rssi}, Networks=${networkCount}, Quality=${quality}`);
+    } catch (error) {
+      console.error('Error parsing channel scan result:', error);
+    }
   }
 
   parseDeviceData(deviceString) {

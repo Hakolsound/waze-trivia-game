@@ -110,6 +110,35 @@ typedef struct {
 EndRoundStatus endRoundTracking[MAX_GROUPS];
 bool endRoundInProgress = false;
 unsigned long endRoundStartTime = 0;
+
+// WiFi Channel Management Structures
+typedef struct {
+  uint8_t channel;
+  int8_t rssi;           // Signal strength in dBm
+  uint8_t networkCount;  // Number of networks on this channel
+  uint8_t quality;       // Calculated quality score (0-100)
+} WifiChannelInfo;
+
+typedef struct {
+  bool inProgress;
+  unsigned long startTime;
+  uint8_t currentChannel;
+  WifiChannelInfo results[WIFI_SCAN_MAX_CHANNELS];
+  uint8_t completedChannels;
+} WifiScanState;
+
+typedef struct {
+  bool inProgress;
+  unsigned long startTime;
+  uint8_t targetChannel;
+  uint8_t ackCount;
+  uint8_t totalDevices;
+  bool coordinatorChanged;
+} ChannelChangeState;
+
+// Global WiFi management state
+WifiScanState wifiScanState = {false, 0, 0, {}, 0};
+ChannelChangeState channelChangeState = {false, 0, 0, 0, 0, false};
 #define END_ROUND_RETRY_INTERVAL_MS 200  // Retry every 200ms
 #define END_ROUND_MAX_RETRIES 5          // Up to 5 retries (1 second total)
 
@@ -118,6 +147,11 @@ unsigned long endRoundStartTime = 0;
 #define ACK_TIMEOUT_MS 500  // Increased to prevent unnecessary retries when multiple commands are queued
 #define MAX_RETRIES 2  // Reduced from 3 - with longer timeout, fewer retries needed
 #define RETRY_DELAY_MS 100
+
+// WiFi Channel Management Configuration
+#define WIFI_SCAN_DURATION_MS 2000  // 2 seconds per channel scan
+#define WIFI_SCAN_MAX_CHANNELS 13   // EU channels 1-13
+#define WIFI_CHANNEL_CHANGE_TIMEOUT_MS 5000  // 5 seconds for channel change coordination
 
 // Commands that require acknowledgment (critical commands only)
 #define CMD_ARM 1
@@ -155,6 +189,285 @@ uint8_t calculateChecksum(uint8_t* data, int len) {
 bool verifyChecksum(uint8_t* data, int len) {
   uint8_t calculated = calculateChecksum(data, len - 1);
   return calculated == data[len - 1];
+}
+
+// =========================================
+// WiFi Channel Management Functions
+// =========================================
+
+// Calculate channel quality score (0-100)
+uint8_t calculateChannelQuality(int8_t rssi, uint8_t networkCount) {
+  // RSSI quality (higher RSSI = lower interference = higher quality)
+  uint8_t rssiScore = 0;
+  if (rssi >= -30) rssiScore = 100;
+  else if (rssi >= -50) rssiScore = 90;
+  else if (rssi >= -60) rssiScore = 75;
+  else if (rssi >= -70) rssiScore = 60;
+  else if (rssi >= -80) rssiScore = 40;
+  else rssiScore = 20;
+
+  // Network count penalty (more networks = lower quality)
+  uint8_t networkPenalty = 0;
+  if (networkCount > 8) networkPenalty = 40;
+  else if (networkCount > 6) networkPenalty = 30;
+  else if (networkCount > 4) networkPenalty = 20;
+  else if (networkCount > 2) networkPenalty = 10;
+
+  // Final quality score
+  if (rssiScore > networkPenalty) {
+    return rssiScore - networkPenalty;
+  } else {
+    return 10; // Minimum quality score
+  }
+}
+
+// Get recommended channel based on scan results
+uint8_t getRecommendedChannel() {
+  uint8_t bestChannel = 13; // Default fallback
+  uint8_t bestQuality = 0;
+
+  for (uint8_t i = 0; i < WIFI_SCAN_MAX_CHANNELS; i++) {
+    if (wifiScanState.results[i].quality > bestQuality) {
+      bestQuality = wifiScanState.results[i].quality;
+      bestChannel = wifiScanState.results[i].channel;
+    }
+  }
+
+  Serial.printf("[WIFI] Recommended channel: %d (quality: %d)\n", bestChannel, bestQuality);
+  return bestChannel;
+}
+
+// WiFi scan callback (ESP-IDF v5.x)
+void wifiScanCallback(wifi_event_scan_done_t *event) {
+  if (!wifiScanState.inProgress) return;
+
+  uint16_t apCount = 0;
+  esp_wifi_scan_get_ap_num(&apCount);
+
+  if (apCount > 0) {
+    wifi_ap_record_t *apRecords = (wifi_ap_record_t*)malloc(sizeof(wifi_ap_record_t) * apCount);
+    if (apRecords) {
+      ESP_ERROR_CHECK(esp_wifi_scan_get_ap_records(&apCount, apRecords));
+
+      // Count networks per channel
+      uint8_t networkCountPerChannel[WIFI_SCAN_MAX_CHANNELS] = {0};
+      int8_t strongestRSSIPerChannel[WIFI_SCAN_MAX_CHANNELS];
+
+      // Initialize RSSI array
+      for (uint8_t i = 0; i < WIFI_SCAN_MAX_CHANNELS; i++) {
+        strongestRSSIPerChannel[i] = -100; // Very weak signal
+      }
+
+      // Process scan results
+      for (uint16_t i = 0; i < apCount; i++) {
+        uint8_t channel = apRecords[i].primary;
+        if (channel >= 1 && channel <= WIFI_SCAN_MAX_CHANNELS) {
+          networkCountPerChannel[channel - 1]++;
+          if (apRecords[i].rssi > strongestRSSIPerChannel[channel - 1]) {
+            strongestRSSIPerChannel[channel - 1] = apRecords[i].rssi;
+          }
+        }
+      }
+
+      // Store results for each channel
+      for (uint8_t ch = 1; ch <= WIFI_SCAN_MAX_CHANNELS; ch++) {
+        uint8_t index = ch - 1;
+        wifiScanState.results[index].channel = ch;
+        wifiScanState.results[index].rssi = strongestRSSIPerChannel[index];
+        wifiScanState.results[index].networkCount = networkCountPerChannel[index];
+        wifiScanState.results[index].quality = calculateChannelQuality(
+          strongestRSSIPerChannel[index], networkCountPerChannel[index]);
+      }
+
+      free(apRecords);
+    }
+  } else {
+    // No networks found, set default values
+    for (uint8_t ch = 1; ch <= WIFI_SCAN_MAX_CHANNELS; ch++) {
+      uint8_t index = ch - 1;
+      wifiScanState.results[index].channel = ch;
+      wifiScanState.results[index].rssi = -90; // Very weak
+      wifiScanState.results[index].networkCount = 0;
+      wifiScanState.results[index].quality = 95; // High quality if no interference
+    }
+  }
+
+  wifiScanState.completedChannels = WIFI_SCAN_MAX_CHANNELS;
+  wifiScanState.inProgress = false;
+
+  Serial.printf("[WIFI] Scan completed - found %d access points\n", apCount);
+}
+
+// Start WiFi channel scan
+bool startWifiScan() {
+  if (wifiScanState.inProgress) {
+    Serial.println("[WIFI] Scan already in progress");
+    return false;
+  }
+
+  // Configure scan parameters
+  wifi_scan_config_t scanConfig = {
+    .ssid = NULL,
+    .bssid = NULL,
+    .channel = 0, // Scan all channels
+    .show_hidden = false,
+    .scan_type = WIFI_SCAN_TYPE_ACTIVE,
+    .scan_time = {
+      .active = { .min = WIFI_SCAN_DURATION_MS / 1000, .max = WIFI_SCAN_DURATION_MS / 1000 },
+      .passive = { .min = 0, .max = 0 }
+    }
+  };
+
+  wifiScanState.inProgress = true;
+  wifiScanState.startTime = millis();
+  wifiScanState.completedChannels = 0;
+
+  Serial.println("[WIFI] Starting WiFi channel scan...");
+
+  esp_err_t result = esp_wifi_scan_start(&scanConfig, false);
+  if (result != ESP_OK) {
+    Serial.printf("[WIFI] ERROR: Failed to start scan (error %d)\n", result);
+    wifiScanState.inProgress = false;
+    return false;
+  }
+
+  return true;
+}
+
+// Check if WiFi scan is complete and process results
+void processWifiScanResults() {
+  if (wifiScanState.inProgress) {
+    // Check for timeout (should not happen with callback, but safety check)
+    if (millis() - wifiScanState.startTime > 30000) { // 30 second timeout
+      Serial.println("[WIFI] Scan timeout - aborting");
+      wifiScanState.inProgress = false;
+      esp_wifi_scan_stop();
+      return;
+    }
+  } else if (wifiScanState.completedChannels > 0) {
+    // Scan completed, send results
+    sendWifiScanResults();
+    wifiScanState.completedChannels = 0; // Reset for next scan
+  }
+}
+
+// Send WiFi scan results to serial (for backend)
+void sendWifiScanResults() {
+  Serial.println("[WIFI_SCAN_RESULTS]");
+
+  for (uint8_t i = 0; i < WIFI_SCAN_MAX_CHANNELS; i++) {
+    WifiChannelInfo *info = &wifiScanState.results[i];
+    Serial.printf("CH:%d,RSSI:%d,NETS:%d,QUAL:%d\n",
+                  info->channel, info->rssi, info->networkCount, info->quality);
+  }
+
+  Serial.println("[WIFI_SCAN_COMPLETE]");
+}
+
+// =========================================
+// Channel Change Coordination Functions
+// =========================================
+
+// Start coordinated channel change
+bool startChannelChange(uint8_t targetChannel) {
+  if (channelChangeState.inProgress) {
+    Serial.println("[CHANNEL] Channel change already in progress");
+    return false;
+  }
+
+  if (targetChannel < 1 || targetChannel > 13) {
+    Serial.printf("[CHANNEL] ERROR: Invalid target channel %d\n", targetChannel);
+    return false;
+  }
+
+  channelChangeState.inProgress = true;
+  channelChangeState.startTime = millis();
+  channelChangeState.targetChannel = targetChannel;
+  channelChangeState.ackCount = 0;
+  channelChangeState.totalDevices = registeredDeviceCount;
+  channelChangeState.coordinatorChanged = false;
+
+  Serial.printf("[CHANNEL] Starting coordinated channel change to %d (%d devices)\n",
+                targetChannel, registeredDeviceCount);
+
+  // Send CHANGE_CHANNEL command to all buzzers with ACK requirement
+  uint8_t sent = 0;
+  uint8_t failed = 0;
+
+  for (int i = 0; i < registeredDeviceCount; i++) {
+    if (devices[i].isOnline) {
+      if (sendCommandWithAck(devices[i].deviceId, 8)) { // 8 = CHANGE_CHANNEL
+        sent++;
+      } else {
+        failed++;
+      }
+    }
+  }
+
+  if (sent == 0) {
+    Serial.println("[CHANNEL] ERROR: No devices accepted channel change command");
+    channelChangeState.inProgress = false;
+    return false;
+  }
+
+  Serial.printf("[CHANNEL] Sent channel change command to %d devices (%d failed)\n", sent, failed);
+  return true;
+}
+
+// Handle channel change ACK from buzzer
+void handleChannelChangeAck(uint8_t deviceId) {
+  if (!channelChangeState.inProgress) return;
+
+  channelChangeState.ackCount++;
+  Serial.printf("[CHANNEL] Received ACK from device %d (%d/%d)\n",
+                deviceId, channelChangeState.ackCount, channelChangeState.totalDevices);
+
+  // Check if all devices have acknowledged
+  if (channelChangeState.ackCount >= channelChangeState.totalDevices) {
+    // All devices have ACK'd, now change coordinator channel
+    Serial.println("[CHANNEL] All devices ACK'd - changing coordinator channel");
+
+    esp_err_t result = esp_wifi_set_channel(channelChangeState.targetChannel, WIFI_SECOND_CHAN_NONE);
+    if (result == ESP_OK) {
+      channelChangeState.coordinatorChanged = true;
+      currentWifiChannel = channelChangeState.targetChannel;
+      Serial.printf("[CHANNEL] Coordinator channel changed to %d\n", currentWifiChannel);
+
+      // Send success confirmation
+      Serial.printf("WIFI_CHANNEL_CHANGED:%d\n", currentWifiChannel);
+      channelChangeState.inProgress = false;
+    } else {
+      Serial.printf("[CHANNEL] ERROR: Failed to change coordinator channel (error %d)\n", result);
+      // Keep channelChangeState.inProgress = true for timeout handling
+    }
+  }
+}
+
+// Process channel change timeout and retries
+void processChannelChangeTimeout() {
+  if (!channelChangeState.inProgress) return;
+
+  unsigned long elapsed = millis() - channelChangeState.startTime;
+
+  // Overall timeout
+  if (elapsed > WIFI_CHANNEL_CHANGE_TIMEOUT_MS) {
+    Serial.printf("[CHANNEL] Channel change timeout after %dms - %d/%d ACKs received\n",
+                  WIFI_CHANNEL_CHANGE_TIMEOUT_MS, channelChangeState.ackCount, channelChangeState.totalDevices);
+
+    // Send failure notification
+    Serial.printf("WIFI_CHANNEL_CHANGE_FAILED:%d\n", channelChangeState.targetChannel);
+    channelChangeState.inProgress = false;
+    return;
+  }
+
+  // If coordinator already changed but some devices didn't ACK, that's OK
+  // The coordinator is on the new channel and will handle device reconnections
+  if (channelChangeState.coordinatorChanged && elapsed > 2000) { // Give 2 more seconds
+    Serial.printf("[CHANNEL] Coordinator changed, %d/%d devices ACK'd - completing\n",
+                  channelChangeState.ackCount, channelChangeState.totalDevices);
+    Serial.printf("WIFI_CHANNEL_CHANGED:%d\n", currentWifiChannel);
+    channelChangeState.inProgress = false;
+  }
 }
 
 void sendBinaryBuzzerPress(uint8_t deviceId, uint32_t timestamp, uint16_t deltaMs, uint8_t position) {
@@ -415,6 +728,26 @@ void handleBinaryCommand(CommandMessage cmd) {
         armSpecificBuzzersByBitmask(bitmask);
       }
       break;
+    case 9: // SCAN_CHANNELS
+      Serial.println("[COORD] Received SCAN_CHANNELS command");
+      if (startWifiScan()) {
+        Serial.println("WIFI_SCAN_STARTED");
+      } else {
+        Serial.println("WIFI_SCAN_FAILED");
+      }
+      break;
+    case 10: // SET_CHANNEL
+      {
+        // Channel is encoded in targetDevice (1-13)
+        uint8_t targetChannel = cmd.targetDevice;
+        Serial.printf("[COORD] Received SET_CHANNEL command for channel %d\n", targetChannel);
+        if (startChannelChange(targetChannel)) {
+          Serial.printf("WIFI_CHANNEL_CHANGE_STARTED:%d\n", targetChannel);
+        } else {
+          Serial.printf("WIFI_CHANNEL_CHANGE_FAILED:%d\n", targetChannel);
+        }
+      }
+      break;
     default:
       if (TEXT_DEBUG_ENABLED) {
         Serial.print("ERROR:Unknown binary command ");
@@ -476,6 +809,9 @@ void OnDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *data, int l
         break;
       case 8: // END_ROUND_ACK
         handleEndRoundAck(msg.deviceId);
+        break;
+      case 9: // CHANNEL_CHANGE_ACK
+        handleChannelChangeAck(msg.deviceId);
         break;
       default:
         Serial.printf("Unknown message type: %d\n", msg.messageType);
@@ -539,6 +875,9 @@ void setup() {
 
   Serial.println("ESP-NOW initialized successfully");
 
+  // Register WiFi scan callback
+  ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_SCAN_DONE, &wifiScanCallback, NULL));
+
   // Register callbacks
   esp_now_register_send_cb(OnDataSent);
   esp_now_register_recv_cb(OnDataRecv);
@@ -596,6 +935,12 @@ void loop() {
 
   // Process background END_ROUND retries
   processEndRoundRetries();
+
+  // Process WiFi scan completion
+  processWifiScanResults();
+
+  // Process channel change coordination
+  processChannelChangeTimeout();
 
   // Send periodic status updates
   static unsigned long lastStatusUpdate = 0;

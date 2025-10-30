@@ -217,7 +217,7 @@ router.post('/channel', async (req, res) => {
 
 // Parse iwlist scan output
 function parseIwlistOutput(output) {
-  console.log('Raw iwlist output (first 200 chars):', output.substring(0, 200));
+  console.log('Parsing iwlist output, total length:', output.length);
 
   const lines = output.split('\n');
   const channels = [];
@@ -234,6 +234,7 @@ function parseIwlistOutput(output) {
   }
 
   let currentCell = null;
+  let cellCount = 0;
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -241,11 +242,13 @@ function parseIwlistOutput(output) {
     // Start of a new cell - iwlist format: "Cell XX - Address: ..."
     if (trimmed.startsWith('Cell ')) {
       // Save previous cell if it exists
-      if (currentCell && currentCell.channel) {
+      if (currentCell && currentCell.channel && currentCell.signalDbm !== undefined) {
         const channel = currentCell.channel;
         if (channel >= 1 && channel <= 13) {
+          cellCount++;
+          console.log(`Found network on channel ${channel}: RSSI=${currentCell.signalDbm}dBm`);
           channels[channel].networkCount++;
-          if (currentCell.signalDbm && currentCell.signalDbm > channels[channel].signal) {
+          if (currentCell.signalDbm > channels[channel].signal) {
             channels[channel].signal = currentCell.signalDbm;
           }
         }
@@ -262,45 +265,30 @@ function parseIwlistOutput(output) {
       }
     }
 
-    // Signal level - multiple possible formats:
-    // "Quality=X/Y  Signal level=Z dBm"
-    // "Signal level=Z/Y"
-    else if (currentCell) {
-      // Try different signal level patterns
-      let signalMatch = trimmed.match(/Signal level[=:](\d+)\/(\d+)/);
+    // Signal level - format: "Quality=X/70  Signal level=Y dBm"
+    else if (trimmed.includes('Signal level=') && currentCell) {
+      // Direct dBm format: "Signal level=-69 dBm"
+      const signalMatch = trimmed.match(/Signal level=\s*(-?\d+)\s*dBm/);
       if (signalMatch) {
-        // Signal level format: "65/100" - convert to dBm approximation
-        const signal = parseInt(signalMatch[1]);
-        const maxSignal = parseInt(signalMatch[2]);
-        currentCell.signalDbm = -100 + (signal * 50 / maxSignal); // Rough conversion
-      } else {
-        // Try direct dBm format: "Signal level=-45 dBm"
-        signalMatch = trimmed.match(/Signal level[:=]\s*(-?\d+)\s*dBm/);
-        if (signalMatch) {
-          currentCell.signalDbm = parseInt(signalMatch[1]);
-        }
-      }
-
-      // Also try Quality format as fallback
-      const qualityMatch = trimmed.match(/Quality[=:](\d+)\/(\d+)/);
-      if (qualityMatch && !currentCell.signalDbm) {
-        const quality = parseInt(qualityMatch[1]);
-        const maxQuality = parseInt(qualityMatch[2]);
-        currentCell.signalDbm = -100 + (quality * 50 / maxQuality); // Rough conversion
+        currentCell.signalDbm = parseInt(signalMatch[1]);
       }
     }
   }
 
   // Process the last cell
-  if (currentCell && currentCell.channel) {
+  if (currentCell && currentCell.channel && currentCell.signalDbm !== undefined) {
     const channel = currentCell.channel;
     if (channel >= 1 && channel <= 13) {
+      cellCount++;
+      console.log(`Found network on channel ${channel}: RSSI=${currentCell.signalDbm}dBm`);
       channels[channel].networkCount++;
-      if (currentCell.signalDbm && currentCell.signalDbm > channels[channel].signal) {
+      if (currentCell.signalDbm > channels[channel].signal) {
         channels[channel].signal = currentCell.signalDbm;
       }
     }
   }
+
+  console.log(`Total 2.4GHz networks found: ${cellCount}`);
 
   // Calculate quality scores for each channel
   const result = [];

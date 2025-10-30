@@ -12,13 +12,24 @@ router.post('/scan', async (req, res) => {
   try {
     console.log('Starting WiFi scan on Raspberry Pi...');
 
-    // Run iwlist scan command on the Pi
+    // Run iwlist scan command on the Pi (try nmcli as fallback)
     const { exec } = require('child_process');
     const { promisify } = require('util');
     const execAsync = promisify(exec);
 
-    console.log('Executing: sudo iwlist wlan0 scan');
-    const { stdout, stderr } = await execAsync('sudo iwlist wlan0 scan', { timeout: 15000 });
+    let stdout, stderr;
+    try {
+      console.log('Executing: sudo iwlist wlan0 scan');
+      ({ stdout, stderr } = await execAsync('sudo iwlist wlan0 scan', { timeout: 15000 }));
+    } catch (iwlistError) {
+      console.log('iwlist failed, trying nmcli as fallback...');
+      try {
+        ({ stdout, stderr } = await execAsync('nmcli -t -f SSID,BSSID,FREQ,CHAN,SIGNAL,SECURITY dev wifi list', { timeout: 15000 }));
+        console.log('Using nmcli output instead of iwlist');
+      } catch (nmcliError) {
+        throw new Error(`Both iwlist and nmcli failed: iwlist=${iwlistError.message}, nmcli=${nmcliError.message}`);
+      }
+    }
 
     if (stderr && !stderr.includes('No such device')) {
       console.warn('iwlist stderr:', stderr);
@@ -26,8 +37,15 @@ router.post('/scan', async (req, res) => {
 
     console.log('WiFi scan completed, parsing results...');
 
-    // Parse iwlist output
-    const channels = parseIwlistOutput(stdout);
+    // Parse output (iwlist or nmcli format)
+    let channels;
+    if (stdout.includes('Cell ')) {
+      // This is iwlist output
+      channels = parseIwlistOutput(stdout);
+    } else {
+      // This is nmcli output
+      channels = parseNmcliOutput(stdout);
+    }
 
     // Debug: show how many networks were found
     const totalNetworks = channels.reduce((sum, ch) => sum + ch.networkCount, 0);
@@ -309,6 +327,81 @@ function parseIwlistOutput(output) {
     result.push({
       channel: ch.channel,
       signal: ch.signal,
+      networkCount: ch.networkCount,
+      score: totalScore,
+      quality: totalScore > 90 ? 'excellent' :
+              totalScore > 75 ? 'good' :
+              totalScore > 60 ? 'fair' : 'poor'
+    });
+  }
+
+  return result;
+}
+
+// Parse nmcli scan output (format: SSID:BSSID:FREQ:CHAN:SIGNAL:SECURITY)
+function parseNmcliOutput(output) {
+  console.log('Parsing nmcli output');
+  const lines = output.split('\n');
+  const channels = [];
+
+  // Initialize channels 1-13 with default values
+  for (let i = 1; i <= 13; i++) {
+    channels[i] = {
+      channel: i,
+      signal: -90, // Default weak signal
+      networkCount: 0,
+      score: 10,   // Minimum score
+      quality: 'poor'
+    };
+  }
+
+  for (const line of lines) {
+    if (!line.trim()) continue;
+
+    // nmcli format: SSID:BSSID:FREQ:CHAN:SIGNAL:SECURITY
+    const parts = line.split(':');
+    if (parts.length >= 5) {
+      const ssid = parts[0];
+      const channel = parseInt(parts[3]);
+      const signalPercent = parseInt(parts[4]);
+
+      if (channel >= 1 && channel <= 13 && signalPercent >= 0 && signalPercent <= 100) {
+        // Convert signal percentage to dBm approximation
+        const signalDbm = -100 + (signalPercent * 0.5);
+
+        channels[channel].networkCount++;
+        if (signalDbm > channels[channel].signal) {
+          channels[channel].signal = signalDbm;
+        }
+      }
+    }
+  }
+
+  // Calculate quality scores for each channel
+  const result = [];
+  for (let i = 1; i <= 13; i++) {
+    const ch = channels[i];
+
+    // Calculate score based on signal strength and network count
+    let signalScore = 0;
+    if (ch.signal > -40) signalScore = 100;
+    else if (ch.signal > -50) signalScore = 90;
+    else if (ch.signal > -60) signalScore = 75;
+    else if (ch.signal > -70) signalScore = 60;
+    else if (ch.signal > -80) signalScore = 40;
+    else signalScore = 20;
+
+    // Network count penalty (more networks = lower score)
+    const networkPenalty = Math.min(ch.networkCount * 5, 30);
+
+    // Non-overlapping channel bonus (1, 6, 11 are preferred in 2.4GHz)
+    const nonOverlappingBonus = [1, 6, 11].includes(ch.channel) ? 15 : 0;
+
+    const totalScore = Math.max(10, signalScore - networkPenalty + nonOverlappingBonus);
+
+    result.push({
+      channel: ch.channel,
+      signal: Math.round(ch.signal),
       networkCount: ch.networkCount,
       score: totalScore,
       quality: totalScore > 90 ? 'excellent' :

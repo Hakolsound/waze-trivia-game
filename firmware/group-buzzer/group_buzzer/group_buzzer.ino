@@ -554,7 +554,7 @@ void setup() {
   memset(&peerInfo, 0, sizeof(peerInfo)); // Clear the structure
   uint8_t coordMAC[] = COORDINATOR_MAC; // Use constant
   memcpy(peerInfo.peer_addr, coordMAC, 6);
-  peerInfo.channel = currentWifiChannel; // Explicitly set peer channel
+  peerInfo.channel = 0; // Set to 0 = accept any channel (for channel scanning)
   peerInfo.encrypt = false;
   peerInfo.ifidx = WIFI_IF_STA; // Set the interface
 

@@ -144,20 +144,7 @@ unsigned long endRoundStartTime = 0;
 #define BIN_CMD_SET_CHANNEL 10
 
 // WiFi Channel Management Structures
-typedef struct {
-  uint8_t channel;
-  int8_t rssi;           // Signal strength in dBm
-  uint8_t networkCount;  // Number of networks on this channel
-  uint8_t quality;       // Calculated quality score (0-100)
-} WifiChannelInfo;
 
-typedef struct {
-  bool inProgress;
-  unsigned long startTime;
-  uint8_t currentChannel;
-  WifiChannelInfo results[WIFI_SCAN_MAX_CHANNELS];
-  uint8_t completedChannels;
-} WifiScanState;
 
 typedef struct {
   bool inProgress;
@@ -179,7 +166,6 @@ typedef struct {
 } PendingCommand;
 
 // Global WiFi management state
-WifiScanState wifiScanState = {false, 0, 0, {}, 0};
 ChannelChangeState channelChangeState = {false, 0, 0, 0, 0, false};
 
 // Current WiFi channel (global variable)
@@ -232,270 +218,11 @@ bool setWifiChannel(uint8_t channel) {
   return true;
 }
 
-// Calculate channel quality score (0-100)
-uint8_t calculateChannelQuality(int8_t rssi, uint8_t networkCount) {
-  // RSSI quality (higher RSSI = lower interference = higher quality)
-  uint8_t rssiScore = 0;
-  if (rssi >= -30) rssiScore = 100;
-  else if (rssi >= -50) rssiScore = 90;
-  else if (rssi >= -60) rssiScore = 75;
-  else if (rssi >= -70) rssiScore = 60;
-  else if (rssi >= -80) rssiScore = 40;
-  else rssiScore = 20;
 
-  // Network count penalty (more networks = lower quality)
-  uint8_t networkPenalty = 0;
-  if (networkCount > 8) networkPenalty = 40;
-  else if (networkCount > 6) networkPenalty = 30;
-  else if (networkCount > 4) networkPenalty = 20;
-  else if (networkCount > 2) networkPenalty = 10;
 
-  // Final quality score
-  if (rssiScore > networkPenalty) {
-    return rssiScore - networkPenalty;
-  } else {
-    return 10; // Minimum quality score
-  }
-}
 
-// Get recommended channel based on scan results
-uint8_t getRecommendedChannel() {
-  uint8_t bestChannel = 13; // Default fallback
-  uint8_t bestQuality = 0;
 
-  for (uint8_t i = 0; i < WIFI_SCAN_MAX_CHANNELS; i++) {
-    if (wifiScanState.results[i].quality > bestQuality) {
-      bestQuality = wifiScanState.results[i].quality;
-      bestChannel = wifiScanState.results[i].channel;
-    }
-  }
 
-  Serial.printf("[WIFI] Recommended channel: %d (quality: %d)\n", bestChannel, bestQuality);
-  return bestChannel;
-}
-
-// WiFi scan callback (ESP-IDF v5.x)
-void wifiScanCallback(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
-  Serial.println("[WIFI] WiFi scan callback triggered!");
-  if (!wifiScanState.inProgress) {
-    Serial.println("[WIFI] Scan not in progress, ignoring callback");
-    return;
-  }
-
-  uint16_t apCount = 0;
-  esp_wifi_scan_get_ap_num(&apCount);
-  Serial.printf("[WIFI] Found %d access points\n", apCount);
-
-  if (apCount > 0) {
-    wifi_ap_record_t *apRecords = (wifi_ap_record_t*)malloc(sizeof(wifi_ap_record_t) * apCount);
-    if (apRecords) {
-      ESP_ERROR_CHECK(esp_wifi_scan_get_ap_records(&apCount, apRecords));
-
-      // Count networks per channel
-      uint8_t networkCountPerChannel[WIFI_SCAN_MAX_CHANNELS] = {0};
-      int8_t strongestRSSIPerChannel[WIFI_SCAN_MAX_CHANNELS];
-
-      // Initialize RSSI array
-      for (uint8_t i = 0; i < WIFI_SCAN_MAX_CHANNELS; i++) {
-        strongestRSSIPerChannel[i] = -100; // Very weak signal
-      }
-
-      // Process scan results
-      for (uint16_t i = 0; i < apCount; i++) {
-        uint8_t channel = apRecords[i].primary;
-        if (channel >= 1 && channel <= WIFI_SCAN_MAX_CHANNELS) {
-          networkCountPerChannel[channel - 1]++;
-          if (apRecords[i].rssi > strongestRSSIPerChannel[channel - 1]) {
-            strongestRSSIPerChannel[channel - 1] = apRecords[i].rssi;
-          }
-        }
-      }
-
-      // Store results for each channel
-      for (uint8_t ch = 1; ch <= WIFI_SCAN_MAX_CHANNELS; ch++) {
-        uint8_t index = ch - 1;
-        wifiScanState.results[index].channel = ch;
-        wifiScanState.results[index].rssi = strongestRSSIPerChannel[index];
-        wifiScanState.results[index].networkCount = networkCountPerChannel[index];
-        wifiScanState.results[index].quality = calculateChannelQuality(
-          strongestRSSIPerChannel[index], networkCountPerChannel[index]);
-      }
-
-      free(apRecords);
-    }
-  } else {
-    // No networks found, set default values
-    for (uint8_t ch = 1; ch <= WIFI_SCAN_MAX_CHANNELS; ch++) {
-      uint8_t index = ch - 1;
-      wifiScanState.results[index].channel = ch;
-      wifiScanState.results[index].rssi = -90; // Very weak
-      wifiScanState.results[index].networkCount = 0;
-      wifiScanState.results[index].quality = 95; // High quality if no interference
-    }
-  }
-
-  wifiScanState.completedChannels = WIFI_SCAN_MAX_CHANNELS;
-  wifiScanState.inProgress = false;
-
-  Serial.printf("[WIFI] Scan completed - found %d access points\n", apCount);
-
-  // Reinitialize ESP-NOW after scanning
-  Serial.println("[WIFI] Reinitializing ESP-NOW after scan completion...");
-  delay(500); // Give WiFi some time to settle
-
-  if (esp_now_init() != ESP_OK) {
-    Serial.println("[WIFI] ERROR: Failed to reinitialize ESP-NOW after scan!");
-  } else {
-    Serial.println("[WIFI] ESP-NOW reinitialized successfully");
-
-    // Re-register callbacks
-    esp_now_register_send_cb(OnDataSent);
-    esp_now_register_recv_cb(OnDataRecv);
-
-    // Re-add peers (this is critical for continued operation)
-    for (int i = 0; i < registeredDeviceCount; i++) {
-      if (devices[i].isRegistered) {
-        esp_now_peer_info_t peerInfo = {};
-        memcpy(peerInfo.peer_addr, devices[i].macAddress, 6);
-        peerInfo.channel = currentWifiChannel;
-        peerInfo.encrypt = false;
-        peerInfo.ifidx = WIFI_IF_STA;
-
-        esp_err_t result = esp_now_add_peer(&peerInfo);
-        if (result != ESP_OK) {
-          Serial.printf("[WIFI] Warning: Failed to re-add peer %d after scan (error %d)\n", devices[i].deviceId, result);
-        } else {
-          Serial.printf("[WIFI] Successfully re-added peer %d after scan\n", devices[i].deviceId);
-        }
-      }
-    }
-  }
-}
-
-// Start WiFi channel scan
-bool startWifiScan() {
-  if (wifiScanState.inProgress) {
-    Serial.println("[WIFI] Scan already in progress");
-    return false;
-  }
-
-  Serial.println("[WIFI] Preparing for WiFi scan...");
-
-  // ESP-NOW and WiFi scanning can conflict, so we need to temporarily deinitialize ESP-NOW
-  Serial.println("[WIFI] Temporarily deinitializing ESP-NOW for scanning...");
-  esp_now_deinit();
-
-  // Give WiFi some time to settle
-  delay(500);
-
-  // Ensure WiFi is in station mode for scanning
-  wifi_mode_t current_mode;
-  esp_wifi_get_mode(&current_mode);
-  Serial.printf("[WIFI] Current WiFi mode: %d\n", current_mode);
-
-  // Configure scan parameters
-  wifi_scan_config_t scanConfig;
-  memset(&scanConfig, 0, sizeof(scanConfig));
-  scanConfig.ssid = NULL;
-  scanConfig.bssid = NULL;
-  scanConfig.channel = 0; // Scan all channels
-  scanConfig.show_hidden = false;
-  scanConfig.scan_type = WIFI_SCAN_TYPE_ACTIVE;
-  scanConfig.scan_time.active.min = WIFI_SCAN_DURATION_MS / 1000;
-  scanConfig.scan_time.active.max = WIFI_SCAN_DURATION_MS / 1000;
-  scanConfig.scan_time.passive = 0; // Passive scan time (0 = use default)
-
-  wifiScanState.inProgress = true;
-  wifiScanState.startTime = millis();
-  wifiScanState.completedChannels = 0;
-
-  Serial.println("[WIFI] Starting WiFi channel scan...");
-
-  esp_err_t result = esp_wifi_scan_start(&scanConfig, false);
-  if (result != ESP_OK) {
-    Serial.printf("[WIFI] ERROR: Failed to start scan (error %d)\n", result);
-    Serial.printf("[WIFI] Error description: %s\n", esp_err_to_name(result));
-
-    // Try to get more details about WiFi state
-    wifi_ap_record_t ap_info[10];
-    uint16_t ap_count = 10;
-    esp_err_t get_result = esp_wifi_scan_get_ap_records(&ap_count, ap_info);
-    Serial.printf("[WIFI] esp_wifi_scan_get_ap_records result: %d (%s)\n", get_result, esp_err_to_name(get_result));
-
-    wifiScanState.inProgress = false;
-
-    // Reinitialize ESP-NOW
-    Serial.println("[WIFI] Reinitializing ESP-NOW after scan failure...");
-    if (esp_now_init() != ESP_OK) {
-      Serial.println("[WIFI] ERROR: Failed to reinitialize ESP-NOW!");
-    }
-    return false;
-  }
-
-  Serial.println("[WIFI] Scan start successful, waiting for callback...");
-  return true;
-}
-
-// Check if WiFi scan is complete and process results
-void processWifiScanResults() {
-  if (wifiScanState.inProgress) {
-    // Check for timeout (should not happen with callback, but safety check)
-    if (millis() - wifiScanState.startTime > 30000) { // 30 second timeout
-      Serial.println("[WIFI] Scan timeout - aborting and reinitializing ESP-NOW");
-
-      wifiScanState.inProgress = false;
-      esp_wifi_scan_stop();
-
-      // Reinitialize ESP-NOW after timeout
-      Serial.println("[WIFI] Reinitializing ESP-NOW after timeout...");
-      delay(500);
-
-      if (esp_now_init() != ESP_OK) {
-        Serial.println("[WIFI] ERROR: Failed to reinitialize ESP-NOW after timeout!");
-      } else {
-        Serial.println("[WIFI] ESP-NOW reinitialized successfully after timeout");
-
-        // Re-register callbacks
-        esp_now_register_send_cb(OnDataSent);
-        esp_now_register_recv_cb(OnDataRecv);
-
-        // Re-add peers
-        for (int i = 0; i < registeredDeviceCount; i++) {
-          if (devices[i].isRegistered) {
-            esp_now_peer_info_t peerInfo = {};
-            memcpy(peerInfo.peer_addr, devices[i].macAddress, 6);
-            peerInfo.channel = currentWifiChannel;
-            peerInfo.encrypt = false;
-            peerInfo.ifidx = WIFI_IF_STA;
-
-            esp_err_t result = esp_now_add_peer(&peerInfo);
-            if (result != ESP_OK) {
-              Serial.printf("[WIFI] Warning: Failed to re-add peer %d after timeout (error %d)\n", devices[i].deviceId, result);
-            }
-          }
-        }
-      }
-      return;
-    }
-  } else if (wifiScanState.completedChannels > 0) {
-    // Scan completed, send results
-    sendWifiScanResults();
-    wifiScanState.completedChannels = 0; // Reset for next scan
-  }
-}
-
-// Send WiFi scan results to serial (for backend)
-void sendWifiScanResults() {
-  Serial.println("[WIFI_SCAN_RESULTS]");
-
-  for (uint8_t i = 0; i < WIFI_SCAN_MAX_CHANNELS; i++) {
-    WifiChannelInfo *info = &wifiScanState.results[i];
-    Serial.printf("CH:%d,RSSI:%d,NETS:%d,QUAL:%d\n",
-                  info->channel, info->rssi, info->networkCount, info->quality);
-  }
-
-  Serial.println("[WIFI_SCAN_COMPLETE]");
-}
 
 // =========================================
 // Channel Change Coordination Functions
@@ -861,21 +588,6 @@ void handleBinaryCommand(CommandMessage cmd) {
         armSpecificBuzzersByBitmask(bitmask);
       }
       break;
-    case BIN_CMD_SCAN_CHANNELS: // 9 - SCAN_CHANNELS
-      Serial.println("[COORD] Received SCAN_CHANNELS command");
-      Serial.printf("[COORD] Current WiFi channel: %d\n", currentWifiChannel);
-
-      // Check WiFi mode
-      wifi_mode_t mode;
-      esp_wifi_get_mode(&mode);
-      Serial.printf("[COORD] WiFi mode: %d\n", mode);
-
-      if (startWifiScan()) {
-        Serial.println("WIFI_SCAN_STARTED");
-      } else {
-        Serial.println("WIFI_SCAN_FAILED");
-      }
-      break;
     case BIN_CMD_SET_CHANNEL: // 10 - SET_CHANNEL
       {
         // Channel is encoded in targetDevice (1-13)
@@ -1016,8 +728,6 @@ void setup() {
 
   Serial.println("ESP-NOW initialized successfully");
 
-  // Register WiFi scan callback
-  ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, WIFI_EVENT_SCAN_DONE, &wifiScanCallback, NULL, NULL));
 
   // Register callbacks
   esp_now_register_send_cb(OnDataSent);
@@ -1077,8 +787,6 @@ void loop() {
   // Process background END_ROUND retries
   processEndRoundRetries();
 
-  // Process WiFi scan completion
-  processWifiScanResults();
 
   // Process channel change coordination
   processChannelChangeTimeout();

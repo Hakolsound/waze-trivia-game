@@ -629,13 +629,15 @@ void OnDataSent(const wifi_tx_info_t *tx_info, esp_now_send_status_t status) {
 
 // Handle incoming messages
 void OnDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len) {
-  // Reduced verbose logging to prevent coordinator overload
-  // Only log for debugging when TEXT_DEBUG_ENABLED is true
-  if (TEXT_DEBUG_ENABLED) {
-    char macStr[18];
-    snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
-             recv_info->src_addr[0], recv_info->src_addr[1], recv_info->src_addr[2],
-             recv_info->src_addr[3], recv_info->src_addr[4], recv_info->src_addr[5]);
+  // Always log during channel changes for debugging
+  char macStr[18];
+  snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
+           recv_info->src_addr[0], recv_info->src_addr[1], recv_info->src_addr[2],
+           recv_info->src_addr[3], recv_info->src_addr[4], recv_info->src_addr[5]);
+
+  if (channelChangeState.inProgress) {
+    Serial.printf("[ESP-NOW] CHANNEL_CHANGE: Received %d bytes from: %s\n", len, macStr);
+  } else if (TEXT_DEBUG_ENABLED) {
     Serial.printf("Received %d bytes from: %s\n", len, macStr);
   }
 

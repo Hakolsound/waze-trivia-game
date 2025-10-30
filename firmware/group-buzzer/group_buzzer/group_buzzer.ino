@@ -1045,14 +1045,21 @@ void handleCommand(Command cmd) {
       Serial.printf("[CMD] Coordinator MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
                    coordinatorMAC[0], coordinatorMAC[1], coordinatorMAC[2],
                    coordinatorMAC[3], coordinatorMAC[4], coordinatorMAC[5]);
-      // For now, assume coordinator sends channel as targetDevice (limited to 1-15)
-      // In future, could extend Command struct to include channel data
+
+      // CRITICAL: Send ACK BEFORE changing channel to avoid communication loss
+      // Once we change channel, we can't communicate with coordinator on old channel
+      Serial.printf("[CMD] Sending ACK before channel change to %d\n", cmd.targetDevice);
+      sendChannelChangeAck();
+
+      // Small delay to ensure ACK is sent before channel change
+      delay(50);
+
+      // Now change the channel
       if (setWifiChannel(cmd.targetDevice)) {
-        // Channel change successful - send ACK to coordinator
-        Serial.printf("[CMD] Channel change to %d successful - sending ACK\n", cmd.targetDevice);
-        sendChannelChangeAck();
+        Serial.printf("[CMD] Channel change to %d successful\n", cmd.targetDevice);
       } else {
-        Serial.printf("[CMD] Channel change to %d failed - not sending ACK\n", cmd.targetDevice);
+        Serial.printf("[CMD] Channel change to %d failed\n", cmd.targetDevice);
+        // Note: ACK was already sent, coordinator will timeout and fail the change
       }
       break;
 

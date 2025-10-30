@@ -350,12 +350,13 @@ bool startWifiScan() {
     .bssid = NULL,
     .channel = 0, // Scan all channels
     .show_hidden = false,
-    .scan_type = WIFI_SCAN_TYPE_ACTIVE
+    .scan_type = WIFI_SCAN_TYPE_ACTIVE,
+    .scan_time.active = {
+      .min = WIFI_SCAN_DURATION_MS / 1000,
+      .max = WIFI_SCAN_DURATION_MS / 1000
+    },
+    .scan_time.passive = 0  // Passive scan time (0 = use default)
   };
-  scanConfig.scan_time.active.min = WIFI_SCAN_DURATION_MS / 1000;
-  scanConfig.scan_time.active.max = WIFI_SCAN_DURATION_MS / 1000;
-  scanConfig.scan_time.passive.min = 0;
-  scanConfig.scan_time.passive.max = 0;
 
   wifiScanState.inProgress = true;
   wifiScanState.startTime = millis();

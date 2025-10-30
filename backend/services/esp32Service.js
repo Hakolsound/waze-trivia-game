@@ -753,7 +753,7 @@ class ESP32Service extends EventEmitter {
     // Return array of buzzer devices with their actual status from ESP32 data
     const devices = [];
     const now = Date.now();
-    const staleThreshold = 60000; // 60 seconds
+    const staleThreshold = 10000; // 10 seconds (must match coordinator HEARTBEAT_TIMEOUT)
 
     for (const [deviceId, state] of this.buzzerStates) {
       // Only include numeric device IDs (filter out false entries)

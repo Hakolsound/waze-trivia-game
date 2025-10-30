@@ -253,24 +253,34 @@ bool startChannelChange(uint8_t targetChannel) {
   // Send CHANGE_CHANNEL command to all buzzers with ACK requirement
   uint8_t sent = 0;
   uint8_t failed = 0;
+  uint8_t online = 0;
 
+  Serial.printf("[CHANNEL] Checking device status for channel change:\n");
   for (int i = 0; i < registeredDeviceCount; i++) {
-    if (devices[i].isOnline) {
+    Serial.printf("[CHANNEL] Device %d: registered=%d, online=%d\n",
+                 devices[i].deviceId, devices[i].isRegistered, devices[i].isOnline);
+    if (devices[i].isRegistered && devices[i].isOnline) {
+      online++;
+      Serial.printf("[CHANNEL] Sending CHANGE_CHANNEL to device %d...\n", devices[i].deviceId);
       if (sendCommandWithAck(devices[i].deviceId, CMD_CHANGE_CHANNEL)) {
         sent++;
+        Serial.printf("[CHANNEL] ✓ Command sent to device %d\n", devices[i].deviceId);
       } else {
         failed++;
+        Serial.printf("[CHANNEL] ✗ Failed to send to device %d\n", devices[i].deviceId);
       }
     }
   }
 
+  Serial.printf("[CHANNEL] Total registered devices: %d, online: %d, sent: %d, failed: %d\n",
+                registeredDeviceCount, online, sent, failed);
+
   if (sent == 0) {
     Serial.println("[CHANNEL] ERROR: No devices accepted channel change command");
+    Serial.printf("WIFI_CHANNEL_CHANGE_FAILED:%d\n", targetChannel);
     channelChangeState.inProgress = false;
     return false;
   }
-
-  Serial.printf("[CHANNEL] Sent channel change command to %d devices (%d failed)\n", sent, failed);
   return true;
 }
 
@@ -282,9 +292,9 @@ void handleChannelChangeAck(uint8_t deviceId) {
   Serial.printf("[CHANNEL] Received ACK from device %d (%d/%d)\n",
                 deviceId, channelChangeState.ackCount, channelChangeState.totalDevices);
 
-  // Check if all devices have acknowledged
+  // Only change coordinator channel if ALL devices ACK'd
+  // This ensures no devices are left behind on old channel
   if (channelChangeState.ackCount >= channelChangeState.totalDevices) {
-    // All devices have ACK'd, now change coordinator channel
     Serial.println("[CHANNEL] All devices ACK'd - changing coordinator channel");
 
     esp_err_t result = esp_wifi_set_channel(channelChangeState.targetChannel, WIFI_SECOND_CHAN_NONE);
@@ -298,7 +308,8 @@ void handleChannelChangeAck(uint8_t deviceId) {
       channelChangeState.inProgress = false;
     } else {
       Serial.printf("[CHANNEL] ERROR: Failed to change coordinator channel (error %d)\n", result);
-      // Keep channelChangeState.inProgress = true for timeout handling
+      Serial.printf("WIFI_CHANNEL_CHANGE_FAILED:%d\n", channelChangeState.targetChannel);
+      channelChangeState.inProgress = false;
     }
   }
 }
@@ -309,24 +320,20 @@ void processChannelChangeTimeout() {
 
   unsigned long elapsed = millis() - channelChangeState.startTime;
 
-  // Overall timeout
+  // Overall timeout - ALL devices must ACK or channel change fails
   if (elapsed > WIFI_CHANNEL_CHANGE_TIMEOUT_MS) {
     Serial.printf("[CHANNEL] Channel change timeout after %dms - %d/%d ACKs received\n",
                   WIFI_CHANNEL_CHANGE_TIMEOUT_MS, channelChangeState.ackCount, channelChangeState.totalDevices);
+
+    if (channelChangeState.ackCount < channelChangeState.totalDevices) {
+      Serial.printf("[CHANNEL] ERROR: Not all devices ACK'd (%d/%d) - channel change FAILED\n",
+                    channelChangeState.ackCount, channelChangeState.totalDevices);
+    }
 
     // Send failure notification
     Serial.printf("WIFI_CHANNEL_CHANGE_FAILED:%d\n", channelChangeState.targetChannel);
     channelChangeState.inProgress = false;
     return;
-  }
-
-  // If coordinator already changed but some devices didn't ACK, that's OK
-  // The coordinator is on the new channel and will handle device reconnections
-  if (channelChangeState.coordinatorChanged && elapsed > 2000) { // Give 2 more seconds
-    Serial.printf("[CHANNEL] Coordinator changed, %d/%d devices ACK'd - completing\n",
-                  channelChangeState.ackCount, channelChangeState.totalDevices);
-    Serial.printf("WIFI_CHANNEL_CHANGED:%d\n", currentWifiChannel);
-    channelChangeState.inProgress = false;
   }
 }
 

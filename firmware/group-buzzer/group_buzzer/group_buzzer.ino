@@ -368,8 +368,16 @@ void OnDataSent(const wifi_tx_info_t *tx_info, esp_now_send_status_t status) {
   Serial.printf("ESP-NOW Send Status to %s: %s\n", macStr,
                 status == ESP_NOW_SEND_SUCCESS ? "Success" : "Fail");
 
-  // Note: Success here means "queued successfully", NOT "delivered successfully"
-  // Actual coordinator presence is confirmed by receiving data in OnDataRecv
+  // If we're scanning and get a successful send, we found the coordinator's channel!
+  if (isScanning && status == ESP_NOW_SEND_SUCCESS) {
+    Serial.printf("[CHANNEL SCAN] ✓✓✓ COORDINATOR FOUND! Send success on channel %d ✓✓✓\n", currentWifiChannel);
+    isScanning = false;
+    consecutiveHeartbeatFailures = 0;
+    lastSuccessfulHeartbeat = millis();
+    scanChannelIndex = 0;
+    scanPassCount = 0;
+    Serial.printf("[CHANNEL SCAN] Locked onto channel %d\n", currentWifiChannel);
+  }
 }
 
 // ESP-NOW callback for receiving data (ESP-IDF v5.x signature)

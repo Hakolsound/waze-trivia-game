@@ -241,14 +241,34 @@ bool startChannelChange(uint8_t targetChannel) {
   }
 
   Serial.printf("[CHANNEL] Starting immediate channel change to %d\n", targetChannel);
-  Serial.printf("[CHANNEL] Buzzers will auto-scan [13,1,6,11] to find coordinator on new channel\n");
+  Serial.printf("[CHANNEL] Notifying buzzers, then changing coordinator channel\n");
+
+  // Send CHANGE_CHANNEL command to all online buzzers to trigger immediate scanning
+  // This avoids waiting 15 seconds for heartbeat failures (3 failures x 5 seconds)
+  int notified = 0;
+  for (int i = 0; i < registeredDeviceCount; i++) {
+    if (devices[i].isRegistered && devices[i].isOnline) {
+      Serial.printf("[CHANNEL] Notifying device %d to scan for channel %d...\n", devices[i].deviceId, targetChannel);
+      if (sendChannelChangeCommand(devices[i].deviceId, targetChannel)) {
+        notified++;
+        Serial.printf("[CHANNEL] ✓ Device %d notified\n", devices[i].deviceId);
+      } else {
+        Serial.printf("[CHANNEL] ✗ Failed to notify device %d\n", devices[i].deviceId);
+      }
+    }
+  }
+
+  Serial.printf("[CHANNEL] Notified %d/%d online devices\n", notified, registeredDeviceCount);
+
+  // Small delay to allow notifications to be sent before channel change
+  delay(50);
 
   // Change coordinator channel immediately
   esp_err_t result = esp_wifi_set_channel(targetChannel, WIFI_SECOND_CHAN_NONE);
   if (result == ESP_OK) {
     currentWifiChannel = targetChannel;
     Serial.printf("[CHANNEL] ✓ Coordinator channel changed to %d\n", currentWifiChannel);
-    Serial.printf("[CHANNEL] Buzzers will detect coordinator loss and begin channel scan\n");
+    Serial.printf("[CHANNEL] Buzzers will scan [13,1,6,11] to find coordinator on new channel\n");
 
     // Send success confirmation to backend
     Serial.printf("WIFI_CHANNEL_CHANGED:%d\n", currentWifiChannel);

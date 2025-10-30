@@ -1069,29 +1069,17 @@ void handleCommand(Command cmd) {
       break;
 
     case CMD_CHANGE_CHANNEL: // 8 - CHANGE_CHANNEL
-      Serial.printf("[CMD] Device %d RECEIVED CHANGE_CHANNEL command for channel %d\n", DEVICE_ID, cmd.targetDevice);
-      Serial.printf("[CMD] Coordinator MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
-                   coordinatorMAC[0], coordinatorMAC[1], coordinatorMAC[2],
-                   coordinatorMAC[3], coordinatorMAC[4], coordinatorMAC[5]);
+      Serial.printf("[CMD] Device %d RECEIVED CHANGE_CHANNEL notification - coordinator moving to channel %d\n", DEVICE_ID, cmd.targetDevice);
+      Serial.printf("[CMD] Starting immediate channel scan to find coordinator on new channel\n");
 
-      // CRITICAL: Send ACK BEFORE changing channel to avoid communication loss
-      // Once we change channel, we can't communicate with coordinator on old channel
-      Serial.printf("[CMD] Sending ACK for channel change to %d (current channel: %d)\n",
-                   cmd.targetDevice, currentWifiChannel);
+      // Send ACK to acknowledge we received the notification
       sendChannelChangeAck();
 
-      // Small delay to ensure ACK is sent before channel change
-      Serial.println("[CMD] Waiting 100ms for ACK to be sent...");
-      delay(100);
-      Serial.println("[CMD] Now proceeding with channel change...");
-
-      // Now change the channel
-      if (setWifiChannel(cmd.targetDevice)) {
-        Serial.printf("[CMD] Channel change to %d successful\n", cmd.targetDevice);
-      } else {
-        Serial.printf("[CMD] Channel change to %d failed\n", cmd.targetDevice);
-        // Note: ACK was already sent, coordinator will timeout and fail the change
-      }
+      // Start channel scan immediately to find coordinator
+      // This avoids waiting 15 seconds for heartbeat failures (3 failures x 5 seconds)
+      Serial.printf("[CMD] Triggering immediate channel scan (coordinator is switching now)\n");
+      consecutiveHeartbeatFailures = MAX_HEARTBEAT_FAILURES; // Trigger scan threshold
+      startChannelScan();
       break;
 
     default:

@@ -993,27 +993,27 @@ void handleCommand(Command cmd) {
   sendCommandAck(cmd.sequenceId);
 
   switch (cmd.command) {
-    case 1: // ARM
+    case CMD_ARM: // 1 - ARM
       Serial.printf("[CMD] Device %d executing ARM command\n", DEVICE_ID);
       armBuzzer();
       break;
 
-    case 2: // DISARM
+    case CMD_DISARM: // 2 - DISARM
       Serial.printf("[CMD] Device %d executing DISARM command\n", DEVICE_ID);
       disarmBuzzer();
       break;
 
-    case 3: // TEST
+    case CMD_TEST: // 3 - TEST
       Serial.printf("[CMD] Device %d executing TEST command\n", DEVICE_ID);
       testBuzzer();
       break;
 
-    case 4: // RESET
+    case CMD_RESET: // 4 - RESET
       Serial.printf("[CMD] Device %d executing RESET command\n", DEVICE_ID);
       resetBuzzer();
       break;
 
-    case 5: // CORRECT_ANSWER
+    case CMD_CORRECT_ANSWER: // 5 - CORRECT_ANSWER
       Serial.printf("[CMD] Device %d executing CORRECT_ANSWER command - changing to GREEN state\n", DEVICE_ID);
       correctAnswerFeedback();
       Serial.printf("[CMD] CORRECT_ANSWER completed - buzzer should now be GREEN (state: %d)\n", currentState);
@@ -1022,7 +1022,7 @@ void handleCommand(Command cmd) {
       Serial.printf("[CMD] Forced LED update for CORRECT_ANSWER\n");
       break;
 
-    case 6: // WRONG_ANSWER
+    case CMD_WRONG_ANSWER: // 6 - WRONG_ANSWER
       Serial.printf("[CMD] Device %d executing WRONG_ANSWER command - changing to RED state\n", DEVICE_ID);
       wrongAnswerFeedback();
       Serial.printf("[CMD] WRONG_ANSWER completed - buzzer should now be RED (state: %d)\n", currentState);
@@ -1031,7 +1031,7 @@ void handleCommand(Command cmd) {
       Serial.printf("[CMD] Forced LED update for WRONG_ANSWER\n");
       break;
 
-    case 7: // END_ROUND (return to armed state)
+    case CMD_END_ROUND: // 7 - END_ROUND
       Serial.printf("[CMD] Device %d executing END_ROUND command - resetting to DISARMED\n", DEVICE_ID);
       endRoundReset();
       Serial.printf("[CMD] END_ROUND completed - buzzer should now be BLACK (state: %d)\n", currentState);

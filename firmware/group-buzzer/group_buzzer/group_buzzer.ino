@@ -1494,10 +1494,11 @@ void startChannelScan() {
       }
 
       uint8_t channel = scanChannels[ch];
-      Serial.printf("[CHANNEL SCAN] Testing channel %d...\n", channel);
+      Serial.printf("[CHANNEL SCAN] ========== Testing channel %d ==========\n", channel);
 
       // Switch to channel
       setWifiChannel(channel);
+      Serial.printf("[CHANNEL SCAN] WiFi channel set to %d\n", channel);
 
       // Update peer channel to match our current channel
       esp_now_peer_info_t peerInfo;
@@ -1505,40 +1506,62 @@ void startChannelScan() {
         esp_now_del_peer(coordinatorMAC); // Remove old peer
         peerInfo.channel = channel; // Update to current channel
         esp_now_add_peer(&peerInfo); // Re-add with new channel
-        Serial.printf("[CHANNEL SCAN] Updated peer channel to %d\n", channel);
+        Serial.printf("[CHANNEL SCAN] Peer updated to channel %d\n", channel);
+      } else {
+        Serial.println("[CHANNEL SCAN] WARNING: Failed to get peer info");
       }
 
-      delay(50); // Brief settle time
+      // Give everything time to settle
+      delay(100);
 
-      // Try sending a heartbeat
-      lastSendSuccess = false; // Reset before send
+      // Try sending multiple heartbeats on this channel for better detection
+      bool foundOnThisChannel = false;
+      for (int attempt = 0; attempt < 5; attempt++) {
+        lastSendSuccess = false; // Reset before each send
 
-      Message msg;
-      msg.messageType = 2; // heartbeat
-      msg.deviceId = DEVICE_ID;
-      msg.timestamp = millis();
-      msg.data[0] = isArmed ? 1 : 0;
-      msg.data[1] = buzzerPressed ? 1 : 0;
-      msg.data[2] = batteryPercentage;
-      uint16_t voltageInt = (uint16_t)(batteryVoltage * 100);
-      msg.data[3] = voltageInt & 0xFF;
-      msg.data[4] = (voltageInt >> 8) & 0xFF;
+        Message msg;
+        msg.messageType = 2; // heartbeat
+        msg.deviceId = DEVICE_ID;
+        msg.timestamp = millis();
+        msg.data[0] = isArmed ? 1 : 0;
+        msg.data[1] = buzzerPressed ? 1 : 0;
+        msg.data[2] = batteryPercentage;
+        uint16_t voltageInt = (uint16_t)(batteryVoltage * 100);
+        msg.data[3] = voltageInt & 0xFF;
+        msg.data[4] = (voltageInt >> 8) & 0xFF;
 
-      esp_now_send(coordinatorMAC, (uint8_t*)&msg, sizeof(msg));
+        Serial.printf("[CHANNEL SCAN] Attempt %d/5: Sending heartbeat...\n", attempt + 1);
+        esp_err_t sendResult = esp_now_send(coordinatorMAC, (uint8_t*)&msg, sizeof(msg));
 
-      // Wait for callback to process
-      delay(150); // Give callback time to fire and set lastSendSuccess
+        if (sendResult != ESP_OK) {
+          Serial.printf("[CHANNEL SCAN] Send failed immediately (error %d)\n", sendResult);
+          delay(200);
+          continue;
+        }
 
-      // Check if send succeeded (callback sets this)
-      if (lastSendSuccess) {
-        Serial.printf("[CHANNEL SCAN] ✓ SUCCESS on channel %d - coordinator found!\n", channel);
+        // Wait for callback to process with longer timeout
+        delay(200);
+
+        // Check if send succeeded via callback
+        if (lastSendSuccess) {
+          Serial.printf("[CHANNEL SCAN] ✓✓✓ SUCCESS on attempt %d! Coordinator on channel %d! ✓✓✓\n", attempt + 1, channel);
+          foundOnThisChannel = true;
+          break;
+        }
+
+        Serial.printf("[CHANNEL SCAN] Attempt %d: No success, trying again...\n", attempt + 1);
+        delay(100); // Small delay between attempts
+      }
+
+      if (foundOnThisChannel) {
+        Serial.printf("[CHANNEL SCAN] ========== COORDINATOR FOUND ON CHANNEL %d ==========\n", channel);
         isScanning = false;
         consecutiveHeartbeatFailures = 0;
         lastSuccessfulHeartbeat = millis();
         return;
       }
 
-      Serial.printf("[CHANNEL SCAN] ✗ No response on channel %d\n", channel);
+      Serial.printf("[CHANNEL SCAN] ✗ No response on channel %d after 5 attempts\n", channel);
     }
 
     Serial.printf("[CHANNEL SCAN] Pass %d/%d complete - coordinator not found\n", pass + 1, MAX_SCAN_PASSES);

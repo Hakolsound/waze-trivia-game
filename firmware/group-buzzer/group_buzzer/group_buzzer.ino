@@ -1131,6 +1131,10 @@ void handleCommand(Command cmd) {
       // Store target channel for direct jump
       targetChannelForDirectJump = cmd.targetDevice;
 
+      // Play confirmation tone and show visual feedback
+      Serial.println("[CMD] Playing channel change confirmation...");
+      playChannelChangeConfirmation();
+
       // Send ACK before anything else
       Serial.printf("[CMD] Sending ACK for channel change (current: %d, target: %d)\n",
                    currentWifiChannel, targetChannelForDirectJump);
@@ -1385,6 +1389,39 @@ void playWrongAnswerTone() {
 
     delay(50); // Pause between notes
   }
+}
+
+void playChannelChangeConfirmation() {
+  // Low-high confirmation tone for channel change received
+  int melody[] = {400, 800}; // Low to high (ascending)
+  int noteDurations[] = {100, 150}; // Quick chirp
+
+  // Fast LED blink during tone
+  for (int i = 0; i < 2; i++) {
+    // Turn LEDs cyan (channel change indicator)
+    setAllLeds(CRGB(0, 255, 255)); // Cyan
+
+    // Generate PWM tone
+    unsigned long startTime = millis();
+    unsigned long toneDuration = noteDurations[i];
+    unsigned long halfPeriod = 500000 / melody[i];
+
+    while (millis() - startTime < toneDuration) {
+      digitalWrite(BUZZER_PIN, HIGH);
+      delayMicroseconds(halfPeriod);
+      digitalWrite(BUZZER_PIN, LOW);
+      delayMicroseconds(halfPeriod);
+    }
+
+    // LEDs off briefly between tones
+    setAllLeds(COLOR_OFF);
+    delay(50);
+  }
+
+  // Final brief flash
+  setAllLeds(CRGB(0, 255, 255)); // Cyan
+  delay(100);
+  setAllLeds(COLOR_OFF);
 }
 
 void startupSequence() {

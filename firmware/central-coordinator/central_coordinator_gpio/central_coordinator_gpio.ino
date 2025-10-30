@@ -275,12 +275,37 @@ bool startChannelChange(uint8_t targetChannel) {
   Serial.printf("[CHANNEL] Total registered devices: %d, online: %d, sent: %d, failed: %d\n",
                 registeredDeviceCount, online, sent, failed);
 
-  if (sent == 0) {
-    Serial.println("[CHANNEL] ERROR: No devices accepted channel change command");
+  // IMPORTANT: Allow channel change even if no devices are online!
+  // When buzzers are on a different channel, they appear offline, but we still need
+  // to change the coordinator's channel to re-establish communication.
+  if (online == 0 && registeredDeviceCount > 0) {
+    Serial.printf("[CHANNEL] No devices online, but %d devices registered - changing coordinator channel IMMEDIATELY to re-establish communication\n", registeredDeviceCount);
+
+    // Change coordinator channel immediately without waiting for ACKs
+    // (buzzers can't ACK if they're on a different channel)
+    Serial.printf("[CHANNEL] Changing coordinator to channel %d immediately (no ACKs expected)\n", targetChannel);
+    esp_err_t result = esp_wifi_set_channel(targetChannel, WIFI_SECOND_CHAN_NONE);
+    if (result == ESP_OK) {
+      currentWifiChannel = targetChannel;
+      Serial.printf("[CHANNEL] Coordinator channel changed to %d (immediate mode)\n", currentWifiChannel);
+      Serial.printf("WIFI_CHANNEL_CHANGED:%d\n", currentWifiChannel);
+      channelChangeState.inProgress = false;
+      return true;
+    } else {
+      Serial.printf("[CHANNEL] ERROR: Failed to change coordinator channel (error %d)\n", result);
+      Serial.printf("WIFI_CHANNEL_CHANGE_FAILED:%d\n", targetChannel);
+      channelChangeState.inProgress = false;
+      return false;
+    }
+  } else if (sent == 0 && online > 0) {
+    Serial.println("[CHANNEL] ERROR: Devices are online but failed to send commands");
     Serial.printf("WIFI_CHANNEL_CHANGE_FAILED:%d\n", targetChannel);
     channelChangeState.inProgress = false;
     return false;
   }
+
+  // Proceed with coordinated channel change (wait for ACKs from online devices)
+  Serial.printf("[CHANNEL] Waiting for ACKs from %d online devices before changing coordinator channel\n", online);
   return true;
 }
 

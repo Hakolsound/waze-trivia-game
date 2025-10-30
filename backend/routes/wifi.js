@@ -7,60 +7,29 @@ const router = express.Router();
 // Import ESP32Service - we'll need to pass it as a parameter when creating the router
 module.exports = (esp32Service) => {
 
-// WiFi scan endpoint - communicates with ESP32 coordinator for real scanning
+// WiFi scan endpoint - runs WiFi scan directly on Raspberry Pi
 router.post('/scan', async (req, res) => {
   try {
-    console.log('Starting WiFi scan via ESP32 coordinator...');
+    console.log('Starting WiFi scan on Raspberry Pi...');
 
-    // Clear any previous scan results
-    esp32Service.channelScanResults = [];
+    // Run iwlist scan command on the Pi
+    const { exec } = require('child_process');
+    const { promisify } = require('util');
+    const execAsync = promisify(exec);
 
-    // Send scan command to ESP32
-    const scanResult = await esp32Service.scanWifiChannels();
-    console.log('ESP32 scan command result:', scanResult);
+    console.log('Executing: sudo iwlist wlan0 scan');
+    const { stdout, stderr } = await execAsync('sudo iwlist wlan0 scan', { timeout: 15000 });
 
-    // Wait for scan completion (ESP32 will emit 'wifi-scan-complete' event)
-    const scanPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Scan timeout - ESP32 coordinator not responding'));
-      }, 30000); // 30 second timeout
+    if (stderr && !stderr.includes('No such device')) {
+      console.warn('iwlist stderr:', stderr);
+    }
 
-      const onScanComplete = (results) => {
-        clearTimeout(timeout);
-        esp32Service.removeListener('wifi-scan-complete', onScanComplete);
-        esp32Service.removeListener('wifi-scan-failed', onScanFailed);
-        resolve(results);
-      };
+    console.log('WiFi scan completed, parsing results...');
 
-      const onScanFailed = () => {
-        clearTimeout(timeout);
-        esp32Service.removeListener('wifi-scan-complete', onScanComplete);
-        esp32Service.removeListener('wifi-scan-failed', onScanFailed);
-        reject(new Error('ESP32 scan failed'));
-      };
+    // Parse iwlist output
+    const channels = parseIwlistOutput(stdout);
 
-      esp32Service.once('wifi-scan-complete', onScanComplete);
-      esp32Service.once('wifi-scan-failed', onScanFailed);
-    });
-
-    const scanData = await scanPromise;
-    console.log('Scan completed, processing results...');
-
-    // Get processed results from ESP32 service
-    const processedResults = await esp32Service.getChannelScanResults();
-
-    // Format results for frontend (matching expected format)
-    const channels = processedResults.results.map(ch => ({
-      channel: ch.channel,
-      signal: ch.signal,
-      networkCount: ch.networkCount,
-      score: ch.quality, // ESP32 quality score (0-100)
-      quality: ch.quality > 90 ? 'excellent' :
-              ch.quality > 75 ? 'good' :
-              ch.quality > 60 ? 'fair' : 'poor'
-    }));
-
-    console.log('Processed WiFi scan results:', channels.map(ch =>
+    console.log('Parsed WiFi scan results:', channels.map(ch =>
       `CH${ch.channel}: ${ch.score}pts (${ch.quality}) - RSSI:${ch.signal}dBm, Networks:${ch.networkCount}`
     ));
 
@@ -73,7 +42,7 @@ router.post('/scan', async (req, res) => {
 
     res.json({
       success: true,
-      currentChannel: 13, // Will be updated to read from ESP32
+      currentChannel: 13, // Default, will be updated when ESP32 reports
       channels,
       recommendation: {
         channel: bestChannel.channel,
@@ -223,6 +192,113 @@ router.post('/channel', async (req, res) => {
     });
   }
 });
+
+// Parse iwlist scan output
+function parseIwlistOutput(output) {
+  const lines = output.split('\n');
+  const channels = [];
+  let currentCell = null;
+
+  // Initialize channels 1-13 with default values
+  for (let i = 1; i <= 13; i++) {
+    channels[i] = {
+      channel: i,
+      signal: -90, // Default weak signal
+      networkCount: 0,
+      score: 10,   // Minimum score
+      quality: 'poor'
+    };
+  }
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    // Start of a new cell
+    if (trimmed.startsWith('Cell ')) {
+      currentCell = {};
+    }
+
+    // Channel information
+    else if (trimmed.startsWith('Channel:')) {
+      const channelMatch = trimmed.match(/Channel:(\d+)/);
+      if (channelMatch && currentCell) {
+        currentCell.channel = parseInt(channelMatch[1]);
+      }
+    }
+
+    // Signal level (quality)
+    else if (trimmed.startsWith('Quality=')) {
+      const qualityMatch = trimmed.match(/Quality=(\d+)\/(\d+)\s+Signal level=(-?\d+)/);
+      if (qualityMatch && currentCell) {
+        const quality = parseInt(qualityMatch[1]);
+        const maxQuality = parseInt(qualityMatch[2]);
+        const signalLevel = parseInt(qualityMatch[3]);
+
+        currentCell.quality = quality;
+        currentCell.maxQuality = maxQuality;
+        currentCell.signalLevel = signalLevel;
+
+        // Convert to dBm if needed (iwlist sometimes shows different formats)
+        if (signalLevel > 0) {
+          // Convert quality percentage to approximate dBm
+          currentCell.signalDbm = -100 + (signalLevel * 0.5); // Rough approximation
+        } else {
+          currentCell.signalDbm = signalLevel; // Already in dBm
+        }
+      }
+    }
+
+    // End of cell - process it
+    else if (trimmed === '' && currentCell && currentCell.channel) {
+      const channel = currentCell.channel;
+      if (channel >= 1 && channel <= 13) {
+        // Count networks per channel
+        channels[channel].networkCount++;
+
+        // Use strongest signal for this channel
+        if (currentCell.signalDbm > channels[channel].signal) {
+          channels[channel].signal = currentCell.signalDbm;
+        }
+      }
+      currentCell = null;
+    }
+  }
+
+  // Calculate quality scores for each channel
+  const result = [];
+  for (let i = 1; i <= 13; i++) {
+    const ch = channels[i];
+
+    // Calculate score based on signal strength and network count
+    let signalScore = 0;
+    if (ch.signal > -40) signalScore = 100;
+    else if (ch.signal > -50) signalScore = 90;
+    else if (ch.signal > -60) signalScore = 75;
+    else if (ch.signal > -70) signalScore = 60;
+    else if (ch.signal > -80) signalScore = 40;
+    else signalScore = 20;
+
+    // Network count penalty (more networks = lower score)
+    const networkPenalty = Math.min(ch.networkCount * 5, 30);
+
+    // Non-overlapping channel bonus (1, 6, 11 are preferred in 2.4GHz)
+    const nonOverlappingBonus = [1, 6, 11].includes(ch.channel) ? 15 : 0;
+
+    const totalScore = Math.max(10, signalScore - networkPenalty + nonOverlappingBonus);
+
+    result.push({
+      channel: ch.channel,
+      signal: ch.signal,
+      networkCount: ch.networkCount,
+      score: totalScore,
+      quality: totalScore > 90 ? 'excellent' :
+              totalScore > 75 ? 'good' :
+              totalScore > 60 ? 'fair' : 'poor'
+    });
+  }
+
+  return result;
+}
 
   return router;
 };

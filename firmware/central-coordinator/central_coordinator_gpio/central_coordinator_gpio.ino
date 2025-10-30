@@ -121,8 +121,6 @@ unsigned long endRoundStartTime = 0;
 #define RETRY_DELAY_MS 100
 
 // WiFi Channel Management Configuration
-#define WIFI_SCAN_DURATION_MS 2000  // 2 seconds per channel scan
-#define WIFI_SCAN_MAX_CHANNELS 13   // EU channels 1-13
 #define WIFI_CHANNEL_CHANGE_TIMEOUT_MS 5000  // 5 seconds for channel change coordination
 
 // Commands that require acknowledgment (critical commands only)

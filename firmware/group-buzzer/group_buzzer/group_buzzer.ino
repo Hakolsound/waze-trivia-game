@@ -3,6 +3,16 @@
 #include <esp_wifi.h>
 #include <FastLED.h>
 
+// Command constants
+#define CMD_ARM 1
+#define CMD_DISARM 2
+#define CMD_TEST 3
+#define CMD_RESET 4
+#define CMD_CORRECT_ANSWER 5
+#define CMD_WRONG_ANSWER 6
+#define CMD_END_ROUND 7
+#define CMD_CHANGE_CHANNEL 8
+
 // Pre-define Command struct for forward declarations
 typedef struct {
   uint8_t command;      // 1=arm, 2=disarm, 3=test, 4=reset, 5=correct_answer, 6=wrong_answer, 7=end_round, 8=change_channel
@@ -1027,7 +1037,7 @@ void handleCommand(Command cmd) {
       Serial.printf("[CMD] END_ROUND completed - buzzer should now be BLACK (state: %d)\n", currentState);
       break;
 
-    case 8: // CHANGE_CHANNEL
+    case CMD_CHANGE_CHANNEL: // 8 - CHANGE_CHANNEL
       Serial.printf("[CMD] Device %d executing CHANGE_CHANNEL command for channel %d\n", DEVICE_ID, cmd.targetDevice);
       // For now, assume coordinator sends channel as targetDevice (limited to 1-15)
       // In future, could extend Command struct to include channel data

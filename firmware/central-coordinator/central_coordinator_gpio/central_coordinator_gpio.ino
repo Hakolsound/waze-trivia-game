@@ -159,6 +159,19 @@ ChannelChangeState channelChangeState = {false, 0, 0, 0, 0, false};
 #define CMD_CORRECT_ANSWER 5
 #define CMD_WRONG_ANSWER 6
 #define CMD_END_ROUND 7
+#define CMD_CHANGE_CHANNEL 8
+
+// Binary protocol command codes (received from backend)
+#define BIN_CMD_ARM 1
+#define BIN_CMD_DISARM 2
+#define BIN_CMD_TEST 3
+#define BIN_CMD_STATUS_REQUEST 4
+#define BIN_CMD_CORRECT_ANSWER 5
+#define BIN_CMD_WRONG_ANSWER 6
+#define BIN_CMD_END_ROUND 7
+#define BIN_CMD_ARM_SPECIFIC 8
+#define BIN_CMD_SCAN_CHANNELS 9
+#define BIN_CMD_SET_CHANNEL 10
 
 // Pending command tracking
 typedef struct {
@@ -396,7 +409,7 @@ bool startChannelChange(uint8_t targetChannel) {
 
   for (int i = 0; i < registeredDeviceCount; i++) {
     if (devices[i].isOnline) {
-      if (sendCommandWithAck(devices[i].deviceId, 8)) { // 8 = CHANGE_CHANNEL
+      if (sendCommandWithAck(devices[i].deviceId, CMD_CHANGE_CHANNEL)) {
         sent++;
       } else {
         failed++;
@@ -664,11 +677,11 @@ void processBinaryCommands() {
 
 void handleBinaryCommand(CommandMessage cmd) {
   switch (cmd.command) {
-    case 1: // ARM
+    case BIN_CMD_ARM: // 1 - ARM
       currentGameId = String(cmd.gameId);
       armAllBuzzers();
       break;
-    case 2: // DISARM
+    case BIN_CMD_DISARM: // 2 - DISARM
       if (cmd.targetDevice == 0) {
         // Disarm all buzzers
         disarmAllBuzzers();
@@ -689,32 +702,32 @@ void handleBinaryCommand(CommandMessage cmd) {
         }
       }
       break;
-    case 3: // TEST
+    case BIN_CMD_TEST: // 3 - TEST
       testBuzzer(cmd.targetDevice);
       break;
-    case 4: // STATUS_REQUEST
+    case BIN_CMD_STATUS_REQUEST: // 4 - STATUS_REQUEST
       if (BINARY_PROTOCOL_ENABLED) {
         sendBinaryStatus();
       } else {
         sendStatusToSerial();
       }
       break;
-    case 5: // CORRECT_ANSWER
+    case BIN_CMD_CORRECT_ANSWER: // 5 - CORRECT_ANSWER
       Serial.printf("[COORD] Received CORRECT_ANSWER command for device %d - forwarding to buzzer\n", cmd.targetDevice);
       sendCorrectAnswerFeedback(cmd.targetDevice);
       Serial.printf("[COORD] CORRECT_ANSWER command forwarded to device %d\n", cmd.targetDevice);
       break;
-    case 6: // WRONG_ANSWER
+    case BIN_CMD_WRONG_ANSWER: // 6 - WRONG_ANSWER
       Serial.printf("[COORD] Received WRONG_ANSWER command for device %d - forwarding to buzzer\n", cmd.targetDevice);
       sendWrongAnswerFeedback(cmd.targetDevice);
       Serial.printf("[COORD] WRONG_ANSWER command forwarded to device %d\n", cmd.targetDevice);
       break;
-    case 7: // END_ROUND
+    case BIN_CMD_END_ROUND: // 7 - END_ROUND
       Serial.printf("[COORD] Received END_ROUND command for device %d - forwarding to buzzer\n", cmd.targetDevice);
       endRoundReset(cmd.targetDevice);
       Serial.printf("[COORD] END_ROUND command forwarded to device %d\n", cmd.targetDevice);
       break;
-    case 8: // ARM_SPECIFIC
+    case BIN_CMD_ARM_SPECIFIC: // 8 - ARM_SPECIFIC
       {
         // Backend sends bitmask as 16-bit LE in bytes 2-3, gameId in bytes 4-7
         // cmd.targetDevice is actually the LOW byte of bitmask (byte 2)
@@ -728,7 +741,7 @@ void handleBinaryCommand(CommandMessage cmd) {
         armSpecificBuzzersByBitmask(bitmask);
       }
       break;
-    case 9: // SCAN_CHANNELS
+    case BIN_CMD_SCAN_CHANNELS: // 9 - SCAN_CHANNELS
       Serial.println("[COORD] Received SCAN_CHANNELS command");
       if (startWifiScan()) {
         Serial.println("WIFI_SCAN_STARTED");
@@ -736,7 +749,7 @@ void handleBinaryCommand(CommandMessage cmd) {
         Serial.println("WIFI_SCAN_FAILED");
       }
       break;
-    case 10: // SET_CHANNEL
+    case BIN_CMD_SET_CHANNEL: // 10 - SET_CHANNEL
       {
         // Channel is encoded in targetDevice (1-13)
         uint8_t targetChannel = cmd.targetDevice;
@@ -1223,7 +1236,7 @@ void updateDeviceHeartbeat(const uint8_t *mac, uint8_t deviceId) {
 bool requiresAck(uint8_t command) {
   return (command == CMD_ARM || command == CMD_DISARM ||
           command == CMD_CORRECT_ANSWER || command == CMD_WRONG_ANSWER ||
-          command == CMD_END_ROUND);
+          command == CMD_END_ROUND || command == CMD_CHANGE_CHANNEL);
 }
 
 uint16_t generateSequenceId() {

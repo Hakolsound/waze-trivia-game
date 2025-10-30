@@ -1498,6 +1498,16 @@ void startChannelScan() {
 
       // Switch to channel
       setWifiChannel(channel);
+
+      // Update peer channel to match our current channel
+      esp_now_peer_info_t peerInfo;
+      if (esp_now_get_peer(coordinatorMAC, &peerInfo) == ESP_OK) {
+        esp_now_del_peer(coordinatorMAC); // Remove old peer
+        peerInfo.channel = channel; // Update to current channel
+        esp_now_add_peer(&peerInfo); // Re-add with new channel
+        Serial.printf("[CHANNEL SCAN] Updated peer channel to %d\n", channel);
+      }
+
       delay(50); // Brief settle time
 
       // Try sending a heartbeat

@@ -393,9 +393,14 @@
                             <button id="toggle-wifi-section" class="wifi-toggle-btn" aria-label="Toggle WiFi section">▼</button>
                         </h4>
                         <div class="wifi-section-content">
-                            <button id="scan-wifi-channels-btn" class="btn btn-small btn-primary wifi-scan-btn">
-                                🔍 Scan Channels
-                            </button>
+                            <div class="wifi-controls-row">
+                                <button id="scan-wifi-channels-btn" class="btn btn-small btn-primary wifi-scan-btn">
+                                    🔍 Scan Channels
+                                </button>
+                                <button id="set-default-channel-btn" class="btn btn-small btn-secondary wifi-default-btn">
+                                    🏠 Set Default (CH 13)
+                                </button>
+                            </div>
                             <div id="wifi-scan-status" class="wifi-scan-status hidden">
                                 <div class="scan-spinner"></div>
                                 <span>Scanning...</span>

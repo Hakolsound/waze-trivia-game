@@ -163,28 +163,8 @@ router.post('/channel', async (req, res) => {
       });
     }
 
-    // Check device status before allowing channel change
-    const devices = await esp32Service.getDevices();
-    const registeredDevices = devices.filter(d => d.device_id > 0);
-    const onlineDevices = registeredDevices.filter(d => d.online === true);
-
-    console.log(`Channel change request: ${onlineDevices.length}/${registeredDevices.length} devices online`);
-
-    // If not all devices online and not confirmed, return warning
-    if (!confirmed && onlineDevices.length < registeredDevices.length) {
-      return res.status(400).json({
-        success: false,
-        needsConfirmation: true,
-        message: `Only ${onlineDevices.length} of ${registeredDevices.length} buzzers are online`,
-        deviceStatus: {
-          total: registeredDevices.length,
-          online: onlineDevices.length,
-          offline: registeredDevices.length - onlineDevices.length
-        }
-      });
-    }
-
     console.log(`Starting WiFi channel change to ${channel} via ESP32 coordinator...`);
+    console.log(`Buzzers will auto-scan [13,1,6,11] to find coordinator on new channel`);
 
     // Send channel change command to ESP32
     const changeResult = await esp32Service.setWifiChannel(channel);
@@ -194,7 +174,7 @@ router.post('/channel', async (req, res) => {
     const changePromise = new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error('Channel change timeout - ESP32 coordinator not responding'));
-      }, 10000); // 10 second timeout for coordinated channel change (needs time for ACKs)
+      }, 3000); // 3 second timeout for immediate channel change
 
       const onChangeComplete = (data) => {
         clearTimeout(timeout);

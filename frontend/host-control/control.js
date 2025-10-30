@@ -364,6 +364,7 @@ class HostControl {
             wifiSection: document.querySelector('.wifi-section'),
             toggleWifiSectionBtn: document.getElementById('toggle-wifi-section'),
             scanWifiChannelsBtn: document.getElementById('scan-wifi-channels-btn'),
+            setDefaultChannelBtn: document.getElementById('set-default-channel-btn'),
             wifiScanStatus: document.getElementById('wifi-scan-status'),
             wifiResults: document.getElementById('wifi-results'),
             currentChannelDisplay: document.getElementById('current-channel-display'),
@@ -692,6 +693,9 @@ class HostControl {
         }
         if (this.elements.scanWifiChannelsBtn) {
             this.elements.scanWifiChannelsBtn.addEventListener('click', () => this.scanWifiChannels());
+        }
+        if (this.elements.setDefaultChannelBtn) {
+            this.elements.setDefaultChannelBtn.addEventListener('click', () => this.setDefaultChannel());
         }
         if (this.elements.applyBestChannelBtn) {
             this.elements.applyBestChannelBtn.addEventListener('click', () => this.confirmChannelChange(null, true));
@@ -4079,6 +4083,32 @@ class HostControl {
         `;
 
         document.body.appendChild(modal);
+    }
+
+    async setDefaultChannel() {
+        // Directly set channel to 13 without confirmation
+        try {
+            const response = await fetch('/api/wifi/channel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ channel: 13 })
+            });
+
+            if (response.ok) {
+                this.showToast('WiFi channel set to default (CH 13)', 'success');
+
+                // Update current channel display
+                if (this.elements.currentChannelDisplay) {
+                    this.elements.currentChannelDisplay.textContent = 'CH 13';
+                }
+            } else {
+                const error = await response.json();
+                this.showToast(`Failed to set default channel: ${error.message}`, 'error');
+            }
+        } catch (error) {
+            console.error('Failed to set default WiFi channel:', error);
+            this.showToast('Failed to set default WiFi channel', 'error');
+        }
     }
 
     async applyBestChannel(channelNumber, confirmed = false) {

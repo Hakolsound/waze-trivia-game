@@ -3744,9 +3744,17 @@ kbd {
     margin-bottom: 12px;
 }
 
-.wifi-scan-btn {
+.wifi-controls-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.wifi-scan-btn,
+.wifi-default-btn {
     font-size: 0.75rem;
     padding: 4px 8px;
+    flex: 1;
 }
 
 .wifi-scan-status {

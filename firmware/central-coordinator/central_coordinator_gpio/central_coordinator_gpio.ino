@@ -228,7 +228,7 @@ bool setWifiChannel(uint8_t channel) {
 // Channel Change Coordination Functions
 // =========================================
 
-// Start coordinated channel change
+// Start immediate channel change (buzzers will auto-scan to find coordinator)
 bool startChannelChange(uint8_t targetChannel) {
   if (channelChangeState.inProgress) {
     Serial.println("[CHANNEL] Channel change already in progress");
@@ -240,122 +240,34 @@ bool startChannelChange(uint8_t targetChannel) {
     return false;
   }
 
-  channelChangeState.inProgress = true;
-  channelChangeState.startTime = millis();
-  channelChangeState.targetChannel = targetChannel;
-  channelChangeState.ackCount = 0;
-  channelChangeState.totalDevices = registeredDeviceCount;
-  channelChangeState.coordinatorChanged = false;
+  Serial.printf("[CHANNEL] Starting immediate channel change to %d\n", targetChannel);
+  Serial.printf("[CHANNEL] Buzzers will auto-scan [13,1,6,11] to find coordinator on new channel\n");
 
-  Serial.printf("[CHANNEL] Starting coordinated channel change to %d (%d devices)\n",
-                targetChannel, registeredDeviceCount);
+  // Change coordinator channel immediately
+  esp_err_t result = esp_wifi_set_channel(targetChannel, WIFI_SECOND_CHAN_NONE);
+  if (result == ESP_OK) {
+    currentWifiChannel = targetChannel;
+    Serial.printf("[CHANNEL] ✓ Coordinator channel changed to %d\n", currentWifiChannel);
+    Serial.printf("[CHANNEL] Buzzers will detect coordinator loss and begin channel scan\n");
 
-  // Send CHANGE_CHANNEL command to all buzzers with ACK requirement
-  uint8_t sent = 0;
-  uint8_t failed = 0;
-  uint8_t online = 0;
-
-  Serial.printf("[CHANNEL] Checking device status for channel change:\n");
-  for (int i = 0; i < registeredDeviceCount; i++) {
-    Serial.printf("[CHANNEL] Device %d: registered=%d, online=%d\n",
-                 devices[i].deviceId, devices[i].isRegistered, devices[i].isOnline);
-    if (devices[i].isRegistered && devices[i].isOnline) {
-      online++;
-      Serial.printf("[CHANNEL] Sending CHANGE_CHANNEL (ch=%d) to device %d...\n", targetChannel, devices[i].deviceId);
-      if (sendChannelChangeCommand(devices[i].deviceId, targetChannel)) {
-        sent++;
-        Serial.printf("[CHANNEL] ✓ Command sent to device %d (channel=%d)\n", devices[i].deviceId, targetChannel);
-      } else {
-        failed++;
-        Serial.printf("[CHANNEL] ✗ Failed to send to device %d\n", devices[i].deviceId);
-      }
-    }
-  }
-
-  Serial.printf("[CHANNEL] Total registered devices: %d, online: %d, sent: %d, failed: %d\n",
-                registeredDeviceCount, online, sent, failed);
-
-  // REQUIREMENT: All registered devices must be online for channel change
-  // This ensures coordinated, atomic channel switching where all devices move together
-  if (online < registeredDeviceCount) {
-    Serial.printf("[CHANNEL] ERROR: Cannot change channel - only %d/%d devices online (all must be online)\n",
-                  online, registeredDeviceCount);
-    Serial.printf("[CHANNEL] Offline devices cannot receive channel change commands\n");
+    // Send success confirmation to backend
+    Serial.printf("WIFI_CHANNEL_CHANGED:%d\n", currentWifiChannel);
+    return true;
+  } else {
+    Serial.printf("[CHANNEL] ERROR: Failed to change coordinator channel (ESP error %d)\n", result);
     Serial.printf("WIFI_CHANNEL_CHANGE_FAILED:%d\n", targetChannel);
-    channelChangeState.inProgress = false;
     return false;
   }
-
-  // All devices online - verify commands were sent successfully
-  if (sent != registeredDeviceCount) {
-    Serial.printf("[CHANNEL] ERROR: Failed to send commands to all devices (%d sent, %d expected)\n",
-                  sent, registeredDeviceCount);
-    Serial.printf("WIFI_CHANNEL_CHANGE_FAILED:%d\n", targetChannel);
-    channelChangeState.inProgress = false;
-    return false;
-  }
-
-  // All devices online and commands sent - wait for ACKs before coordinator changes
-  Serial.printf("[CHANNEL] ✓ All %d devices online, commands sent - waiting for ACKs before coordinator channel change\n", sent);
-  return true;
 }
 
-// Handle channel change ACK from buzzer
+// Handle channel change ACK from buzzer (legacy - no longer used)
 void handleChannelChangeAck(uint8_t deviceId) {
-  Serial.printf("[CHANNEL] handleChannelChangeAck called for device %d\n", deviceId);
-
-  if (!channelChangeState.inProgress) {
-    Serial.printf("[CHANNEL] No channel change in progress, ignoring ACK from device %d\n", deviceId);
-    return;
-  }
-
-  channelChangeState.ackCount++;
-  Serial.printf("[CHANNEL] ACK counted - device %d (%d/%d total ACKs expected %d)\n",
-                deviceId, channelChangeState.ackCount, channelChangeState.totalDevices, channelChangeState.totalDevices);
-
-  // Only change coordinator channel if ALL devices ACK'd
-  // This ensures no devices are left behind on old channel
-  if (channelChangeState.ackCount >= channelChangeState.totalDevices) {
-    Serial.println("[CHANNEL] All devices ACK'd - changing coordinator channel");
-
-    esp_err_t result = esp_wifi_set_channel(channelChangeState.targetChannel, WIFI_SECOND_CHAN_NONE);
-    if (result == ESP_OK) {
-      channelChangeState.coordinatorChanged = true;
-      currentWifiChannel = channelChangeState.targetChannel;
-      Serial.printf("[CHANNEL] Coordinator channel changed to %d\n", currentWifiChannel);
-
-      // Send success confirmation
-      Serial.printf("WIFI_CHANNEL_CHANGED:%d\n", currentWifiChannel);
-      channelChangeState.inProgress = false;
-    } else {
-      Serial.printf("[CHANNEL] ERROR: Failed to change coordinator channel (error %d)\n", result);
-      Serial.printf("WIFI_CHANNEL_CHANGE_FAILED:%d\n", channelChangeState.targetChannel);
-      channelChangeState.inProgress = false;
-    }
-  }
+  Serial.printf("[CHANNEL] ACK received from device %d (ignored - using auto-scan approach)\n", deviceId);
 }
 
-// Process channel change timeout and retries
+// Process channel change timeout (no longer needed - coordinator changes immediately)
 void processChannelChangeTimeout() {
-  if (!channelChangeState.inProgress) return;
-
-  unsigned long elapsed = millis() - channelChangeState.startTime;
-
-  // Overall timeout - ALL devices must ACK or channel change fails
-  if (elapsed > WIFI_CHANNEL_CHANGE_TIMEOUT_MS) {
-    Serial.printf("[CHANNEL] Channel change timeout after %dms - %d/%d ACKs received\n",
-                  WIFI_CHANNEL_CHANGE_TIMEOUT_MS, channelChangeState.ackCount, channelChangeState.totalDevices);
-
-    if (channelChangeState.ackCount < channelChangeState.totalDevices) {
-      Serial.printf("[CHANNEL] ERROR: Not all devices ACK'd (%d/%d) - channel change FAILED\n",
-                    channelChangeState.ackCount, channelChangeState.totalDevices);
-    }
-
-    // Send failure notification
-    Serial.printf("WIFI_CHANNEL_CHANGE_FAILED:%d\n", channelChangeState.targetChannel);
-    channelChangeState.inProgress = false;
-    return;
-  }
+  // No-op - channel change is now immediate
 }
 
 void sendBinaryBuzzerPress(uint8_t deviceId, uint32_t timestamp, uint16_t deltaMs, uint8_t position) {

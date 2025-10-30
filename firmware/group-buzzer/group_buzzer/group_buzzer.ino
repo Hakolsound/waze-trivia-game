@@ -182,14 +182,13 @@ uint8_t currentWifiChannel = DEFAULT_WIFI_CHANNEL;
 bool channelScanEnabled = false;
 unsigned long lastSuccessfulHeartbeat = 0;
 uint8_t consecutiveHeartbeatFailures = 0;
-volatile bool lastSendSuccess = false;  // Track last ESP-NOW send result from callback
 #define MAX_HEARTBEAT_FAILURES 3  // Start scanning after 3 failed heartbeats
 #define HEARTBEAT_SUCCESS_TIMEOUT_MS 15000  // 15 seconds without response triggers scan
 bool isScanning = false;
 uint8_t scanChannelIndex = 0;
 uint8_t scanPassCount = 0;  // Track how many full scans completed
-unsigned long lastChannelScanTime = 0;
-#define CHANNEL_SCAN_INTERVAL_MS 2000  // Try each channel for 2 seconds
+unsigned long lastChannelSwitchTime = 0;  // Track when we last switched channels during scan
+#define CHANNEL_DWELL_TIME_MS 2000  // Stay on each channel for 2 seconds (allows ~4 heartbeats at 500ms interval)
 #define MAX_SCAN_PASSES 3  // Scan all channels 3 times before giving up
 uint8_t scanChannels[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};  // Scan all 13 channels
 #define SCAN_CHANNELS_COUNT 13
@@ -369,13 +368,24 @@ void OnDataSent(const wifi_tx_info_t *tx_info, esp_now_send_status_t status) {
   Serial.printf("ESP-NOW Send Status to %s: %s\n", macStr,
                 status == ESP_NOW_SEND_SUCCESS ? "Success" : "Fail");
 
-  // Simply track send result - scanning loop will check this flag
-  lastSendSuccess = (status == ESP_NOW_SEND_SUCCESS);
+  // Note: Success here means "queued successfully", NOT "delivered successfully"
+  // Actual coordinator presence is confirmed by receiving data in OnDataRecv
 }
 
 // ESP-NOW callback for receiving data (ESP-IDF v5.x signature)
 void OnDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *incomingData, int len) {
   Serial.printf("ESP-NOW received %d bytes\n", len);
+
+  // If we're scanning and receive ANY data from coordinator, we found it!
+  if (isScanning) {
+    Serial.printf("[CHANNEL SCAN] ✓✓✓ COORDINATOR FOUND! Received data on channel %d ✓✓✓\n", currentWifiChannel);
+    isScanning = false;
+    consecutiveHeartbeatFailures = 0;
+    lastSuccessfulHeartbeat = millis();
+    scanChannelIndex = 0;
+    scanPassCount = 0;
+    Serial.printf("[CHANNEL SCAN] Locked onto channel %d\n", currentWifiChannel);
+  }
 
   // Distinguish between Message (16 bytes) and Command (12 bytes) by length
   // Message: 1 (type) + 1 (deviceId) + 4 (timestamp) + 8 (data) + 2 (padding) = 16 bytes
@@ -1478,101 +1488,17 @@ void checkBatteryLevel() {
   }
 }
 
-// Simple synchronous channel scanning - test each channel for successful send
+// Async channel scanning - called from main loop
 void startChannelScan() {
-  Serial.println("[CHANNEL SCAN] Starting coordinator search - scanning all 13 channels synchronously");
+  Serial.println("[CHANNEL SCAN] Starting coordinator search - will scan all 13 channels");
   isScanning = true;
+  scanChannelIndex = 0;
+  scanPassCount = 0;
+  lastChannelSwitchTime = millis();
 
-  // Try each channel, 3 passes
-  for (int pass = 0; pass < MAX_SCAN_PASSES; pass++) {
-    Serial.printf("[CHANNEL SCAN] === Pass %d/%d ===\n", pass + 1, MAX_SCAN_PASSES);
-
-    for (int ch = 0; ch < SCAN_CHANNELS_COUNT; ch++) {
-      if (!isScanning) {
-        Serial.println("[CHANNEL SCAN] Scan stopped by callback");
-        return; // Callback stopped the scan
-      }
-
-      uint8_t channel = scanChannels[ch];
-      Serial.printf("[CHANNEL SCAN] ========== Testing channel %d ==========\n", channel);
-
-      // Switch to channel
-      setWifiChannel(channel);
-      Serial.printf("[CHANNEL SCAN] WiFi channel set to %d\n", channel);
-
-      // Update peer channel to match our current channel
-      esp_now_peer_info_t peerInfo;
-      if (esp_now_get_peer(coordinatorMAC, &peerInfo) == ESP_OK) {
-        esp_now_del_peer(coordinatorMAC); // Remove old peer
-        peerInfo.channel = channel; // Update to current channel
-        esp_now_add_peer(&peerInfo); // Re-add with new channel
-        Serial.printf("[CHANNEL SCAN] Peer updated to channel %d\n", channel);
-      } else {
-        Serial.println("[CHANNEL SCAN] WARNING: Failed to get peer info");
-      }
-
-      // Give everything time to settle
-      delay(100);
-
-      // Try sending multiple heartbeats on this channel for better detection
-      bool foundOnThisChannel = false;
-      for (int attempt = 0; attempt < 5; attempt++) {
-        lastSendSuccess = false; // Reset before each send
-
-        Message msg;
-        msg.messageType = 2; // heartbeat
-        msg.deviceId = DEVICE_ID;
-        msg.timestamp = millis();
-        msg.data[0] = isArmed ? 1 : 0;
-        msg.data[1] = buzzerPressed ? 1 : 0;
-        msg.data[2] = batteryPercentage;
-        uint16_t voltageInt = (uint16_t)(batteryVoltage * 100);
-        msg.data[3] = voltageInt & 0xFF;
-        msg.data[4] = (voltageInt >> 8) & 0xFF;
-
-        Serial.printf("[CHANNEL SCAN] Attempt %d/5: Sending heartbeat...\n", attempt + 1);
-        esp_err_t sendResult = esp_now_send(coordinatorMAC, (uint8_t*)&msg, sizeof(msg));
-
-        if (sendResult != ESP_OK) {
-          Serial.printf("[CHANNEL SCAN] Send failed immediately (error %d)\n", sendResult);
-          delay(200);
-          continue;
-        }
-
-        // Wait for callback to process with longer timeout
-        delay(200);
-
-        // Check if send succeeded via callback
-        if (lastSendSuccess) {
-          Serial.printf("[CHANNEL SCAN] ✓✓✓ SUCCESS on attempt %d! Coordinator on channel %d! ✓✓✓\n", attempt + 1, channel);
-          foundOnThisChannel = true;
-          break;
-        }
-
-        Serial.printf("[CHANNEL SCAN] Attempt %d: No success, trying again...\n", attempt + 1);
-        delay(100); // Small delay between attempts
-      }
-
-      if (foundOnThisChannel) {
-        Serial.printf("[CHANNEL SCAN] ========== COORDINATOR FOUND ON CHANNEL %d ==========\n", channel);
-        isScanning = false;
-        consecutiveHeartbeatFailures = 0;
-        lastSuccessfulHeartbeat = millis();
-        return;
-      }
-
-      Serial.printf("[CHANNEL SCAN] ✗ No response on channel %d after 5 attempts\n", channel);
-    }
-
-    Serial.printf("[CHANNEL SCAN] Pass %d/%d complete - coordinator not found\n", pass + 1, MAX_SCAN_PASSES);
-  }
-
-  // All passes complete without finding coordinator
-  Serial.printf("[CHANNEL SCAN] All %d passes complete - coordinator not found\n", MAX_SCAN_PASSES);
-  Serial.printf("[CHANNEL SCAN] Returning to default channel %d\n", DEFAULT_WIFI_CHANNEL);
-  setWifiChannel(DEFAULT_WIFI_CHANNEL);
-  isScanning = false;
-  consecutiveHeartbeatFailures = 0;
+  // Start with first channel
+  setWifiChannel(scanChannels[0]);
+  Serial.printf("[CHANNEL SCAN] Starting on channel %d\n", scanChannels[0]);
 }
 
 void stopChannelScan() {
@@ -1583,7 +1509,42 @@ void stopChannelScan() {
 }
 
 void processChannelScan() {
-  // No longer needed - scanning is now synchronous
+  if (!isScanning) return;
+
+  unsigned long currentTime = millis();
+
+  // Check if it's time to switch to next channel (stay on each channel for CHANNEL_DWELL_TIME_MS)
+  if (currentTime - lastChannelSwitchTime >= CHANNEL_DWELL_TIME_MS) {
+    scanChannelIndex++;
+
+    // If we've scanned all channels, increment pass count
+    if (scanChannelIndex >= SCAN_CHANNELS_COUNT) {
+      scanChannelIndex = 0;
+      scanPassCount++;
+      Serial.printf("[CHANNEL SCAN] Pass %d/%d complete\n", scanPassCount, MAX_SCAN_PASSES);
+
+      // Check if we've done all passes
+      if (scanPassCount >= MAX_SCAN_PASSES) {
+        Serial.printf("[CHANNEL SCAN] All %d passes complete - coordinator not found\n", MAX_SCAN_PASSES);
+        Serial.printf("[CHANNEL SCAN] Returning to default channel %d\n", DEFAULT_WIFI_CHANNEL);
+        setWifiChannel(DEFAULT_WIFI_CHANNEL);
+        isScanning = false;
+        consecutiveHeartbeatFailures = 0;
+        return;
+      }
+    }
+
+    // Switch to next channel
+    uint8_t nextChannel = scanChannels[scanChannelIndex];
+    Serial.printf("[CHANNEL SCAN] Switching to channel %d (pass %d/%d, channel %d/%d)\n",
+                  nextChannel, scanPassCount + 1, MAX_SCAN_PASSES,
+                  scanChannelIndex + 1, SCAN_CHANNELS_COUNT);
+    setWifiChannel(nextChannel);
+    lastChannelSwitchTime = currentTime;
+  }
+
+  // Heartbeats are sent automatically by main loop at faster rate during scanning
+  // If we receive ANY data from coordinator, OnDataRecv will stop the scan
 }
 
 void sendHeartbeat() {

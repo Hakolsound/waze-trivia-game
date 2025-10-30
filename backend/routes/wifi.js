@@ -164,9 +164,9 @@ router.post('/channel', async (req, res) => {
     }
 
     // Check device status before allowing channel change
-    const deviceStatus = esp32Service.getDeviceStatus();
-    const registeredDevices = Object.values(deviceStatus).filter(d => d.deviceId > 0);
-    const onlineDevices = registeredDevices.filter(d => d.isOnline);
+    const devices = await esp32Service.getDevices();
+    const registeredDevices = devices.filter(d => d.device_id > 0);
+    const onlineDevices = registeredDevices.filter(d => d.online === true);
 
     console.log(`Channel change request: ${onlineDevices.length}/${registeredDevices.length} devices online`);
 

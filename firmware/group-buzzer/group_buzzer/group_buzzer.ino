@@ -1575,15 +1575,13 @@ void sendHeartbeat() {
     Serial.print("Error code: ");
     Serial.println(result);
 
-    // Track heartbeat failures for channel scanning
+    // Track heartbeat failures (but don't auto-start scan)
     consecutiveHeartbeatFailures++;
     Serial.printf("[CHANNEL] Heartbeat failure %d/%d\n", consecutiveHeartbeatFailures, MAX_HEARTBEAT_FAILURES);
 
-    // Check if we should start channel scanning
-    if (consecutiveHeartbeatFailures >= MAX_HEARTBEAT_FAILURES && !isScanning) {
-      Serial.printf("[CHANNEL] Max heartbeat failures reached - starting channel scan\n");
-      startChannelScan();
-    }
+    // NOTE: We do NOT auto-start channel scan here anymore
+    // Scan is ONLY started when we receive CMD_CHANGE_CHANNEL from coordinator
+    // This prevents false-positive scans due to temporary network issues
   } else {
     // Heartbeat send queued successfully (ESP_OK)
     // NOTE: ESP_OK means "queued for sending", NOT "delivered successfully"

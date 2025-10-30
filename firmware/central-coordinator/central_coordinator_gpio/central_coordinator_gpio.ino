@@ -340,6 +340,38 @@ void wifiScanCallback(void *arg, esp_event_base_t event_base, int32_t event_id, 
   wifiScanState.inProgress = false;
 
   Serial.printf("[WIFI] Scan completed - found %d access points\n", apCount);
+
+  // Reinitialize ESP-NOW after scanning
+  Serial.println("[WIFI] Reinitializing ESP-NOW after scan completion...");
+  delay(500); // Give WiFi some time to settle
+
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("[WIFI] ERROR: Failed to reinitialize ESP-NOW after scan!");
+  } else {
+    Serial.println("[WIFI] ESP-NOW reinitialized successfully");
+
+    // Re-register callbacks
+    esp_now_register_send_cb(OnDataSent);
+    esp_now_register_recv_cb(OnDataRecv);
+
+    // Re-add peers (this is critical for continued operation)
+    for (int i = 0; i < registeredDeviceCount; i++) {
+      if (devices[i].isRegistered) {
+        esp_now_peer_info_t peerInfo = {};
+        memcpy(peerInfo.peer_addr, devices[i].macAddress, 6);
+        peerInfo.channel = currentWifiChannel;
+        peerInfo.encrypt = false;
+        peerInfo.ifidx = WIFI_IF_STA;
+
+        esp_err_t result = esp_now_add_peer(&peerInfo);
+        if (result != ESP_OK) {
+          Serial.printf("[WIFI] Warning: Failed to re-add peer %d after scan (error %d)\n", devices[i].deviceId, result);
+        } else {
+          Serial.printf("[WIFI] Successfully re-added peer %d after scan\n", devices[i].deviceId);
+        }
+      }
+    }
+  }
 }
 
 // Start WiFi channel scan
@@ -351,13 +383,17 @@ bool startWifiScan() {
 
   Serial.println("[WIFI] Preparing for WiFi scan...");
 
+  // ESP-NOW and WiFi scanning can conflict, so we need to temporarily deinitialize ESP-NOW
+  Serial.println("[WIFI] Temporarily deinitializing ESP-NOW for scanning...");
+  esp_now_deinit();
+
+  // Give WiFi some time to settle
+  delay(500);
+
   // Ensure WiFi is in station mode for scanning
   wifi_mode_t current_mode;
   esp_wifi_get_mode(&current_mode);
   Serial.printf("[WIFI] Current WiFi mode: %d\n", current_mode);
-
-  // If ESP-NOW is active, we need to be careful about WiFi mode conflicts
-  // ESP-NOW typically uses WIFI_MODE_STA, so scanning should work
 
   // Configure scan parameters
   wifi_scan_config_t scanConfig;
@@ -389,6 +425,12 @@ bool startWifiScan() {
     Serial.printf("[WIFI] esp_wifi_scan_get_ap_records result: %d (%s)\n", get_result, esp_err_to_name(get_result));
 
     wifiScanState.inProgress = false;
+
+    // Reinitialize ESP-NOW
+    Serial.println("[WIFI] Reinitializing ESP-NOW after scan failure...");
+    if (esp_now_init() != ESP_OK) {
+      Serial.println("[WIFI] ERROR: Failed to reinitialize ESP-NOW!");
+    }
     return false;
   }
 
@@ -401,9 +443,40 @@ void processWifiScanResults() {
   if (wifiScanState.inProgress) {
     // Check for timeout (should not happen with callback, but safety check)
     if (millis() - wifiScanState.startTime > 30000) { // 30 second timeout
-      Serial.println("[WIFI] Scan timeout - aborting");
+      Serial.println("[WIFI] Scan timeout - aborting and reinitializing ESP-NOW");
+
       wifiScanState.inProgress = false;
       esp_wifi_scan_stop();
+
+      // Reinitialize ESP-NOW after timeout
+      Serial.println("[WIFI] Reinitializing ESP-NOW after timeout...");
+      delay(500);
+
+      if (esp_now_init() != ESP_OK) {
+        Serial.println("[WIFI] ERROR: Failed to reinitialize ESP-NOW after timeout!");
+      } else {
+        Serial.println("[WIFI] ESP-NOW reinitialized successfully after timeout");
+
+        // Re-register callbacks
+        esp_now_register_send_cb(OnDataSent);
+        esp_now_register_recv_cb(OnDataRecv);
+
+        // Re-add peers
+        for (int i = 0; i < registeredDeviceCount; i++) {
+          if (devices[i].isRegistered) {
+            esp_now_peer_info_t peerInfo = {};
+            memcpy(peerInfo.peer_addr, devices[i].macAddress, 6);
+            peerInfo.channel = currentWifiChannel;
+            peerInfo.encrypt = false;
+            peerInfo.ifidx = WIFI_IF_STA;
+
+            esp_err_t result = esp_now_add_peer(&peerInfo);
+            if (result != ESP_OK) {
+              Serial.printf("[WIFI] Warning: Failed to re-add peer %d after timeout (error %d)\n", devices[i].deviceId, result);
+            }
+          }
+        }
+      }
       return;
     }
   } else if (wifiScanState.completedChannels > 0) {

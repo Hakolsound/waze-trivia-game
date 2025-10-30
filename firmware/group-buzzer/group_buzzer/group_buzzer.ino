@@ -29,6 +29,9 @@ void sendBuzzerPressWithRetry();
 bool validateCommandForState(Command cmd);
 void handleCommand(Command cmd);
 
+// Forward declaration for new function
+void sendChannelChangeAck();
+
 // Hardware Configuration - MOVED TO BOTTOM FOR BETTER ORGANIZATION
 // See consolidated constants below
 

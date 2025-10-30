@@ -111,34 +111,12 @@ EndRoundStatus endRoundTracking[MAX_GROUPS];
 bool endRoundInProgress = false;
 unsigned long endRoundStartTime = 0;
 
-// WiFi Channel Management Structures
-typedef struct {
-  uint8_t channel;
-  int8_t rssi;           // Signal strength in dBm
-  uint8_t networkCount;  // Number of networks on this channel
-  uint8_t quality;       // Calculated quality score (0-100)
-} WifiChannelInfo;
-
-typedef struct {
-  bool inProgress;
-  unsigned long startTime;
-  uint8_t currentChannel;
-  WifiChannelInfo results[WIFI_SCAN_MAX_CHANNELS];
-  uint8_t completedChannels;
-} WifiScanState;
-
-typedef struct {
-  bool inProgress;
-  unsigned long startTime;
-  uint8_t targetChannel;
-  uint8_t ackCount;
-  uint8_t totalDevices;
-  bool coordinatorChanged;
-} ChannelChangeState;
-
 // Global WiFi management state
 WifiScanState wifiScanState = {false, 0, 0, {}, 0};
 ChannelChangeState channelChangeState = {false, 0, 0, 0, 0, false};
+
+// Current WiFi channel (global variable)
+uint8_t currentWifiChannel = 13; // Default channel
 #define END_ROUND_RETRY_INTERVAL_MS 200  // Retry every 200ms
 #define END_ROUND_MAX_RETRIES 5          // Up to 5 retries (1 second total)
 
@@ -172,6 +150,31 @@ ChannelChangeState channelChangeState = {false, 0, 0, 0, 0, false};
 #define BIN_CMD_ARM_SPECIFIC 8
 #define BIN_CMD_SCAN_CHANNELS 9
 #define BIN_CMD_SET_CHANNEL 10
+
+// WiFi Channel Management Structures
+typedef struct {
+  uint8_t channel;
+  int8_t rssi;           // Signal strength in dBm
+  uint8_t networkCount;  // Number of networks on this channel
+  uint8_t quality;       // Calculated quality score (0-100)
+} WifiChannelInfo;
+
+typedef struct {
+  bool inProgress;
+  unsigned long startTime;
+  uint8_t currentChannel;
+  WifiChannelInfo results[WIFI_SCAN_MAX_CHANNELS];
+  uint8_t completedChannels;
+} WifiScanState;
+
+typedef struct {
+  bool inProgress;
+  unsigned long startTime;
+  uint8_t targetChannel;
+  uint8_t ackCount;
+  uint8_t totalDevices;
+  bool coordinatorChanged;
+} ChannelChangeState;
 
 // Pending command tracking
 typedef struct {
@@ -251,7 +254,7 @@ uint8_t getRecommendedChannel() {
 }
 
 // WiFi scan callback (ESP-IDF v5.x)
-void wifiScanCallback(wifi_event_scan_done_t *event) {
+void wifiScanCallback(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
   if (!wifiScanState.inProgress) return;
 
   uint16_t apCount = 0;
@@ -325,9 +328,13 @@ bool startWifiScan() {
     .channel = 0, // Scan all channels
     .show_hidden = false,
     .scan_type = WIFI_SCAN_TYPE_ACTIVE,
-    .scan_time = {
-      .active = { .min = WIFI_SCAN_DURATION_MS / 1000, .max = WIFI_SCAN_DURATION_MS / 1000 },
-      .passive = { .min = 0, .max = 0 }
+    .scan_time.active = {
+      .min = WIFI_SCAN_DURATION_MS / 1000,
+      .max = WIFI_SCAN_DURATION_MS / 1000
+    },
+    .scan_time.passive = {
+      .min = 0,
+      .max = 0
     }
   };
 
@@ -864,10 +871,11 @@ void setup() {
   WiFi.mode(WIFI_STA);
   delay(500);
 
-  // Set WiFi channel to 13 (optimal for European ballroom with multiple APs)
+  // Set WiFi channel to default (13 - optimal for European ballroom with multiple APs)
   // Channel 13: Legal in Greece (ETSI), rarely used by venue WiFi, minimal Bluetooth overlap
-  esp_wifi_set_channel(13, WIFI_SECOND_CHAN_NONE);
-  Serial.println("WiFi channel set to 13");
+  if (!setWifiChannel(currentWifiChannel)) {
+    Serial.printf("WARNING: Failed to set initial WiFi channel to %d\n", currentWifiChannel);
+  }
 
   // Set maximum TX power for better range in crowded ballroom (170 people)
   // Value 84 = 21 dBm (maximum allowed, default is ~78 = 19.5 dBm)
@@ -889,7 +897,7 @@ void setup() {
   Serial.println("ESP-NOW initialized successfully");
 
   // Register WiFi scan callback
-  ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_SCAN_DONE, &wifiScanCallback, NULL));
+  ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, WIFI_EVENT_SCAN_DONE, &wifiScanCallback, NULL, NULL));
 
   // Register callbacks
   esp_now_register_send_cb(OnDataSent);

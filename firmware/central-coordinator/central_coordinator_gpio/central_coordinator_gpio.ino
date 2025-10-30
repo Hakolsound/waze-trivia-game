@@ -261,10 +261,10 @@ bool startChannelChange(uint8_t targetChannel) {
                  devices[i].deviceId, devices[i].isRegistered, devices[i].isOnline);
     if (devices[i].isRegistered && devices[i].isOnline) {
       online++;
-      Serial.printf("[CHANNEL] Sending CHANGE_CHANNEL to device %d...\n", devices[i].deviceId);
-      if (sendCommandWithAck(devices[i].deviceId, CMD_CHANGE_CHANNEL)) {
+      Serial.printf("[CHANNEL] Sending CHANGE_CHANNEL (ch=%d) to device %d...\n", targetChannel, devices[i].deviceId);
+      if (sendChannelChangeCommand(devices[i].deviceId, targetChannel)) {
         sent++;
-        Serial.printf("[CHANNEL] ✓ Command sent to device %d\n", devices[i].deviceId);
+        Serial.printf("[CHANNEL] ✓ Command sent to device %d (channel=%d)\n", devices[i].deviceId, targetChannel);
       } else {
         failed++;
         Serial.printf("[CHANNEL] ✗ Failed to send to device %d\n", devices[i].deviceId);
@@ -1262,6 +1262,50 @@ bool sendCommandWithAck(uint8_t targetDevice, uint8_t command) {
     return true;
   } else {
     Serial.printf("[ACK] Failed to send command: dev=%d, cmd=%d\n", targetDevice, command);
+    return false;
+  }
+}
+
+bool sendChannelChangeCommand(uint8_t targetDevice, uint8_t targetChannel) {
+  // Specialized function for channel change that passes the channel in targetDevice field
+  // This is needed because the buzzer expects: cmd.command=CMD_CHANGE_CHANNEL, cmd.targetDevice=channel_number
+
+  // Find device MAC address
+  uint8_t* targetMAC = nullptr;
+  for (int i = 0; i < registeredDeviceCount; i++) {
+    if (devices[i].deviceId == targetDevice) {
+      targetMAC = devices[i].macAddress;
+      break;
+    }
+  }
+
+  if (!targetMAC) {
+    Serial.printf("[CHANNEL] Error: Could not find MAC for device %d\n", targetDevice);
+    return false;
+  }
+
+  uint16_t seqId = generateSequenceId();
+
+  Command cmd;
+  cmd.command = CMD_CHANGE_CHANNEL;
+  cmd.targetDevice = targetChannel;  // CRITICAL: Pass channel number, not device ID!
+  cmd.timestamp = millis();
+  cmd.sequenceId = seqId;
+  cmd.retryCount = 0;
+
+  Serial.printf("[CHANNEL] Preparing to send: cmd=%d, targetDevice=%d (channel), seq=%d to device %d\n",
+                cmd.command, cmd.targetDevice, seqId, targetDevice);
+
+  esp_err_t result = esp_now_send(targetMAC, (uint8_t*)&cmd, sizeof(cmd));
+
+  if (result == ESP_OK) {
+    addPendingCommand(seqId, targetDevice, CMD_CHANGE_CHANNEL);
+    Serial.printf("[CHANNEL] Command sent with ACK: dev=%d, channel=%d, seq=%d\n",
+                  targetDevice, targetChannel, seqId);
+    return true;
+  } else {
+    Serial.printf("[CHANNEL] Failed to send command: dev=%d, channel=%d, error=%d\n",
+                  targetDevice, targetChannel, result);
     return false;
   }
 }

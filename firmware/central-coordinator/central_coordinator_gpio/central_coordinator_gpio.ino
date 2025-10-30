@@ -462,6 +462,10 @@ void processBinaryCommands() {
   // Check if first byte is text (ARM_SPECIFIC starts with 'A' = 0x41)
   if (Serial.available() > 0) {
     uint8_t firstByte = Serial.peek();
+    if (channelChangeState.inProgress) {
+      Serial.printf("[COORD] First byte during channel change: 0x%02X\n", firstByte);
+    }
+
     if (firstByte >= 0x20 && firstByte <= 0x7E) {
       // This looks like text, not binary - process as text command
       Serial.println("Detected text command, switching to text processing");
@@ -472,13 +476,19 @@ void processBinaryCommands() {
 
   while (Serial.available()) {
     uint8_t byte = Serial.read();
-    if (TEXT_DEBUG_ENABLED) {
+    if (channelChangeState.inProgress) {
+      Serial.printf("[COORD] Read byte during channel change: 0x%02X (buffer pos: %d)\n", byte, commandBufferPos);
+    } else if (TEXT_DEBUG_ENABLED) {
       Serial.printf("Read byte: 0x%02X (pos=%d)\n", byte, commandBufferPos);
     }
 
     // Special debug for command header
     if (byte == 0xBB && commandBufferPos == 0) {
-      Serial.printf("[COORD] Command header 0xBB detected - starting new command\n");
+      if (channelChangeState.inProgress) {
+        Serial.printf("[COORD] *** COMMAND HEADER 0xBB DETECTED DURING CHANNEL CHANGE ***\n");
+      } else {
+        Serial.printf("[COORD] Command header 0xBB detected - starting new command\n");
+      }
     }
 
     // Wait for command header

@@ -278,10 +278,15 @@ uint8_t getRecommendedChannel() {
 
 // WiFi scan callback (ESP-IDF v5.x)
 void wifiScanCallback(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
-  if (!wifiScanState.inProgress) return;
+  Serial.println("[WIFI] WiFi scan callback triggered!");
+  if (!wifiScanState.inProgress) {
+    Serial.println("[WIFI] Scan not in progress, ignoring callback");
+    return;
+  }
 
   uint16_t apCount = 0;
   esp_wifi_scan_get_ap_num(&apCount);
+  Serial.printf("[WIFI] Found %d access points\n", apCount);
 
   if (apCount > 0) {
     wifi_ap_record_t *apRecords = (wifi_ap_record_t*)malloc(sizeof(wifi_ap_record_t) * apCount);
@@ -344,6 +349,16 @@ bool startWifiScan() {
     return false;
   }
 
+  Serial.println("[WIFI] Preparing for WiFi scan...");
+
+  // Ensure WiFi is in station mode for scanning
+  wifi_mode_t current_mode;
+  esp_wifi_get_mode(&current_mode);
+  Serial.printf("[WIFI] Current WiFi mode: %d\n", current_mode);
+
+  // If ESP-NOW is active, we need to be careful about WiFi mode conflicts
+  // ESP-NOW typically uses WIFI_MODE_STA, so scanning should work
+
   // Configure scan parameters
   wifi_scan_config_t scanConfig;
   memset(&scanConfig, 0, sizeof(scanConfig));
@@ -365,10 +380,19 @@ bool startWifiScan() {
   esp_err_t result = esp_wifi_scan_start(&scanConfig, false);
   if (result != ESP_OK) {
     Serial.printf("[WIFI] ERROR: Failed to start scan (error %d)\n", result);
+    Serial.printf("[WIFI] Error description: %s\n", esp_err_to_name(result));
+
+    // Try to get more details about WiFi state
+    wifi_ap_record_t ap_info[10];
+    uint16_t ap_count = 10;
+    esp_err_t get_result = esp_wifi_scan_get_ap_records(&ap_count, ap_info);
+    Serial.printf("[WIFI] esp_wifi_scan_get_ap_records result: %d (%s)\n", get_result, esp_err_to_name(get_result));
+
     wifiScanState.inProgress = false;
     return false;
   }
 
+  Serial.println("[WIFI] Scan start successful, waiting for callback...");
   return true;
 }
 
@@ -768,6 +792,13 @@ void handleBinaryCommand(CommandMessage cmd) {
       break;
     case BIN_CMD_SCAN_CHANNELS: // 9 - SCAN_CHANNELS
       Serial.println("[COORD] Received SCAN_CHANNELS command");
+      Serial.printf("[COORD] Current WiFi channel: %d\n", currentWifiChannel);
+
+      // Check WiFi mode
+      wifi_mode_t mode;
+      esp_wifi_get_mode(&mode);
+      Serial.printf("[COORD] WiFi mode: %d\n", mode);
+
       if (startWifiScan()) {
         Serial.println("WIFI_SCAN_STARTED");
       } else {

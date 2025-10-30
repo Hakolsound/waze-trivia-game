@@ -139,7 +139,7 @@ unsigned long correctAnswerStartTime = 0;
 CRGB leds[NUM_LEDS];
 
 // Device configuration
-#define DEVICE_ID 15  // Change this for each group buzzer (1, 2, 3, etc.)
+#define DEVICE_ID 3  // Change this for each group buzzer (1, 2, 3, etc.)
 #define MAX_GROUPS 15
 // Previous coordinator MAC address (backup)
 // #define COORDINATOR_MAC {0x78, 0xE3, 0x6D, 0x1B, 0x13, 0x28}

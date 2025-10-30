@@ -384,6 +384,10 @@ void OnDataSent(const wifi_tx_info_t *tx_info, esp_now_send_status_t status) {
   // If we're in direct jump phase and send succeeded, coordinator ACKed!
   if (isDirectJumpPhase && status == ESP_NOW_SEND_SUCCESS) {
     Serial.printf("[PHASE 1] ✓✓✓ SUCCESS! Coordinator ACKed on channel %d via direct jump!\n", currentWifiChannel);
+
+    // Play fast visual confirmation (magenta swipe)
+    playDirectJumpSuccessConfirmation();
+
     isDirectJumpPhase = false;
     directJumpAttempts = 0;
     consecutiveHeartbeatFailures = 0;
@@ -1422,6 +1426,40 @@ void playChannelChangeConfirmation() {
   setAllLeds(CRGB(0, 255, 255)); // Cyan
   delay(100);
   setAllLeds(COLOR_OFF);
+}
+
+void playDirectJumpSuccessConfirmation() {
+  // Fast magenta swipe for Phase 1 direct jump success
+  // 500ms total - quick and noticeable
+  Serial.println("[VISUAL] Direct jump success - magenta swipe");
+
+  CRGB magenta = CRGB(255, 0, 255); // Bright magenta/pink - unused color
+
+  // Fast forward swipe (left to right) - 250ms
+  fill_solid(leds, NUM_LEDS, COLOR_OFF);
+  for (int i = 0; i < NUM_LEDS; i++) {
+    leds[i] = magenta;
+    FastLED.show();
+    delay(250 / NUM_LEDS); // Divide time across all LEDs (~10ms per LED)
+  }
+
+  // Brief hold at full brightness - 100ms
+  fill_solid(leds, NUM_LEDS, magenta);
+  FastLED.show();
+  delay(100);
+
+  // Fast fade out - 150ms
+  for (int brightness = 255; brightness >= 0; brightness -= 17) { // ~15 steps
+    CRGB fadedMagenta = magenta;
+    fadedMagenta.fadeToBlackBy(255 - brightness);
+    fill_solid(leds, NUM_LEDS, fadedMagenta);
+    FastLED.show();
+    delay(10);
+  }
+
+  // Ensure fully off
+  fill_solid(leds, NUM_LEDS, COLOR_OFF);
+  FastLED.show();
 }
 
 void startupSequence() {

@@ -139,7 +139,7 @@ unsigned long correctAnswerStartTime = 0;
 CRGB leds[NUM_LEDS];
 
 // Device configuration
-#define DEVICE_ID 3  // Change this for each group buzzer (1, 2, 3, etc.)
+#define DEVICE_ID 7  // Change this for each group buzzer (1, 2, 3, etc.)
 #define MAX_GROUPS 15
 // Previous coordinator MAC address (backup)
 // #define COORDINATOR_MAC {0x78, 0xE3, 0x6D, 0x1B, 0x13, 0x28}
@@ -190,6 +190,21 @@ unsigned long lastChannelScanTime = 0;
 #define CHANNEL_SCAN_INTERVAL_MS 2000  // Try each channel for 2 seconds
 uint8_t scanChannels[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};  // Scan all 13 channels
 #define SCAN_CHANNELS_COUNT 13
+
+// Two-phase channel change configuration
+uint8_t targetChannelForDirectJump = 0;  // Store target channel from CHANGE_CHANNEL command
+bool isDirectJumpPhase = false;  // Phase 1: Try direct jump to target channel
+uint8_t directJumpAttempts = 0;
+#define MAX_DIRECT_JUMP_ATTEMPTS 5  // Try 5 heartbeats on target channel (1.5 seconds)
+#define DIRECT_JUMP_INTERVAL_MS 300  // 300ms between heartbeats during direct jump
+unsigned long lastDirectJumpAttempt = 0;
+
+// Scan indicator configuration
+unsigned long lastScanBeep = 0;
+bool scanBeepState = false;
+#define SCAN_BEEP_INTERVAL_MS 500  // Beep every 500ms during scan
+#define SCAN_BEEP_DURATION_MS 50   // 50ms beep duration
+#define COLOR_SCANNING CRGB::Yellow  // Yellow during channel scan
 
 // Message structure for ESP-NOW communication
 typedef struct {
@@ -710,6 +725,19 @@ void sadRed() {
 }
 
 void updateLedState() {
+  // Priority override: Show yellow blink during channel scan (Phase 2)
+  if (isScanning) {
+    static bool yellowBlinkState = false;
+    static unsigned long lastYellowBlink = 0;
+
+    if (millis() - lastYellowBlink > 250) {  // Blink every 250ms (fast)
+      yellowBlinkState = !yellowBlinkState;
+      setAllLeds(yellowBlinkState ? COLOR_SCANNING : COLOR_OFF);
+      lastYellowBlink = millis();
+    }
+    return;  // Skip normal LED state logic during scan
+  }
+
   // Only update LEDs if state has changed
   if (currentState != lastLedState) {
     switch (currentState) {
@@ -843,7 +871,18 @@ void loop() {
     lastRgbUpdate = currentTime;
   }
 
-  // Process channel scanning if active
+  // Handle scan beep indicator (500ms interval during scan)
+  if (isScanning && currentTime - lastScanBeep >= SCAN_BEEP_INTERVAL_MS) {
+    digitalWrite(BUZZER_PIN, HIGH);
+    delay(SCAN_BEEP_DURATION_MS);
+    digitalWrite(BUZZER_PIN, LOW);
+    lastScanBeep = currentTime;
+  }
+
+  // Process direct jump phase (Phase 1)
+  processDirectJumpPhase();
+
+  // Process channel scanning if active (Phase 2)
   processChannelScan();
 
   // Check battery level periodically
@@ -1068,28 +1107,35 @@ void handleCommand(Command cmd) {
       break;
 
     case CMD_CHANGE_CHANNEL: // 8 - CHANGE_CHANNEL
-      Serial.printf("[CMD] Device %d RECEIVED CHANGE_CHANNEL command for channel %d\n", DEVICE_ID, cmd.targetDevice);
-      Serial.printf("[CMD] Coordinator MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
-                   coordinatorMAC[0], coordinatorMAC[1], coordinatorMAC[2],
-                   coordinatorMAC[3], coordinatorMAC[4], coordinatorMAC[5]);
+      Serial.printf("[CMD] Device %d RECEIVED CHANGE_CHANNEL - coordinator moving to channel %d\n",
+                    DEVICE_ID, cmd.targetDevice);
 
-      // CRITICAL: Send ACK BEFORE changing channel to avoid communication loss
-      // Once we change channel, we can't communicate with coordinator on old channel
-      Serial.printf("[CMD] Sending ACK for channel change to %d (current channel: %d)\n",
-                   cmd.targetDevice, currentWifiChannel);
+      // Store target channel for direct jump
+      targetChannelForDirectJump = cmd.targetDevice;
+
+      // Send ACK before anything else
+      Serial.printf("[CMD] Sending ACK for channel change (current: %d, target: %d)\n",
+                   currentWifiChannel, targetChannelForDirectJump);
       sendChannelChangeAck();
 
-      // Small delay to ensure ACK is sent before channel change
-      Serial.println("[CMD] Waiting 100ms for ACK to be sent...");
-      delay(100);
-      Serial.println("[CMD] Now proceeding with channel change...");
+      // Wait 1.5 seconds for coordinator to complete channel switch
+      Serial.println("[PHASE 1] Waiting 1500ms for coordinator to switch channels...");
+      delay(1500);
 
-      // Now change the channel
-      if (setWifiChannel(cmd.targetDevice)) {
-        Serial.printf("[CMD] Channel change to %d successful\n", cmd.targetDevice);
+      // Phase 1: Try direct jump to target channel
+      Serial.printf("[PHASE 1] Starting direct jump to channel %d\n", targetChannelForDirectJump);
+      isDirectJumpPhase = true;
+      directJumpAttempts = 0;
+      lastDirectJumpAttempt = 0;
+
+      // Jump to target channel immediately
+      if (setWifiChannel(targetChannelForDirectJump)) {
+        Serial.printf("[PHASE 1] Jumped to channel %d - trying heartbeats\n", targetChannelForDirectJump);
       } else {
-        Serial.printf("[CMD] Channel change to %d failed\n", cmd.targetDevice);
-        // Note: ACK was already sent, coordinator will timeout and fail the change
+        Serial.printf("[PHASE 1] Failed to jump to channel %d\n", targetChannelForDirectJump);
+        // If channel set fails, go straight to full scan
+        isDirectJumpPhase = false;
+        startChannelScan();
       }
       break;
 
@@ -1494,6 +1540,36 @@ void stopChannelScan() {
   scanChannelIndex = 0;
 }
 
+// Phase 1: Try direct jump to target channel
+void processDirectJumpPhase() {
+  if (!isDirectJumpPhase) return;
+
+  unsigned long currentTime = millis();
+
+  // Send heartbeats at 300ms intervals during direct jump
+  if (currentTime - lastDirectJumpAttempt >= DIRECT_JUMP_INTERVAL_MS) {
+    directJumpAttempts++;
+    lastDirectJumpAttempt = currentTime;
+
+    Serial.printf("[PHASE 1] Direct jump attempt %d/%d on channel %d\n",
+                  directJumpAttempts, MAX_DIRECT_JUMP_ATTEMPTS, targetChannelForDirectJump);
+
+    // Send heartbeat to check if coordinator is present
+    sendHeartbeat();
+
+    // Check if we've tried enough times
+    if (directJumpAttempts >= MAX_DIRECT_JUMP_ATTEMPTS) {
+      Serial.printf("[PHASE 1] Direct jump failed after %d attempts\n", MAX_DIRECT_JUMP_ATTEMPTS);
+      Serial.println("[PHASE 2] Starting full channel scan...");
+
+      // Direct jump failed, start Phase 2: Full scan
+      isDirectJumpPhase = false;
+      directJumpAttempts = 0;
+      startChannelScan();
+    }
+  }
+}
+
 void processChannelScan() {
   if (!isScanning) return;
 
@@ -1571,9 +1647,16 @@ void sendHeartbeat() {
     consecutiveHeartbeatFailures = 0;
     lastSuccessfulHeartbeat = millis();
 
+    // If we were in direct jump phase, it succeeded!
+    if (isDirectJumpPhase) {
+      Serial.printf("[PHASE 1] ✓✓✓ SUCCESS! Coordinator found on channel %d via direct jump!\n", currentWifiChannel);
+      isDirectJumpPhase = false;
+      directJumpAttempts = 0;
+    }
+
     // If we were scanning, stop now - we found the coordinator
     if (isScanning) {
-      Serial.printf("[CHANNEL] Coordinator found on channel %d - stopping scan\n", currentWifiChannel);
+      Serial.printf("[PHASE 2] ✓✓✓ Coordinator found on channel %d during scan\n", currentWifiChannel);
       stopChannelScan();
     }
   }

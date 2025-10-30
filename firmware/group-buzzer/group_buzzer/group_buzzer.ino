@@ -1585,6 +1585,11 @@ void sendHeartbeat() {
   Serial.printf("Heartbeat sent to coordinator - Result: %s (Battery: %.2fV, %d%%)\n",
                 result == ESP_OK ? "SUCCESS" : "FAILED", batteryVoltage, batteryPercentage);
 
+  // During scanning, give callback time to fire before channel changes
+  if (isScanning && result == ESP_OK) {
+    delay(100); // Wait 100ms for OnDataSent callback to process
+  }
+
   if (result != ESP_OK) {
     Serial.print("Error code: ");
     Serial.println(result);

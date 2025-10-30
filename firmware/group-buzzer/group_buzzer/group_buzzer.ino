@@ -372,12 +372,17 @@ void OnDataSent(const wifi_tx_info_t *tx_info, esp_now_send_status_t status) {
   // Track send result for channel scanning
   lastSendSuccess = (status == ESP_NOW_SEND_SUCCESS);
 
+  // DEBUG: Always show scanning state when callback fires
+  Serial.printf("[CALLBACK DEBUG] isScanning=%d, lastSendSuccess=%d, currentChannel=%d\n",
+                isScanning, lastSendSuccess, currentWifiChannel);
+
   // If scanning and send succeeded, we found the coordinator!
   if (isScanning && lastSendSuccess) {
-    Serial.printf("[CHANNEL] Send succeeded on channel %d - coordinator found!\n", currentWifiChannel);
+    Serial.printf("[CHANNEL] *** COORDINATOR FOUND ON CHANNEL %d *** STOPPING SCAN\n", currentWifiChannel);
     stopChannelScan();
     consecutiveHeartbeatFailures = 0;
     lastSuccessfulHeartbeat = millis();
+    Serial.printf("[CHANNEL] Scan stopped, isScanning=%d\n", isScanning);
   }
 }
 

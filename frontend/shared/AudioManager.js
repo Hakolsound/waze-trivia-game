@@ -11,13 +11,21 @@ class AudioManager {
             sfxEnabled: false,
             correctSfxUrl: 'random',
             wrongSfxUrl: 'random',
-            sfxVolume: 0.7
+            sfxVolume: 0.7,
+            timerLoopsEnabled: false,
+            timerLoopsMagazine: [],
+            timerLoopsVolume: 0.7,
+            currentLoopIndex: 0
         };
 
         this.ttsSupported = 'speechSynthesis' in window;
         this.audioContext = null;
         this.currentUtterance = null;
         this.audioInitialized = false; // Track if user has interacted to enable audio
+
+        // Timer loop audio
+        this.timerLoopAudio = null;
+        this.isTimerLoopPlaying = false;
 
         // Pre-load sound effects for better performance
         this.sfxCache = new Map();
@@ -246,7 +254,7 @@ class AudioManager {
     }
 
     /**
-     * Stop all audio (TTS and SFX)
+     * Stop all audio (TTS, SFX, and timer loops)
      */
     stopAll() {
         // Stop TTS
@@ -259,6 +267,72 @@ class AudioManager {
             audio.pause();
             audio.currentTime = 0;
         }
+
+        // Stop timer loop
+        this.stopTimerLoop();
+    }
+
+    /**
+     * Start playing timer loop for current question
+     */
+    startTimerLoop() {
+        if (!this.settings.timerLoopsEnabled || !this.settings.timerLoopsMagazine || this.settings.timerLoopsMagazine.length === 0) {
+            console.log('[AudioManager] Timer loops disabled or no loops in magazine');
+            return;
+        }
+
+        // Stop any existing loop
+        this.stopTimerLoop();
+
+        // Get current loop file from magazine
+        const loopFile = this.settings.timerLoopsMagazine[this.settings.currentLoopIndex];
+        console.log(`[AudioManager] Starting timer loop ${this.settings.currentLoopIndex + 1}/${this.settings.timerLoopsMagazine.length}: ${loopFile}`);
+
+        // Create and play audio
+        this.timerLoopAudio = new Audio(loopFile);
+        this.timerLoopAudio.volume = this.settings.timerLoopsVolume || 0.7;
+        this.timerLoopAudio.loop = true;
+
+        this.timerLoopAudio.play()
+            .then(() => {
+                this.isTimerLoopPlaying = true;
+                console.log('[AudioManager] Timer loop started successfully');
+            })
+            .catch(error => {
+                console.error('[AudioManager] Failed to start timer loop:', error);
+                this.isTimerLoopPlaying = false;
+            });
+    }
+
+    /**
+     * Stop timer loop
+     */
+    stopTimerLoop() {
+        if (this.timerLoopAudio) {
+            this.timerLoopAudio.pause();
+            this.timerLoopAudio.currentTime = 0;
+            this.timerLoopAudio = null;
+            console.log('[AudioManager] Timer loop stopped');
+        }
+        this.isTimerLoopPlaying = false;
+    }
+
+    /**
+     * Advance to next loop in magazine for next question
+     */
+    advanceToNextLoop() {
+        if (this.settings.timerLoopsMagazine && this.settings.timerLoopsMagazine.length > 0) {
+            this.settings.currentLoopIndex = (this.settings.currentLoopIndex + 1) % this.settings.timerLoopsMagazine.length;
+            console.log(`[AudioManager] Advanced to loop index ${this.settings.currentLoopIndex} (${this.settings.currentLoopIndex + 1}/${this.settings.timerLoopsMagazine.length})`);
+        }
+    }
+
+    /**
+     * Reset loop index to start of magazine
+     */
+    resetLoopIndex() {
+        this.settings.currentLoopIndex = 0;
+        console.log('[AudioManager] Reset loop index to 0');
     }
 
     /**
@@ -266,6 +340,7 @@ class AudioManager {
      */
     destroy() {
         this.stopAll();
+        this.stopTimerLoop();
         this.sfxCache.clear();
         this.currentUtterance = null;
     }

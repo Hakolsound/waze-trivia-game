@@ -303,6 +303,12 @@ class AdminConfig {
             testWrongSfxBtn: document.getElementById('test-wrong-sfx-btn'),
             sfxVolume: document.getElementById('sfx-volume'),
             sfxVolumeValue: document.getElementById('sfx-volume-value'),
+            timerLoopsEnabled: document.getElementById('timer-loops-enabled'),
+            timerLoopsDetails: document.getElementById('timer-loops-details'),
+            timerLoopsMagazine: document.getElementById('timer-loops-magazine'),
+            magazineCount: document.getElementById('magazine-count'),
+            timerLoopsVolume: document.getElementById('timer-loops-volume'),
+            timerLoopsVolumeValue: document.getElementById('timer-loops-volume-value'),
             saveAudioSettingsBtn: document.getElementById('save-audio-settings-btn'),
 
             // System elements
@@ -515,6 +521,21 @@ class AdminConfig {
             this.elements.sfxVolume.addEventListener('input', (e) => {
                 if (this.elements.sfxVolumeValue) {
                     this.elements.sfxVolumeValue.textContent = e.target.value;
+                }
+            });
+        }
+
+        // Timer Loops event listeners
+        if (this.elements.timerLoopsEnabled) {
+            this.elements.timerLoopsEnabled.addEventListener('change', () => {
+                this.toggleTimerLoopsDetails();
+            });
+        }
+
+        if (this.elements.timerLoopsVolume) {
+            this.elements.timerLoopsVolume.addEventListener('input', (e) => {
+                if (this.elements.timerLoopsVolumeValue) {
+                    this.elements.timerLoopsVolumeValue.textContent = e.target.value + '%';
                 }
             });
         }
@@ -3242,6 +3263,93 @@ class AdminConfig {
         }
     }
 
+    toggleTimerLoopsDetails() {
+        if (this.elements.timerLoopsDetails && this.elements.timerLoopsEnabled) {
+            this.elements.timerLoopsDetails.style.display =
+                this.elements.timerLoopsEnabled.checked ? 'block' : 'none';
+        }
+    }
+
+    loadAvailableTimerLoops() {
+        const loops = [
+            { name: 'Musical Timer', file: 'musical-timer.wav' },
+            { name: 'Countdown 2', file: 'countdown-2.wav' },
+            { name: 'Digital Timer 1', file: 'digital-timer-1.wav' },
+            { name: 'Digital Timer 2', file: 'digital-timer-2.wav' },
+            { name: 'Modern Quiz 1', file: 'modern-quiz-1.wav' },
+            { name: 'Modern Quiz 4', file: 'modern-quiz-4.wav' },
+            { name: 'Explosion Bomb', file: 'explosion-bomb.wav' },
+            { name: 'Timer Ticks', file: 'timer-ticks.wav' }
+        ];
+
+        return loops.map(loop => ({
+            name: loop.name,
+            path: `/shared/assets/sounds/timerLoops/${loop.file}`
+        }));
+    }
+
+    renderTimerLoopsMagazine(selectedPaths = []) {
+        if (!this.elements.timerLoopsMagazine) return;
+
+        const availableLoops = this.loadAvailableTimerLoops();
+
+        this.elements.timerLoopsMagazine.innerHTML = availableLoops.map(loop => `
+            <label class="timer-loop-checkbox">
+                <input type="checkbox"
+                       value="${loop.path}"
+                       ${selectedPaths.includes(loop.path) ? 'checked' : ''}
+                       onchange="admin.updateMagazineCount()">
+                <span>${loop.name}</span>
+                <button class="btn-preview-loop"
+                        onclick="admin.previewTimerLoop('${loop.path}'); event.preventDefault();"
+                        title="Preview this loop">
+                    🔊
+                </button>
+            </label>
+        `).join('');
+
+        this.updateMagazineCount();
+    }
+
+    updateMagazineCount() {
+        if (!this.elements.timerLoopsMagazine || !this.elements.magazineCount) return;
+
+        const checkboxes = this.elements.timerLoopsMagazine.querySelectorAll('input[type="checkbox"]');
+        const selectedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+
+        this.elements.magazineCount.textContent = `${selectedCount} loop${selectedCount !== 1 ? 's' : ''} selected`;
+    }
+
+    previewTimerLoop(loopPath) {
+        // Stop any existing preview
+        if (this.previewAudio) {
+            this.previewAudio.pause();
+            this.previewAudio = null;
+        }
+
+        // Play preview
+        this.previewAudio = new Audio(loopPath);
+        this.previewAudio.volume = 0.5;
+        this.previewAudio.loop = false; // Don't loop for preview
+
+        this.previewAudio.play()
+            .then(() => {
+                console.log('[Admin] Playing timer loop preview:', loopPath);
+
+                // Auto-stop after 5 seconds
+                setTimeout(() => {
+                    if (this.previewAudio) {
+                        this.previewAudio.pause();
+                        this.previewAudio = null;
+                    }
+                }, 5000);
+            })
+            .catch(error => {
+                console.error('[Admin] Failed to preview timer loop:', error);
+                this.showToast('Failed to preview timer loop', 'error');
+            });
+    }
+
     loadAvailableVoices() {
         if (!('speechSynthesis' in window)) {
             console.warn('Speech synthesis not supported');
@@ -3359,6 +3467,21 @@ class AdminConfig {
                         this.elements.sfxVolumeValue.textContent = Math.round((settings.sfxVolume || 0.7) * 100);
                     }
                 }
+
+                // Timer Loop settings
+                if (this.elements.timerLoopsEnabled) {
+                    this.elements.timerLoopsEnabled.checked = settings.timerLoopsEnabled || false;
+                    this.toggleTimerLoopsDetails();
+                }
+                if (this.elements.timerLoopsVolume) {
+                    this.elements.timerLoopsVolume.value = Math.round((settings.timerLoopsVolume || 0.7) * 100);
+                    if (this.elements.timerLoopsVolumeValue) {
+                        this.elements.timerLoopsVolumeValue.textContent = Math.round((settings.timerLoopsVolume || 0.7) * 100) + '%';
+                    }
+                }
+
+                // Render timer loops magazine
+                this.renderTimerLoopsMagazine(settings.timerLoopsMagazine || []);
             }
         } catch (error) {
             console.error('Failed to load audio settings:', error);
@@ -3368,6 +3491,10 @@ class AdminConfig {
     async saveAudioSettings() {
         if (!this.currentGame) return;
 
+        // Collect selected timer loops from magazine
+        const timerLoopCheckboxes = this.elements.timerLoopsMagazine?.querySelectorAll('input[type="checkbox"]:checked') || [];
+        const timerLoopsMagazine = Array.from(timerLoopCheckboxes).map(cb => cb.value);
+
         const settings = {
             ttsEnabled: this.elements.ttsEnabled?.checked || false,
             ttsVoice: this.elements.ttsVoice?.value || 'default',
@@ -3376,7 +3503,11 @@ class AdminConfig {
             sfxEnabled: this.elements.sfxEnabled?.checked || false,
             correctSfxUrl: this.elements.correctSfx?.value || 'random',
             wrongSfxUrl: this.elements.wrongSfx?.value || 'random',
-            sfxVolume: parseFloat(this.elements.sfxVolume?.value || 70) / 100
+            sfxVolume: parseFloat(this.elements.sfxVolume?.value || 70) / 100,
+            timerLoopsEnabled: this.elements.timerLoopsEnabled?.checked || false,
+            timerLoopsMagazine: timerLoopsMagazine,
+            timerLoopsVolume: parseFloat(this.elements.timerLoopsVolume?.value || 70) / 100,
+            currentLoopIndex: 0  // Reset loop index when saving
         };
 
         try {

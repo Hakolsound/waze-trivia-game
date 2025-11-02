@@ -297,6 +297,44 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                <!-- Timer Loop Settings -->
+                                <div class="setting-section">
+                                    <h4>⏱️ Question Timer Loops</h4>
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label for="timer-loops-enabled">Enable Timer Loops</label>
+                                            <p class="setting-description">Play looping countdown sounds during questions</p>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="timer-loops-enabled">
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+
+                                    <div class="timer-loops-details" id="timer-loops-details" style="display: none;">
+                                        <div class="setting-item">
+                                            <label>Timer Loop Magazine</label>
+                                            <p class="setting-description" style="margin-bottom: 12px;">
+                                                Select timer loops to rotate through during questions. Each question uses the next loop in sequence.
+                                            </p>
+                                            <div id="timer-loops-magazine" class="timer-loops-magazine">
+                                                <!-- Timer loop checkboxes will be populated here -->
+                                            </div>
+                                            <div class="magazine-summary">
+                                                <span id="magazine-count">0 loops selected</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="setting-item">
+                                            <label for="timer-loops-volume">Timer Loop Volume</label>
+                                            <div class="volume-control">
+                                                <input type="range" id="timer-loops-volume" min="0" max="100" value="70">
+                                                <span id="timer-loops-volume-value">70%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <div class="panel-actions">
                                 <button id="save-audio-settings-btn" class="btn btn-primary">💾 Save Audio Settings</button>

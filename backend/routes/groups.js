@@ -28,13 +28,13 @@ module.exports = (gameService) => {
     try {
       const { v4: uuidv4 } = require('uuid');
       const groupId = uuidv4();
-      const { name, color, buzzer_id } = req.body;
-      
+      const { name, color, buzzer_id, pronunciation } = req.body;
+
       const result = await gameService.db.run(
-        'INSERT INTO groups (id, game_id, name, color, buzzer_id, position) VALUES (?, ?, ?, ?, ?, ?)',
-        [groupId, req.params.gameId, name, color, buzzer_id, Date.now()]
+        'INSERT INTO groups (id, game_id, name, color, buzzer_id, pronunciation, position) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [groupId, req.params.gameId, name, color, buzzer_id, pronunciation || null, Date.now()]
       );
-      
+
       const group = await gameService.db.get('SELECT * FROM groups WHERE id = ?', [groupId]);
       res.status(201).json(group);
     } catch (error) {
@@ -44,12 +44,12 @@ module.exports = (gameService) => {
 
   router.put('/:id', async (req, res) => {
     try {
-      const { name, color, buzzer_id } = req.body;
+      const { name, color, buzzer_id, pronunciation } = req.body;
       await gameService.db.run(
-        'UPDATE groups SET name = ?, color = ?, buzzer_id = ? WHERE id = ?',
-        [name, color, buzzer_id, req.params.id]
+        'UPDATE groups SET name = ?, color = ?, buzzer_id = ?, pronunciation = ? WHERE id = ?',
+        [name, color, buzzer_id, pronunciation || null, req.params.id]
       );
-      
+
       const group = await gameService.db.get('SELECT * FROM groups WHERE id = ?', [req.params.id]);
       res.json(group);
     } catch (error) {

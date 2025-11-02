@@ -232,6 +232,7 @@ class AdminConfig {
             teamName: document.getElementById('team-name'),
             teamColor: document.getElementById('team-color'),
             buzzerId: document.getElementById('buzzer-id'),
+            teamPronunciation: document.getElementById('team-pronunciation'),
             cancelTeamBtn: document.getElementById('cancel-team-btn'),
             
             // Question elements
@@ -950,6 +951,7 @@ class AdminConfig {
                         </div>
                     </div>
                     <div class="team-actions">
+                        <button class="btn btn-small btn-secondary" onclick="admin.testTeamTTS('${team.name}')" title="Test TTS pronunciation">🔊</button>
                         <button class="btn btn-small btn-info" onclick="admin.editTeam('${team.id}')">Edit</button>
                         <button class="btn btn-small btn-danger" onclick="admin.deleteTeam('${team.id}')">Delete</button>
                     </div>
@@ -960,17 +962,18 @@ class AdminConfig {
 
     showTeamModal(team = null) {
         this.editingTeam = team;
-        
+
         if (this.elements.teamName) this.elements.teamName.value = team ? team.name : '';
         if (this.elements.teamColor) this.elements.teamColor.value = team ? team.color : '#00D4FF';
-        
+        if (this.elements.teamPronunciation) this.elements.teamPronunciation.value = team ? (team.pronunciation || '') : '';
+
         // Auto-assign buzzer ID for new teams
         if (!team && this.currentGame) {
             this.autoAssignBuzzerId();
         } else if (this.elements.buzzerId) {
             this.elements.buzzerId.value = team ? team.buzzer_id : '';
         }
-        
+
         if (this.elements.teamModal) {
             this.elements.teamModal.classList.remove('hidden');
         }
@@ -1001,11 +1004,12 @@ class AdminConfig {
 
     async handleTeamSubmit(e) {
         e.preventDefault();
-        
+
         const teamData = {
             name: this.elements.teamName.value,
             color: this.elements.teamColor.value,
-            buzzer_id: this.elements.buzzerId.value
+            buzzer_id: this.elements.buzzerId.value,
+            pronunciation: this.elements.teamPronunciation.value || null
         };
 
         try {
@@ -1024,7 +1028,7 @@ class AdminConfig {
                 });
                 this.showToast('Team added successfully', 'success');
             }
-            
+
             this.hideTeamModal();
             this.loadTeams(this.currentGame.id);
         } catch (error) {
@@ -1055,6 +1059,81 @@ class AdminConfig {
             console.error('Failed to delete team:', error);
             this.showToast('Failed to delete team', 'error');
         }
+    }
+
+    async testTeamTTS(teamName) {
+        try {
+            // Get current audio settings to use the configured voice
+            const settings = await this.getAudioSettings();
+
+            if (!('speechSynthesis' in window)) {
+                this.showToast('TTS not supported in this browser', 'error');
+                return;
+            }
+
+            // Create TTS utterance
+            const utterance = new SpeechSynthesisUtterance(teamName);
+
+            // Apply settings
+            utterance.rate = settings.ttsSpeed || 1.0;
+            utterance.volume = settings.ttsVolume || 0.8;
+
+            // Select voice
+            if (settings.ttsVoice && settings.ttsVoice !== 'default') {
+                const voices = window.speechSynthesis.getVoices();
+                const selectedVoice = voices.find(v => v.name === settings.ttsVoice);
+                if (selectedVoice) {
+                    utterance.voice = selectedVoice;
+                }
+            }
+
+            // Stop any currently speaking TTS
+            window.speechSynthesis.cancel();
+
+            // Speak the team name
+            window.speechSynthesis.speak(utterance);
+
+            console.log(`[Admin] Testing TTS for team: ${teamName}`);
+        } catch (error) {
+            console.error('Failed to test TTS:', error);
+            this.showToast('Failed to test TTS', 'error');
+        }
+    }
+
+    async getAudioSettings() {
+        if (!this.currentGame) {
+            return {
+                ttsEnabled: true,
+                ttsVoice: 'default',
+                ttsSpeed: 1.0,
+                ttsVolume: 0.8,
+                sfxEnabled: false,
+                correctSfxUrl: 'random',
+                wrongSfxUrl: 'random',
+                sfxVolume: 0.7
+            };
+        }
+
+        try {
+            const response = await fetch(`/api/games/${this.currentGame.id}/audio-settings`);
+            if (response.ok) {
+                return await response.json();
+            }
+        } catch (error) {
+            console.error('Failed to load audio settings:', error);
+        }
+
+        // Return defaults if fetch fails
+        return {
+            ttsEnabled: true,
+            ttsVoice: 'default',
+            ttsSpeed: 1.0,
+            ttsVolume: 0.8,
+            sfxEnabled: false,
+            correctSfxUrl: 'random',
+            wrongSfxUrl: 'random',
+            sfxVolume: 0.7
+        };
     }
 
     // Question Management

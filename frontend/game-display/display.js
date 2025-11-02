@@ -521,8 +521,11 @@ class GameDisplay {
             }
 
             // Announce team name immediately when they buzz (TTS only, no SFX yet)
+            // Use pronunciation if available, otherwise use team name
             if (teamName && this.audioManager) {
-                this.audioManager.announceTeamName(teamName);
+                const team = this.getTeamByGroupId(groupId);
+                const nameToAnnounce = (team && team.pronunciation) ? team.pronunciation : teamName;
+                this.audioManager.announceTeamName(nameToAnnounce);
             }
         }
     }
@@ -584,11 +587,16 @@ class GameDisplay {
             this.teamNames.set(team.id, team.name);
             this.teamNames.set(team.buzzer_id || team.id, team.name);
         });
-        
+
         // Update current game groups data if we have a current game
         if (this.currentGame && this.currentGame.groups) {
             this.currentGame.groups = teams;
         }
+    }
+
+    getTeamByGroupId(groupId) {
+        if (!this.currentGame || !this.currentGame.groups) return null;
+        return this.currentGame.groups.find(team => team.id === groupId);
     }
 
     handleScoreUpdate(data) {

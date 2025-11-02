@@ -58,6 +58,21 @@ class Database {
       console.log('Audio settings migration check error:', e.message);
     }
 
+    // Add pronunciation column to groups table if it doesn't exist
+    try {
+      const groupsTableInfo = await this.all("PRAGMA table_info(groups)");
+      const hasPronunciation = groupsTableInfo.some(column => column.name === 'pronunciation');
+
+      if (!hasPronunciation) {
+        await this.run('ALTER TABLE groups ADD COLUMN pronunciation TEXT');
+        console.log('Added pronunciation column to existing groups table');
+      } else {
+        console.log('pronunciation column already exists, skipping migration');
+      }
+    } catch (e) {
+      console.log('Pronunciation migration check error:', e.message);
+    }
+
     const tables = [
       `CREATE TABLE IF NOT EXISTS games (
         id TEXT PRIMARY KEY,

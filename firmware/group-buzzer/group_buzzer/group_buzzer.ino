@@ -139,7 +139,7 @@ unsigned long correctAnswerStartTime = 0;
 CRGB leds[NUM_LEDS];
 
 // Device configuration
-#define DEVICE_ID 7  // Change this for each group buzzer (1, 2, 3, etc.)
+#define DEVICE_ID 6  // Change this for each group buzzer (1, 2, 3, etc.)
 #define MAX_GROUPS 15
 // Previous coordinator MAC address (backup)
 // #define COORDINATOR_MAC {0x78, 0xE3, 0x6D, 0x1B, 0x13, 0x28}
@@ -285,6 +285,33 @@ bool setWifiChannel(uint8_t channel) {
   currentWifiChannel = channel;
   Serial.printf("[CHANNEL] SUCCESS: Channel set to %d\n", channel);
 
+  // CRITICAL: Update ESP-NOW peer channel to match WiFi channel
+  // ESP-NOW validates peer.channel == wifi.channel before sending
+  // Without this, we get error 12397: "Peer channel is not equal to the home channel"
+  Serial.printf("[CHANNEL] Updating ESP-NOW peer to channel %d\n", channel);
+
+  // Remove the existing peer
+  esp_err_t delResult = esp_now_del_peer(coordinatorMAC);
+  if (delResult != ESP_OK) {
+    Serial.printf("[CHANNEL] WARNING: Failed to delete peer (error %d)\n", delResult);
+    // Continue anyway - peer might not exist yet
+  }
+
+  // Re-add peer with new channel
+  esp_now_peer_info_t peerInfo;
+  memset(&peerInfo, 0, sizeof(peerInfo));
+  memcpy(peerInfo.peer_addr, coordinatorMAC, 6);
+  peerInfo.channel = channel;  // Set to new channel
+  peerInfo.encrypt = false;
+  peerInfo.ifidx = WIFI_IF_STA;
+
+  esp_err_t addResult = esp_now_add_peer(&peerInfo);
+  if (addResult != ESP_OK) {
+    Serial.printf("[CHANNEL] ERROR: Failed to re-add peer on channel %d (error %d)\n", channel, addResult);
+    return false;
+  }
+
+  Serial.printf("[CHANNEL] ✓ ESP-NOW peer updated to channel %d\n", channel);
   return true;
 }
 

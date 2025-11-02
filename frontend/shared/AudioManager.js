@@ -18,6 +18,7 @@ class AudioManager {
         this.audioContext = null;
         this.currentUtterance = null;
         this.audioInitialized = false; // Track if user has interacted to enable audio
+        this.isAnnouncing = false; // Track if we're currently announcing a team name
 
         // Pre-load sound effects for better performance
         this.sfxCache = new Map();
@@ -128,11 +129,14 @@ class AudioManager {
             return;
         }
 
-        // If already speaking, don't interrupt (prevents duplicate announcements)
-        if (window.speechSynthesis.speaking) {
-            console.log(`[AudioManager] Already speaking, skipping duplicate announcement for: ${teamName}`);
+        // If we're already announcing, skip duplicate (handles double-firing events)
+        if (this.isAnnouncing) {
+            console.log(`[AudioManager] Already announcing, skipping duplicate for: ${teamName}`);
             return;
         }
+
+        // Mark that we're announcing
+        this.isAnnouncing = true;
 
         // Create utterance
         const utterance = new SpeechSynthesisUtterance(teamName);
@@ -152,8 +156,15 @@ class AudioManager {
         // Store reference to current utterance
         this.currentUtterance = utterance;
 
-        // Handle errors
+        // Handle completion - reset flag when done
+        utterance.addEventListener('end', () => {
+            this.isAnnouncing = false;
+            console.log('[AudioManager] TTS announcement completed');
+        });
+
+        // Handle errors - reset flag on error too
         utterance.addEventListener('error', (event) => {
+            this.isAnnouncing = false;
             console.error('[AudioManager] TTS error:', event);
         });
 

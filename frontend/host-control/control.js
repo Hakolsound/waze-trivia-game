@@ -367,6 +367,7 @@ class HostControl {
             scanWifiChannelsBtn: document.getElementById('scan-wifi-channels-btn'),
             setDefaultChannelBtn: document.getElementById('set-default-channel-btn'),
             recallNeglectedBuzzersBtn: document.getElementById('recall-neglected-buzzers-btn'),
+            recallBuzzersSection: document.getElementById('recall-buzzers-section'),
             wifiScanStatus: document.getElementById('wifi-scan-status'),
             wifiResults: document.getElementById('wifi-results'),
             currentChannelDisplay: document.getElementById('current-channel-display'),
@@ -4107,6 +4108,9 @@ class HostControl {
                 if (this.elements.currentChannelDisplay) {
                     this.elements.currentChannelDisplay.textContent = 'CH 13';
                 }
+
+                // Hide recall section when returning to default channel
+                this.updateRecallSectionVisibility(13);
             } else {
                 const error = await response.json();
                 this.showToast(`Failed to set default channel: ${error.message}`, 'error');
@@ -4114,6 +4118,19 @@ class HostControl {
         } catch (error) {
             console.error('Failed to set default WiFi channel:', error);
             this.showToast('Failed to set default WiFi channel', 'error');
+        }
+    }
+
+    updateRecallSectionVisibility(channelNumber) {
+        // Show recall section only when channel is not the default (13)
+        if (this.elements.recallBuzzersSection) {
+            if (channelNumber !== 13) {
+                this.elements.recallBuzzersSection.classList.remove('hidden');
+                console.log(`[WiFi] Recall section shown - channel ${channelNumber} is not default`);
+            } else {
+                this.elements.recallBuzzersSection.classList.add('hidden');
+                console.log('[WiFi] Recall section hidden - back to default channel 13');
+            }
         }
     }
 
@@ -4195,6 +4212,9 @@ class HostControl {
                 if (this.elements.currentChannelDisplay) {
                     this.elements.currentChannelDisplay.textContent = `CH ${channelNumber}`;
                 }
+
+                // Show recall section if channel is not default (13)
+                this.updateRecallSectionVisibility(parseInt(channelNumber));
             } else {
                 const error = await response.json();
 

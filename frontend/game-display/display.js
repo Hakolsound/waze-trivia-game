@@ -487,8 +487,8 @@ class GameDisplay {
     handleBuzzerPressed(data) {
         console.log('Buzzer pressed:', data);
 
-        // Stop timer loop when first buzzer is pressed
-        if (this.buzzerQueue.length === 0 && this.audioManager) {
+        // Stop timer loop on ANY buzzer press (first or subsequent after wrong answers)
+        if (this.audioManager) {
             this.audioManager.stopTimerLoop();
         }
 

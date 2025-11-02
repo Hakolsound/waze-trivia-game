@@ -1370,7 +1370,11 @@ class GameService {
       sfxEnabled: false,
       correctSfxUrl: 'random',
       wrongSfxUrl: 'random',
-      sfxVolume: 0.7
+      sfxVolume: 0.7,
+      timerLoopsEnabled: false,
+      timerLoopsMagazine: [],
+      timerLoopsVolume: 0.7,
+      currentLoopIndex: 0
     };
   }
 

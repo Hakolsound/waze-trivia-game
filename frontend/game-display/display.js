@@ -441,24 +441,29 @@ class GameDisplay {
 
     handleQuestionStarted(data) {
         this.currentQuestion = data.question;
-        
+
         // Auto-hide correct answer overlay when new question starts
         this.hideCorrectAnswer();
-        
+
         // Reset answer shown flag for new question
         this.answerWasShown = false;
-        
+
         this.showQuestionState(data.question);
         this.totalTime = data.question.time_limit || 30;
         this.timeRemaining = this.totalTime;
-        
+
         // Clear any previous timer state
         this.clearTimer();
-        
+
         // Update display and start fresh timer
         this.updateTimer(this.timeRemaining, this.totalTime);
         this.startTimer();
-        
+
+        // Start timer loop for this question
+        if (this.audioManager) {
+            this.audioManager.startTimerLoop();
+        }
+
         console.log('Question started on display, timer:', this.totalTime);
     }
 
@@ -468,13 +473,24 @@ class GameDisplay {
         // The question will be hidden when a correct answer is given or host manually advances
         this.updateGameStatus('Time up - Waiting for answer');
         this.elements.timerText.textContent = 'Time up!';
-        
+
+        // Stop timer loop and advance to next loop for next question
+        if (this.audioManager) {
+            this.audioManager.stopTimerLoop();
+            this.audioManager.advanceToNextLoop();
+        }
+
         // Pause any playing media when time is up
         this.pauseMedia();
     }
 
     handleBuzzerPressed(data) {
         console.log('Buzzer pressed:', data);
+
+        // Stop timer loop when first buzzer is pressed
+        if (this.buzzerQueue.length === 0 && this.audioManager) {
+            this.audioManager.stopTimerLoop();
+        }
 
         // Expand sidebar on first buzzer press
         if (this.buzzerQueue.length === 0 && !this.sidebarExpanded) {
@@ -540,8 +556,14 @@ class GameDisplay {
         if (this.audioManager) {
             if (data.isCorrect) {
                 this.audioManager.playCorrectSfx();
+                // Stop timer loop on correct answer
+                this.audioManager.stopTimerLoop();
             } else {
                 this.audioManager.playWrongSfx();
+                // Resume timer loop on wrong answer (if time still remaining)
+                if (this.timeRemaining > 0) {
+                    this.audioManager.startTimerLoop();
+                }
             }
         }
 

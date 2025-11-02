@@ -116,8 +116,8 @@ unsigned long endRoundStartTime = 0;
 
 // Acknowledgment system configuration
 #define MAX_PENDING_COMMANDS 20
-#define ACK_TIMEOUT_MS 500  // Increased to prevent unnecessary retries when multiple commands are queued
-#define MAX_RETRIES 2  // Reduced from 3 - with longer timeout, fewer retries needed
+#define ACK_TIMEOUT_MS 300  // Reduced from 500ms - faster retries for better reliability
+#define MAX_RETRIES 4  // Increased from 2 - more attempts to reach all buzzers
 #define RETRY_DELAY_MS 100
 
 // WiFi Channel Management Configuration
@@ -336,7 +336,9 @@ void sendBinaryStatus() {
       if (devices[i].isOnline) {
         deviceMask |= (1 << deviceBit);
       }
-      if (devices[i].isArmed) {
+      // CRITICAL FIX: Only report armed if device is BOTH armed AND online
+      // This prevents "ghost arms" where offline devices show as armed
+      if (devices[i].isArmed && devices[i].isOnline) {
         armedMask |= (1 << deviceBit);
       }
       if (devices[i].isPressed) {
@@ -1393,6 +1395,10 @@ void disarmAllBuzzers() {
         failed++;
       }
       delay(20); // Increased delay to reduce RF congestion with 15 buzzers
+    } else {
+      // CRITICAL FIX: Clear armed state for offline devices too
+      // Without this, offline devices stay "armed" forever (ghost arms)
+      devices[i].isArmed = false;
     }
   }
 

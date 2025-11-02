@@ -128,38 +128,38 @@ class AudioManager {
             return;
         }
 
-        // Cancel any ongoing speech
-        window.speechSynthesis.cancel();
+        // If already speaking, don't interrupt (prevents duplicate announcements)
+        if (window.speechSynthesis.speaking) {
+            console.log(`[AudioManager] Already speaking, skipping duplicate announcement for: ${teamName}`);
+            return;
+        }
 
-        // Wait a tiny bit after cancel to avoid browser TTS race condition
-        setTimeout(() => {
-            // Create utterance
-            const utterance = new SpeechSynthesisUtterance(teamName);
+        // Create utterance
+        const utterance = new SpeechSynthesisUtterance(teamName);
 
-            // Set voice by name if specified (not default)
-            if (this.settings.ttsVoice && this.settings.ttsVoice !== 'default') {
-                const voices = window.speechSynthesis.getVoices();
-                const voice = voices.find(v => v.name === this.settings.ttsVoice);
-                if (voice) {
-                    utterance.voice = voice;
-                }
+        // Set voice by name if specified (not default)
+        if (this.settings.ttsVoice && this.settings.ttsVoice !== 'default') {
+            const voices = window.speechSynthesis.getVoices();
+            const voice = voices.find(v => v.name === this.settings.ttsVoice);
+            if (voice) {
+                utterance.voice = voice;
             }
+        }
 
-            utterance.rate = this.settings.ttsSpeed;
-            utterance.volume = this.settings.ttsVolume;
+        utterance.rate = this.settings.ttsSpeed;
+        utterance.volume = this.settings.ttsVolume;
 
-            // Store reference to current utterance
-            this.currentUtterance = utterance;
+        // Store reference to current utterance
+        this.currentUtterance = utterance;
 
-            // Handle errors
-            utterance.addEventListener('error', (event) => {
-                console.error('[AudioManager] TTS error:', event);
-            });
+        // Handle errors
+        utterance.addEventListener('error', (event) => {
+            console.error('[AudioManager] TTS error:', event);
+        });
 
-            // Speak
-            window.speechSynthesis.speak(utterance);
-            console.log(`[AudioManager] Announcing team: ${teamName} with voice: ${this.settings.ttsVoice}`);
-        }, 50); // 50ms delay to avoid race condition with cancel()
+        // Speak
+        window.speechSynthesis.speak(utterance);
+        console.log(`[AudioManager] Announcing team: ${teamName} with voice: ${this.settings.ttsVoice}`);
     }
 
     /**

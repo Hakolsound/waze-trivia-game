@@ -1998,10 +1998,38 @@ kbd {
 
 .points-showcase {
   text-align: center;
-  background: linear-gradient(45deg, #4CAF50, #45a049);
+  background: linear-gradient(135deg, #2c3e50, #34495e);
   padding: 25px;
   border-radius: 20px;
-  box-shadow: 0 10px 20px rgba(76, 175, 80, 0.3);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
+.points-breakdown {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  gap: 20px;
+}
+
+.points-option {
+  flex: 1;
+  text-align: center;
+}
+
+.points-option.points-correct .points-value {
+  color: #4CAF50;
+  text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+}
+
+.points-option.points-wrong .points-value {
+  color: #f44336;
+  text-shadow: 0 0 10px rgba(244, 67, 54, 0.5);
+}
+
+.points-divider {
+  font-size: 2.5rem;
+  font-weight: 100;
+  color: rgba(255, 255, 255, 0.3);
 }
 
 .points-value {
@@ -2013,11 +2041,11 @@ kbd {
 }
 
 .points-label {
-  font-size: 0.9rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.9);
-  margin-top: 5px;
-  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 8px;
+  letter-spacing: 1.5px;
 }
 
 /* Mega Buttons */

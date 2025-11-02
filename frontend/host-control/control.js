@@ -295,6 +295,9 @@ class HostControl {
             currentTeamName: document.getElementById('current-team-name'),
             currentBuzzerTime: document.getElementById('current-buzzer-time'),
             questionPoints: document.getElementById('question-points'),
+            questionPointsCorrect: document.getElementById('question-points-correct'),
+            questionPointsWrong: document.getElementById('question-points-wrong'),
+            incorrectBtnHint: document.getElementById('incorrect-btn-hint'),
             markCorrectBtn: document.getElementById('mark-correct-btn'),
             markIncorrectBtn: document.getElementById('mark-incorrect-btn'),
             giveUpBtn: document.getElementById('give-up-btn'),
@@ -2378,6 +2381,7 @@ class HostControl {
             const teamName = this.getTeamName(buzzer.groupId);
             const deltaTime = (buzzer.deltaMs / 1000).toFixed(2);
             const actualPoints = this.getActualPointsForBuzzer(buzzer);
+            const wrongPenalty = this.getWrongAnswerPenalty(buzzer);
 
             // Pre-calculate position text to avoid conditionals
             const positionTexts = ['1st', '2nd', '3rd'];
@@ -2387,7 +2391,23 @@ class HostControl {
             this.elements.currentPosition.textContent = positionText;
             this.elements.currentTeamName.textContent = teamName;
             this.elements.currentBuzzerTime.textContent = `Buzzed in at ${deltaTime}s`;
-            this.elements.questionPoints.textContent = `+${actualPoints}`;
+
+            // Update both correct and wrong point displays
+            if (this.elements.questionPointsCorrect) {
+                this.elements.questionPointsCorrect.textContent = `+${actualPoints}`;
+            }
+            if (this.elements.questionPointsWrong) {
+                this.elements.questionPointsWrong.textContent = `${wrongPenalty}`;
+            }
+            // Keep old element for backward compatibility
+            if (this.elements.questionPoints) {
+                this.elements.questionPoints.textContent = `+${actualPoints}`;
+            }
+
+            // Update incorrect button hint with actual penalty
+            if (this.elements.incorrectBtnHint) {
+                this.elements.incorrectBtnHint.textContent = `${wrongPenalty} pts`;
+            }
 
             // Store current buzzer position for evaluation
             this.currentBuzzerPosition = position - 1; // 0-based index
@@ -2642,6 +2662,34 @@ class HostControl {
         // Otherwise return full points
         console.log(`[FRONTEND DEBUG] Time-based scoring disabled, returning full points: ${currentQuestion.points}`);
         return currentQuestion.points;
+    }
+
+    // Get wrong answer penalty (half of time-based points, as negative)
+    getWrongAnswerPenalty(buzzer) {
+        if (!this.currentGame || !buzzer) {
+            return 0;
+        }
+
+        // Use this.questions array which is populated from game state
+        const currentQuestion = this.questions[this.currentQuestionIndex];
+        if (!currentQuestion) {
+            return 0;
+        }
+
+        // If time-based scoring is enabled, calculate penalty based on timing
+        if (this.currentGame.time_based_scoring) {
+            const questionStartTime = this.questionStartTime || Date.now();
+            const timeElapsed = buzzer.timestamp - questionStartTime;
+            const totalTime = (currentQuestion.time_limit || 30) * 1000;
+            const timeRemaining = Math.max(0, totalTime - timeElapsed);
+
+            const timeBasedPoints = this.calculateTimeBasedPoints(currentQuestion.points, timeRemaining, totalTime);
+            // Wrong answer penalty is half of time-based points (negative)
+            return -Math.floor(timeBasedPoints * 0.5);
+        }
+
+        // If time-based scoring is disabled, no penalty
+        return 0;
     }
 
     // Current Answerer Highlight Methods

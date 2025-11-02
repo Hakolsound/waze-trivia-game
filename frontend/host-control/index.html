@@ -490,8 +490,17 @@
                                 </div>
                             </div>
                             <div class="points-showcase">
-                                <div class="points-value" id="question-points">+100</div>
-                                <div class="points-label">POINTS</div>
+                                <div class="points-breakdown">
+                                    <div class="points-option points-correct">
+                                        <div class="points-value" id="question-points-correct">+100</div>
+                                        <div class="points-label">IF CORRECT</div>
+                                    </div>
+                                    <div class="points-divider">|</div>
+                                    <div class="points-option points-wrong">
+                                        <div class="points-value" id="question-points-wrong">-50</div>
+                                        <div class="points-label">IF WRONG</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         
@@ -505,7 +514,7 @@
                             <button id="mark-incorrect-btn" class="mega-btn mega-btn-incorrect">
                                 <div class="mega-btn-icon">✗</div>
                                 <div class="mega-btn-text">INCORRECT</div>
-                                <div class="mega-btn-hint">No Points</div>
+                                <div class="mega-btn-hint" id="incorrect-btn-hint">Lose Points</div>
                             </button>
                             
                             <button id="give-up-btn" class="mega-btn mega-btn-skip">

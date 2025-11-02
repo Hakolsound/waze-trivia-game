@@ -1364,7 +1364,7 @@ class GameService {
     console.log(`[AUDIO] Using default audio settings for game ${gameId}`);
     return {
       ttsEnabled: false,
-      ttsVoice: 'default',
+      ttsVoice: 'Google US English',
       ttsSpeed: 1.0,
       ttsVolume: 0.8,
       sfxEnabled: false,

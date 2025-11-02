@@ -5,7 +5,7 @@ class AudioManager {
     constructor() {
         this.settings = {
             ttsEnabled: false,
-            ttsVoice: 'en-US',
+            ttsVoice: 'Google US English',
             ttsSpeed: 1.0,
             ttsVolume: 0.8,
             sfxEnabled: false,

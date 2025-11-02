@@ -1114,11 +1114,24 @@ class AdminConfig {
                 console.error('[Admin] TTS error:', event.error, event);
             });
 
-            // Don't cancel - just speak (browser will queue or interrupt as needed)
-            window.speechSynthesis.speak(utterance);
-            console.log(`[Admin] Testing TTS for team ${team.name}: speaking "${textToSpeak}"`);
-            console.log('[Admin] speechSynthesis.speaking:', window.speechSynthesis.speaking);
-            console.log('[Admin] speechSynthesis.pending:', window.speechSynthesis.pending);
+            // Chrome TTS bug workaround: cancel, wait, then speak
+            // Chrome gets stuck if you don't give it time between cancel and speak
+            if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+                console.log('[Admin] Cancelling existing speech...');
+                window.speechSynthesis.cancel();
+            }
+
+            // Wait a moment for cancel to complete, then speak
+            setTimeout(() => {
+                window.speechSynthesis.speak(utterance);
+                // Chrome bug: sometimes needs a resume() call to actually start
+                setTimeout(() => {
+                    window.speechSynthesis.resume();
+                }, 100);
+                console.log(`[Admin] Testing TTS for team ${team.name}: speaking "${textToSpeak}"`);
+                console.log('[Admin] speechSynthesis.speaking:', window.speechSynthesis.speaking);
+                console.log('[Admin] speechSynthesis.pending:', window.speechSynthesis.pending);
+            }, 100); // Wait 100ms after cancel before speaking
         } catch (error) {
             console.error('Failed to test TTS:', error);
             this.showToast('Failed to test TTS', 'error');
@@ -1129,7 +1142,7 @@ class AdminConfig {
         if (!this.currentGame) {
             return {
                 ttsEnabled: true,
-                ttsVoice: 'default',
+                ttsVoice: 'Google US English',
                 ttsSpeed: 1.0,
                 ttsVolume: 0.8,
                 sfxEnabled: false,
@@ -1151,7 +1164,7 @@ class AdminConfig {
         // Return defaults if fetch fails
         return {
             ttsEnabled: true,
-            ttsVoice: 'default',
+            ttsVoice: 'Google US English',
             ttsSpeed: 1.0,
             ttsVolume: 0.8,
             sfxEnabled: false,

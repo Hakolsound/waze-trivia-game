@@ -49,7 +49,7 @@ class Database {
       const hasAudioSettings = tableInfo.some(column => column.name === 'audio_settings');
 
       if (!hasAudioSettings) {
-        await this.run(`ALTER TABLE games ADD COLUMN audio_settings TEXT DEFAULT '{"ttsEnabled":false,"ttsVoice":"default","ttsSpeed":1.0,"ttsVolume":0.8,"sfxEnabled":false,"correctSfxUrl":"random","wrongSfxUrl":"random","sfxVolume":0.7}'`);
+        await this.run(`ALTER TABLE games ADD COLUMN audio_settings TEXT DEFAULT '{"ttsEnabled":false,"ttsVoice":"Google US English","ttsSpeed":1.0,"ttsVolume":0.8,"sfxEnabled":false,"correctSfxUrl":"random","wrongSfxUrl":"random","sfxVolume":0.7}'`);
         console.log('Added audio_settings column to existing games table');
       } else {
         console.log('audio_settings column already exists, skipping migration');

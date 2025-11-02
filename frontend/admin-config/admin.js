@@ -1097,10 +1097,12 @@ class AdminConfig {
             // Stop any currently speaking TTS
             window.speechSynthesis.cancel();
 
-            // Speak the team name (or pronunciation)
-            window.speechSynthesis.speak(utterance);
-
-            console.log(`[Admin] Testing TTS for team ${team.name}: speaking "${textToSpeak}"`);
+            // Wait a tiny bit after cancel to avoid browser TTS race condition
+            setTimeout(() => {
+                // Speak the team name (or pronunciation)
+                window.speechSynthesis.speak(utterance);
+                console.log(`[Admin] Testing TTS for team ${team.name}: speaking "${textToSpeak}"`);
+            }, 50); // 50ms delay to avoid race condition with cancel()
         } catch (error) {
             console.error('Failed to test TTS:', error);
             this.showToast('Failed to test TTS', 'error');

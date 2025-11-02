@@ -13,7 +13,7 @@
 
 // Communication Configuration
 #define SERIAL_BAUD 115200
-#define HEARTBEAT_TIMEOUT 10000  // 10 seconds
+#define HEARTBEAT_TIMEOUT 30000  // 30 seconds - increased from 10s to reduce false offline detections
 
 // Binary Protocol Configuration
 #define BINARY_PROTOCOL_ENABLED true

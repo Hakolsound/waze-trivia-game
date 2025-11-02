@@ -207,6 +207,14 @@ class ESP32Service extends EventEmitter {
         const channel = parseInt(data.split(':')[1]);
         console.log(`WiFi channel change failed for channel ${channel}`);
         this.emit('wifi-channel-change-failed', { channel });
+      } else if (data.startsWith('COORD_CHANNEL_SILENT_CHANGED:')) {
+        const channel = parseInt(data.split(':')[1]);
+        console.log(`Coordinator silently changed to channel ${channel} (no buzzer broadcast)`);
+        this.emit('coord-channel-silent-changed', { channel });
+      } else if (data.startsWith('COORD_CHANNEL_SILENT_FAILED:')) {
+        const channel = parseInt(data.split(':')[1]);
+        console.log(`Coordinator silent channel change failed for channel ${channel}`);
+        this.emit('coord-channel-silent-failed', { channel });
       }
     } catch (error) {
       console.error('Error parsing ESP32 data:', error);
@@ -833,6 +841,14 @@ class ESP32Service extends EventEmitter {
     // Use binary protocol command 10 (SET_CHANNEL)
     // Channel is encoded in targetDevice field
     return this.sendBinaryCommand(10, channel, 0); // command=10, targetDevice=channel, gameId=0
+  }
+
+  async setWifiChannelSilent(channel) {
+    // Use binary protocol command 11 (SET_CHANNEL_SILENT)
+    // Moves coordinator only, no ESP-NOW broadcast to buzzers
+    // Channel is encoded in targetDevice field
+    console.log(`[ESP32] Setting channel SILENTLY to ${channel} (coordinator only, no buzzer broadcast)`);
+    return this.sendBinaryCommand(11, channel, 0); // command=11, targetDevice=channel, gameId=0
   }
 
   async getCurrentChannel() {

@@ -151,6 +151,115 @@ router.get('/channels/current', async (req, res) => {
   }
 });
 
+// Recall neglected buzzers endpoint - retries channel change for buzzers stuck on default
+router.post('/channel/recall-neglected', async (req, res) => {
+  try {
+    const { targetChannel } = req.body;
+
+    if (!targetChannel || targetChannel < 1 || targetChannel > 13) {
+      return res.status(400).json({
+        success: false,
+        message: 'Target channel must be between 1 and 13'
+      });
+    }
+
+    const DEFAULT_CHANNEL = 13;
+    console.log(`[RECALL] Starting recall neglected buzzers flow...`);
+    console.log(`[RECALL] Target channel: ${targetChannel}, Default channel: ${DEFAULT_CHANNEL}`);
+
+    const steps = [];
+
+    // Step 1: Move coordinator silently to default channel
+    console.log(`[RECALL] Step 1/3: Moving coordinator silently to CH ${DEFAULT_CHANNEL}...`);
+    const silentMoveToDefault = await esp32Service.setWifiChannelSilent(DEFAULT_CHANNEL);
+    console.log('[RECALL] Silent move command sent:', silentMoveToDefault);
+
+    // Wait for silent channel change completion
+    const step1Promise = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Step 1 timeout - Coordinator failed to move to default channel'));
+      }, 3000);
+
+      const onSilentChanged = (data) => {
+        clearTimeout(timeout);
+        esp32Service.removeListener('coord-channel-silent-changed', onSilentChanged);
+        esp32Service.removeListener('coord-channel-silent-failed', onSilentFailed);
+        resolve(data);
+      };
+
+      const onSilentFailed = (data) => {
+        clearTimeout(timeout);
+        esp32Service.removeListener('coord-channel-silent-changed', onSilentChanged);
+        esp32Service.removeListener('coord-channel-silent-failed', onSilentFailed);
+        reject(new Error(`Step 1 failed: ${data.channel}`));
+      };
+
+      esp32Service.once('coord-channel-silent-changed', onSilentChanged);
+      esp32Service.once('coord-channel-silent-failed', onSilentFailed);
+    });
+
+    await step1Promise;
+    console.log(`[RECALL] Step 1 complete: Coordinator on CH ${DEFAULT_CHANNEL}`);
+    steps.push({ step: 1, action: `Coordinator silently moved to default (CH ${DEFAULT_CHANNEL})`, success: true });
+
+    // Step 2: Wait for stabilization
+    console.log('[RECALL] Step 2/3: Waiting 2 seconds for stabilization...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    console.log('[RECALL] Step 2 complete: Stabilization period finished');
+    steps.push({ step: 2, action: 'Waited for channel stabilization', success: true });
+
+    // Step 3: Broadcast channel change to target (only buzzers on default will hear)
+    console.log(`[RECALL] Step 3/3: Broadcasting channel change to CH ${targetChannel}...`);
+    const broadcastChange = await esp32Service.setWifiChannel(targetChannel);
+    console.log('[RECALL] Broadcast channel change command sent:', broadcastChange);
+
+    // Wait for channel change completion
+    const step3Promise = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Step 3 timeout - Channel change not confirmed'));
+      }, 5000); // 5 seconds for buzzer auto-scan
+
+      const onChangeComplete = (data) => {
+        clearTimeout(timeout);
+        esp32Service.removeListener('wifi-channel-changed', onChangeComplete);
+        esp32Service.removeListener('wifi-channel-change-failed', onChangeFailed);
+        resolve(data);
+      };
+
+      const onChangeFailed = (data) => {
+        clearTimeout(timeout);
+        esp32Service.removeListener('wifi-channel-changed', onChangeComplete);
+        esp32Service.removeListener('wifi-channel-change-failed', onChangeFailed);
+        reject(new Error(`Step 3 failed: ${data.channel}`));
+      };
+
+      esp32Service.once('wifi-channel-changed', onChangeComplete);
+      esp32Service.once('wifi-channel-change-failed', onChangeFailed);
+    });
+
+    await step3Promise;
+    console.log(`[RECALL] Step 3 complete: Coordinator and neglected buzzers now on CH ${targetChannel}`);
+    steps.push({ step: 3, action: `Broadcast channel change to CH ${targetChannel}`, success: true });
+
+    console.log('[RECALL] Recall neglected buzzers flow completed successfully!');
+
+    res.json({
+      success: true,
+      message: 'Recall neglected buzzers completed successfully',
+      targetChannel,
+      steps
+    });
+
+  } catch (error) {
+    console.error('[RECALL] Error during recall flow:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to recall neglected buzzers',
+      error: error.message
+    });
+  }
+});
+
 // Set WiFi channel endpoint
 router.post('/channel', async (req, res) => {
   try {

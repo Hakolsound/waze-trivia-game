@@ -366,6 +366,7 @@ class HostControl {
             toggleWifiSectionBtn: document.getElementById('toggle-wifi-section'),
             scanWifiChannelsBtn: document.getElementById('scan-wifi-channels-btn'),
             setDefaultChannelBtn: document.getElementById('set-default-channel-btn'),
+            recallNeglectedBuzzersBtn: document.getElementById('recall-neglected-buzzers-btn'),
             wifiScanStatus: document.getElementById('wifi-scan-status'),
             wifiResults: document.getElementById('wifi-results'),
             currentChannelDisplay: document.getElementById('current-channel-display'),
@@ -698,6 +699,9 @@ class HostControl {
         }
         if (this.elements.setDefaultChannelBtn) {
             this.elements.setDefaultChannelBtn.addEventListener('click', () => this.setDefaultChannel());
+        }
+        if (this.elements.recallNeglectedBuzzersBtn) {
+            this.elements.recallNeglectedBuzzersBtn.addEventListener('click', () => this.recallNeglectedBuzzers());
         }
         if (this.elements.applyBestChannelBtn) {
             this.elements.applyBestChannelBtn.addEventListener('click', () => this.confirmChannelChange(null, true));
@@ -4110,6 +4114,64 @@ class HostControl {
         } catch (error) {
             console.error('Failed to set default WiFi channel:', error);
             this.showToast('Failed to set default WiFi channel', 'error');
+        }
+    }
+
+    async recallNeglectedBuzzers() {
+        // Get target channel from current channel display
+        const currentChannelText = this.elements.currentChannelDisplay?.textContent || 'CH 13';
+        const targetChannel = parseInt(currentChannelText.replace('CH ', ''));
+
+        if (!targetChannel || targetChannel < 1 || targetChannel > 13) {
+            this.showToast('Invalid target channel', 'error');
+            return;
+        }
+
+        // Disable button during process
+        if (this.elements.recallNeglectedBuzzersBtn) {
+            this.elements.recallNeglectedBuzzersBtn.disabled = true;
+            this.elements.recallNeglectedBuzzersBtn.textContent = '⏳ Processing...';
+        }
+
+        try {
+            this.showToast(`Step 1/3: Moving coordinator to default...`, 'info');
+
+            const response = await fetch('/api/wifi/channel/recall-neglected', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ targetChannel })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                console.log('[Recall] Success:', result);
+
+                // Show progress for each step
+                result.steps.forEach((step, index) => {
+                    setTimeout(() => {
+                        this.showToast(`Step ${step.step}/3: ${step.action}`, 'success');
+                    }, index * 500);
+                });
+
+                // Final success message
+                setTimeout(() => {
+                    this.showToast(`✅ Recall completed! All buzzers should be on CH ${targetChannel}`, 'success');
+                }, result.steps.length * 500 + 500);
+
+            } else {
+                const error = await response.json();
+                console.error('[Recall] Error:', error);
+                this.showToast(`Failed to recall buzzers: ${error.message}`, 'error');
+            }
+        } catch (error) {
+            console.error('[Recall] Failed:', error);
+            this.showToast('Failed to recall neglected buzzers', 'error');
+        } finally {
+            // Re-enable button
+            if (this.elements.recallNeglectedBuzzersBtn) {
+                this.elements.recallNeglectedBuzzersBtn.disabled = false;
+                this.elements.recallNeglectedBuzzersBtn.textContent = '📞 Recall Neglected Buzzers';
+            }
         }
     }
 

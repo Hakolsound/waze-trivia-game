@@ -3758,6 +3758,46 @@ kbd {
     flex: 1;
 }
 
+/* Recall Neglected Buzzers Section */
+.recall-buzzers-section {
+    background: rgba(255, 152, 0, 0.1);
+    border: 1px solid rgba(255, 152, 0, 0.3);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+}
+
+.recall-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.recall-icon {
+    font-size: 1.2rem;
+}
+
+.recall-text {
+    font-weight: 500;
+}
+
+.recall-btn {
+    width: 100%;
+    font-size: 0.85rem;
+    padding: 8px 12px;
+    margin-bottom: 6px;
+}
+
+.recall-description {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.6);
+    text-align: center;
+    line-height: 1.3;
+}
+
 .wifi-scan-status {
     display: flex;
     align-items: center;

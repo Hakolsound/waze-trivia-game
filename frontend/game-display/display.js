@@ -52,22 +52,9 @@ class GameDisplay {
 
         console.log('[GameDisplay] Audio overlay elements found, setting up...');
 
-        // Check if user has already made a choice in this session
-        const audioEnabled = sessionStorage.getItem('audioEnabled');
-
-        if (audioEnabled === 'true') {
-            console.log('[GameDisplay] Audio was previously enabled, initializing...');
-            overlay.classList.add('hidden');
-            this.audioManager.initializeAudio();
-            return;
-        } else if (audioEnabled === 'false') {
-            console.log('[GameDisplay] Audio was previously skipped, hiding overlay...');
-            overlay.classList.add('hidden');
-            return;
-        }
-
-        // First time - show the overlay (remove hidden class if present)
-        console.log('[GameDisplay] First time load, showing audio enable overlay');
+        // Always show the overlay on page load - browsers require user interaction
+        // for audio/TTS after each page load, even if previously enabled
+        console.log('[GameDisplay] Showing audio enable overlay (user interaction required)');
         overlay.classList.remove('hidden');
 
         // Enable audio button handler
@@ -75,7 +62,6 @@ class GameDisplay {
             console.log('[GameDisplay] User clicked Enable Audio');
             const success = await this.audioManager.initializeAudio();
             if (success) {
-                sessionStorage.setItem('audioEnabled', 'true');
                 overlay.classList.add('hidden');
                 console.log('[GameDisplay] Audio enabled and overlay hidden');
             } else {
@@ -86,7 +72,6 @@ class GameDisplay {
         // Skip audio button handler
         skipBtn.addEventListener('click', () => {
             console.log('[GameDisplay] User clicked Skip Audio');
-            sessionStorage.setItem('audioEnabled', 'false');
             overlay.classList.add('hidden');
         });
     }

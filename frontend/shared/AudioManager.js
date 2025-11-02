@@ -128,10 +128,7 @@ class AudioManager {
             return;
         }
 
-        // Cancel any ongoing speech
-        window.speechSynthesis.cancel();
-
-        // Create utterance
+        // Create utterance (don't cancel - browser will handle interruption)
         const utterance = new SpeechSynthesisUtterance(teamName);
 
         // Set voice by name if specified (not default)

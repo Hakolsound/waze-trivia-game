@@ -1085,21 +1085,40 @@ class AdminConfig {
             utterance.rate = settings.ttsSpeed || 1.0;
             utterance.volume = settings.ttsVolume || 0.8;
 
+            console.log('[Admin] TTS Settings:', settings);
+            console.log('[Admin] Utterance volume:', utterance.volume);
+            console.log('[Admin] Utterance rate:', utterance.rate);
+
             // Select voice
             if (settings.ttsVoice && settings.ttsVoice !== 'default') {
                 const voices = window.speechSynthesis.getVoices();
                 const selectedVoice = voices.find(v => v.name === settings.ttsVoice);
                 if (selectedVoice) {
                     utterance.voice = selectedVoice;
+                    console.log('[Admin] Selected voice:', selectedVoice.name);
+                } else {
+                    console.log('[Admin] Voice not found:', settings.ttsVoice);
                 }
+            } else {
+                console.log('[Admin] Using default voice');
             }
 
-            // Stop any currently speaking TTS
-            window.speechSynthesis.cancel();
+            // Add event listeners for debugging
+            utterance.addEventListener('start', () => {
+                console.log('[Admin] TTS started speaking');
+            });
+            utterance.addEventListener('end', () => {
+                console.log('[Admin] TTS finished speaking');
+            });
+            utterance.addEventListener('error', (event) => {
+                console.error('[Admin] TTS error:', event.error, event);
+            });
 
-            // Speak the team name (or pronunciation)
+            // Don't cancel - just speak (browser will queue or interrupt as needed)
             window.speechSynthesis.speak(utterance);
             console.log(`[Admin] Testing TTS for team ${team.name}: speaking "${textToSpeak}"`);
+            console.log('[Admin] speechSynthesis.speaking:', window.speechSynthesis.speaking);
+            console.log('[Admin] speechSynthesis.pending:', window.speechSynthesis.pending);
         } catch (error) {
             console.error('Failed to test TTS:', error);
             this.showToast('Failed to test TTS', 'error');
@@ -3403,7 +3422,7 @@ class AdminConfig {
         utterance.rate = parseFloat(this.elements.ttsSpeed?.value || 1.0);
         utterance.volume = parseFloat(this.elements.ttsVolume?.value || 80) / 100;
 
-        window.speechSynthesis.cancel(); // Stop any ongoing speech
+        // Don't cancel - just speak (browser will handle interruption)
         window.speechSynthesis.speak(utterance);
     }
 

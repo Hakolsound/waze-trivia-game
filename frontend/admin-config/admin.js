@@ -193,10 +193,13 @@ class AdminConfig {
             
             // Load scoring settings
             await this.loadScoringSettings();
-            
+
             // Load virtual buzzer settings
             await this.loadVirtualBuzzerSettings();
-            
+
+            // Load audio settings
+            await this.loadAudioSettings();
+
             // Update UI title
             const titleElement = document.getElementById('current-game-title');
             if (titleElement) {
@@ -281,7 +284,26 @@ class AdminConfig {
             virtualBuzzerUrl: document.getElementById('virtual-buzzer-url'),
             copyUrlBtn: document.getElementById('copy-url-btn'),
             saveVirtualBuzzerSettingsBtn: document.getElementById('save-virtual-buzzer-settings-btn'),
-            
+
+            // Audio settings elements
+            ttsEnabled: document.getElementById('tts-enabled'),
+            ttsDetails: document.getElementById('tts-details'),
+            ttsVoice: document.getElementById('tts-voice'),
+            ttsSpeed: document.getElementById('tts-speed'),
+            ttsSpeedValue: document.getElementById('tts-speed-value'),
+            ttsVolume: document.getElementById('tts-volume'),
+            ttsVolumeValue: document.getElementById('tts-volume-value'),
+            testTtsBtn: document.getElementById('test-tts-btn'),
+            sfxEnabled: document.getElementById('sfx-enabled'),
+            sfxDetails: document.getElementById('sfx-details'),
+            correctSfx: document.getElementById('correct-sfx'),
+            wrongSfx: document.getElementById('wrong-sfx'),
+            testCorrectSfxBtn: document.getElementById('test-correct-sfx-btn'),
+            testWrongSfxBtn: document.getElementById('test-wrong-sfx-btn'),
+            sfxVolume: document.getElementById('sfx-volume'),
+            sfxVolumeValue: document.getElementById('sfx-volume-value'),
+            saveAudioSettingsBtn: document.getElementById('save-audio-settings-btn'),
+
             // System elements
             dbStatus: document.getElementById('db-status'),
             hardwareStatus: document.getElementById('hardware-status'),
@@ -456,6 +478,67 @@ class AdminConfig {
         if (this.elements.saveVirtualBuzzerSettingsBtn) {
             this.elements.saveVirtualBuzzerSettingsBtn.addEventListener('click', () => {
                 this.saveVirtualBuzzerSettingsWithToast();
+            });
+        }
+
+        // Audio settings
+        if (this.elements.ttsEnabled) {
+            this.elements.ttsEnabled.addEventListener('change', () => {
+                this.toggleTtsDetails();
+            });
+        }
+
+        if (this.elements.sfxEnabled) {
+            this.elements.sfxEnabled.addEventListener('change', () => {
+                this.toggleSfxDetails();
+            });
+        }
+
+        if (this.elements.ttsSpeed) {
+            this.elements.ttsSpeed.addEventListener('input', (e) => {
+                if (this.elements.ttsSpeedValue) {
+                    this.elements.ttsSpeedValue.textContent = parseFloat(e.target.value).toFixed(1);
+                }
+            });
+        }
+
+        if (this.elements.ttsVolume) {
+            this.elements.ttsVolume.addEventListener('input', (e) => {
+                if (this.elements.ttsVolumeValue) {
+                    this.elements.ttsVolumeValue.textContent = e.target.value;
+                }
+            });
+        }
+
+        if (this.elements.sfxVolume) {
+            this.elements.sfxVolume.addEventListener('input', (e) => {
+                if (this.elements.sfxVolumeValue) {
+                    this.elements.sfxVolumeValue.textContent = e.target.value;
+                }
+            });
+        }
+
+        if (this.elements.testTtsBtn) {
+            this.elements.testTtsBtn.addEventListener('click', () => {
+                this.testTtsVoice();
+            });
+        }
+
+        if (this.elements.testCorrectSfxBtn) {
+            this.elements.testCorrectSfxBtn.addEventListener('click', () => {
+                this.testSfx('correct');
+            });
+        }
+
+        if (this.elements.testWrongSfxBtn) {
+            this.elements.testWrongSfxBtn.addEventListener('click', () => {
+                this.testSfx('wrong');
+            });
+        }
+
+        if (this.elements.saveAudioSettingsBtn) {
+            this.elements.saveAudioSettingsBtn.addEventListener('click', () => {
+                this.saveAudioSettingsWithToast();
             });
         }
 
@@ -3025,6 +3108,257 @@ class AdminConfig {
             console.error('Failed to save virtual buzzer settings:', error);
             this.showToast('Failed to save virtual buzzer settings', 'error');
         }
+    }
+
+    // Audio Settings Methods
+    toggleTtsDetails() {
+        if (this.elements.ttsDetails && this.elements.ttsEnabled) {
+            this.elements.ttsDetails.style.display =
+                this.elements.ttsEnabled.checked ? 'block' : 'none';
+        }
+    }
+
+    toggleSfxDetails() {
+        if (this.elements.sfxDetails && this.elements.sfxEnabled) {
+            this.elements.sfxDetails.style.display =
+                this.elements.sfxEnabled.checked ? 'block' : 'none';
+        }
+    }
+
+    loadAvailableVoices() {
+        if (!('speechSynthesis' in window)) {
+            console.warn('Speech synthesis not supported');
+            return;
+        }
+
+        const populateVoices = () => {
+            const voices = window.speechSynthesis.getVoices();
+
+            if (voices.length === 0) {
+                console.warn('No voices available yet');
+                return;
+            }
+
+            const voiceSelect = this.elements.ttsVoice;
+            if (!voiceSelect) return;
+
+            // Save current selection
+            const currentValue = voiceSelect.value;
+
+            // Clear existing options except default
+            voiceSelect.innerHTML = '<option value="default">Default Voice</option>';
+
+            // Group voices by language
+            const voicesByLang = {};
+            voices.forEach(voice => {
+                const lang = voice.lang.split('-')[0]; // Get language code (e.g., 'en' from 'en-US')
+                if (!voicesByLang[lang]) {
+                    voicesByLang[lang] = [];
+                }
+                voicesByLang[lang].push(voice);
+            });
+
+            // Add voices grouped by language
+            Object.keys(voicesByLang).sort().forEach(lang => {
+                const langVoices = voicesByLang[lang];
+                langVoices.forEach(voice => {
+                    const option = document.createElement('option');
+                    option.value = voice.name;
+
+                    // Format: "Voice Name (en-US) [Female/Male]"
+                    let label = `${voice.name} (${voice.lang})`;
+                    option.textContent = label;
+
+                    voiceSelect.appendChild(option);
+                });
+            });
+
+            // Restore previous selection if it still exists
+            if (currentValue && currentValue !== 'default') {
+                const optionExists = Array.from(voiceSelect.options).some(opt => opt.value === currentValue);
+                if (optionExists) {
+                    voiceSelect.value = currentValue;
+                }
+            }
+
+            console.log(`[AudioSettings] Loaded ${voices.length} voices`);
+        };
+
+        // Voices may load asynchronously
+        populateVoices();
+
+        // Chrome needs this event
+        if (window.speechSynthesis.onvoiceschanged !== undefined) {
+            window.speechSynthesis.onvoiceschanged = populateVoices;
+        }
+    }
+
+    async loadAudioSettings() {
+        if (!this.currentGame) return;
+
+        // Load available voices first
+        this.loadAvailableVoices();
+
+        try {
+            const response = await fetch(`/api/games/${this.currentGame.id}/audio-settings`);
+            if (response.ok) {
+                const settings = await response.json();
+
+                // TTS settings
+                if (this.elements.ttsEnabled) {
+                    this.elements.ttsEnabled.checked = settings.ttsEnabled || false;
+                    this.toggleTtsDetails();
+                }
+                if (this.elements.ttsVoice) {
+                    this.elements.ttsVoice.value = settings.ttsVoice || 'default';
+                }
+                if (this.elements.ttsSpeed) {
+                    this.elements.ttsSpeed.value = settings.ttsSpeed || 1.0;
+                    if (this.elements.ttsSpeedValue) {
+                        this.elements.ttsSpeedValue.textContent = parseFloat(settings.ttsSpeed || 1.0).toFixed(1);
+                    }
+                }
+                if (this.elements.ttsVolume) {
+                    this.elements.ttsVolume.value = Math.round((settings.ttsVolume || 0.8) * 100);
+                    if (this.elements.ttsVolumeValue) {
+                        this.elements.ttsVolumeValue.textContent = Math.round((settings.ttsVolume || 0.8) * 100);
+                    }
+                }
+
+                // SFX settings
+                if (this.elements.sfxEnabled) {
+                    this.elements.sfxEnabled.checked = settings.sfxEnabled || false;
+                    this.toggleSfxDetails();
+                }
+                if (this.elements.correctSfx) {
+                    this.elements.correctSfx.value = settings.correctSfxUrl || 'random';
+                }
+                if (this.elements.wrongSfx) {
+                    this.elements.wrongSfx.value = settings.wrongSfxUrl || 'random';
+                }
+                if (this.elements.sfxVolume) {
+                    this.elements.sfxVolume.value = Math.round((settings.sfxVolume || 0.7) * 100);
+                    if (this.elements.sfxVolumeValue) {
+                        this.elements.sfxVolumeValue.textContent = Math.round((settings.sfxVolume || 0.7) * 100);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load audio settings:', error);
+        }
+    }
+
+    async saveAudioSettings() {
+        if (!this.currentGame) return;
+
+        const settings = {
+            ttsEnabled: this.elements.ttsEnabled?.checked || false,
+            ttsVoice: this.elements.ttsVoice?.value || 'default',
+            ttsSpeed: parseFloat(this.elements.ttsSpeed?.value || 1.0),
+            ttsVolume: parseFloat(this.elements.ttsVolume?.value || 80) / 100,
+            sfxEnabled: this.elements.sfxEnabled?.checked || false,
+            correctSfxUrl: this.elements.correctSfx?.value || 'random',
+            wrongSfxUrl: this.elements.wrongSfx?.value || 'random',
+            sfxVolume: parseFloat(this.elements.sfxVolume?.value || 70) / 100
+        };
+
+        try {
+            const response = await fetch(`/api/games/${this.currentGame.id}/audio-settings`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(settings)
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to save audio settings');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Failed to save audio settings:', error);
+            throw error;
+        }
+    }
+
+    async saveAudioSettingsWithToast() {
+        if (!this.currentGame) {
+            this.showToast('No game selected', 'error');
+            return;
+        }
+
+        try {
+            await this.saveAudioSettings();
+            this.showToast('Audio settings saved successfully', 'success');
+        } catch (error) {
+            console.error('Failed to save audio settings:', error);
+            this.showToast('Failed to save audio settings', 'error');
+        }
+    }
+
+    testTtsVoice() {
+        if (!('speechSynthesis' in window)) {
+            this.showToast('Text-to-speech not supported in this browser', 'error');
+            return;
+        }
+
+        const utterance = new SpeechSynthesisUtterance('Team Alpha');
+        const selectedVoiceName = this.elements.ttsVoice?.value || 'default';
+
+        // Find the voice object by name
+        if (selectedVoiceName !== 'default') {
+            const voices = window.speechSynthesis.getVoices();
+            const voice = voices.find(v => v.name === selectedVoiceName);
+            if (voice) {
+                utterance.voice = voice;
+            }
+        }
+
+        utterance.rate = parseFloat(this.elements.ttsSpeed?.value || 1.0);
+        utterance.volume = parseFloat(this.elements.ttsVolume?.value || 80) / 100;
+
+        window.speechSynthesis.cancel(); // Stop any ongoing speech
+        window.speechSynthesis.speak(utterance);
+    }
+
+    testSfx(type) {
+        let url = type === 'correct'
+            ? this.elements.correctSfx?.value
+            : this.elements.wrongSfx?.value;
+
+        if (!url) {
+            this.showToast('No sound file selected', 'error');
+            return;
+        }
+
+        // Handle random selection for testing
+        if (url === 'random') {
+            const sounds = type === 'correct'
+                ? [
+                    '/shared/assets/sounds/correct/correct-1.wav',
+                    '/shared/assets/sounds/correct/correct-2.wav',
+                    '/shared/assets/sounds/correct/correct-3.wav',
+                    '/shared/assets/sounds/correct/correct-4.wav'
+                  ]
+                : [
+                    '/shared/assets/sounds/Wrong/wrong-1.wav',
+                    '/shared/assets/sounds/Wrong/wrong-2.wav',
+                    '/shared/assets/sounds/Wrong/wrong-3.wav',
+                    '/shared/assets/sounds/Wrong/wrong-4.wav',
+                    '/shared/assets/sounds/Wrong/wrong-5.wav'
+                  ];
+            url = sounds[Math.floor(Math.random() * sounds.length)];
+            console.log(`[TestSFX] Random sound selected: ${url}`);
+        }
+
+        const audio = new Audio(url);
+        audio.volume = parseFloat(this.elements.sfxVolume?.value || 70) / 100;
+
+        audio.play().catch(error => {
+            console.error('Failed to play sound:', error);
+            this.showToast(`Failed to play sound: ${error.message}`, 'error');
+        });
     }
 
     // Media Preview Methods

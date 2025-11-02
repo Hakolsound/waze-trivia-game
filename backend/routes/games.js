@@ -405,5 +405,26 @@ module.exports = (gameService) => {
     }
   });
 
+  // Audio settings endpoints
+  router.get('/:id/audio-settings', async (req, res) => {
+    try {
+      const settings = await gameService.getAudioSettings(req.params.id);
+      res.json(settings);
+    } catch (error) {
+      res.status(404).json({ error: error.message });
+    }
+  });
+
+  router.put('/:id/audio-settings', async (req, res) => {
+    try {
+      console.log('Updating audio settings for game:', req.params.id, 'with data:', req.body);
+      const result = await gameService.saveAudioSettings(req.params.id, req.body);
+      res.json(result);
+    } catch (error) {
+      console.error('Audio settings update error:', error);
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   return router;
 };

@@ -27,12 +27,68 @@ class GameDisplay {
         this.timers = new Set(); // Track timers for cleanup
         this.animatedElements = new WeakSet(); // Track elements that have been animated
 
+        // Audio manager for TTS and SFX
+        this.audioManager = new AudioManager();
+
         this.initializeGameSelector();
         this.initializeElements();
         this.setupSocketListeners();
         this.setupUI();
         this.setupMediaObserver();
         this.setupAnimationObserver();
+        this.setupAudioEnableOverlay(); // Call this last after all DOM elements are ready
+    }
+
+    setupAudioEnableOverlay() {
+        const overlay = document.getElementById('audio-enable-overlay');
+        const enableBtn = document.getElementById('enable-audio-btn');
+        const skipBtn = document.getElementById('skip-audio-btn');
+
+        if (!overlay || !enableBtn || !skipBtn) {
+            console.warn('[GameDisplay] Audio enable overlay elements not found');
+            console.warn('overlay:', overlay, 'enableBtn:', enableBtn, 'skipBtn:', skipBtn);
+            return;
+        }
+
+        console.log('[GameDisplay] Audio overlay elements found, setting up...');
+
+        // Check if user has already made a choice in this session
+        const audioEnabled = sessionStorage.getItem('audioEnabled');
+
+        if (audioEnabled === 'true') {
+            console.log('[GameDisplay] Audio was previously enabled, initializing...');
+            overlay.classList.add('hidden');
+            this.audioManager.initializeAudio();
+            return;
+        } else if (audioEnabled === 'false') {
+            console.log('[GameDisplay] Audio was previously skipped, hiding overlay...');
+            overlay.classList.add('hidden');
+            return;
+        }
+
+        // First time - show the overlay (remove hidden class if present)
+        console.log('[GameDisplay] First time load, showing audio enable overlay');
+        overlay.classList.remove('hidden');
+
+        // Enable audio button handler
+        enableBtn.addEventListener('click', async () => {
+            console.log('[GameDisplay] User clicked Enable Audio');
+            const success = await this.audioManager.initializeAudio();
+            if (success) {
+                sessionStorage.setItem('audioEnabled', 'true');
+                overlay.classList.add('hidden');
+                console.log('[GameDisplay] Audio enabled and overlay hidden');
+            } else {
+                console.error('[GameDisplay] Failed to initialize audio');
+            }
+        });
+
+        // Skip audio button handler
+        skipBtn.addEventListener('click', () => {
+            console.log('[GameDisplay] User clicked Skip Audio');
+            sessionStorage.setItem('audioEnabled', 'false');
+            overlay.classList.add('hidden');
+        });
     }
 
     initializeGameSelector() {
@@ -73,11 +129,14 @@ class GameDisplay {
             
             // Set initial font size
             this.updateDisplayFontSize(game.display_font_size || 100);
-            
+
+            // Load audio settings
+            this.loadAudioSettings(game.id);
+
             // Join game room
             this.socket.emit('join-game', game.id);
             this.socket.emit('join-display');
-            
+
             // Show idle state
             this.showIdleState();
         } else {
@@ -228,6 +287,12 @@ class GameDisplay {
         // Font size change event
         this.socket.on('font-size-changed', (data) => {
             this.updateDisplayFontSize(data.fontSize);
+        });
+
+        // Audio settings update event
+        this.socket.on('audio-settings-updated', (settings) => {
+            console.log('[GameDisplay] Audio settings updated:', settings);
+            this.audioManager.updateSettings(settings);
         });
 
         // Question navigation events - hide answer when navigating
@@ -425,12 +490,12 @@ class GameDisplay {
 
     handleBuzzerPressed(data) {
         console.log('Buzzer pressed:', data);
-        
+
         // Expand sidebar on first buzzer press
         if (this.buzzerQueue.length === 0 && !this.sidebarExpanded) {
             this.expandSidebar();
         }
-        
+
         // Add to buzzer queue if not already there
         const buzzerId = data.buzzer_id || data.buzzerId;
         const groupId = data.groupId;
@@ -446,13 +511,18 @@ class GameDisplay {
                 deltaTime: (data.deltaMs || data.deltaTime || 0) / 1000, // Convert ms to seconds
                 order: this.buzzerQueue.length + 1
             };
-            
+
             this.buzzerQueue.push(buzzerItem);
             this.updateBuzzerQueue();
-            
+
             // Highlight the fastest buzzer
             if (this.buzzerQueue.length === 1) {
                 this.highlightFastestBuzzer(buzzerItem);
+            }
+
+            // Announce team name immediately when they buzz (TTS only, no SFX yet)
+            if (teamName && this.audioManager) {
+                this.audioManager.announceTeamName(teamName);
             }
         }
     }
@@ -478,12 +548,21 @@ class GameDisplay {
             this.buzzerQueue[buzzerIndex].isCorrect = data.isCorrect;
         }
 
+        // Play SFX only (correct/wrong sound) - TTS was already played when they buzzed
+        if (this.audioManager) {
+            if (data.isCorrect) {
+                this.audioManager.playCorrectSfx();
+            } else {
+                this.audioManager.playWrongSfx();
+            }
+        }
+
         // Show answer feedback
         this.showAnswerFeedback(displayData);
 
         // Update buzzer queue to show result
         this.updateBuzzerQueueWithResult(displayData);
-        
+
         // Clear after delay
         setTimeout(() => {
             if (data.isCorrect) {
@@ -1419,10 +1498,28 @@ class GameDisplay {
         }
     }
 
+    // Audio Settings Methods
+    async loadAudioSettings(gameId) {
+        if (!gameId) return;
+
+        try {
+            const response = await fetch(`/api/games/${gameId}/audio-settings`);
+            if (response.ok) {
+                const settings = await response.json();
+                console.log('[GameDisplay] Audio settings loaded:', settings);
+                this.audioManager.updateSettings(settings);
+            } else {
+                console.warn('[GameDisplay] Failed to load audio settings, using defaults');
+            }
+        } catch (error) {
+            console.error('[GameDisplay] Error loading audio settings:', error);
+        }
+    }
+
     // Font Size Control Methods
     updateDisplayFontSize(fontSize) {
         console.log('Updating display font size to:', fontSize);
-        
+
         // Store the font size as a CSS custom property for easy access
         document.documentElement.style.setProperty('--display-font-scale', fontSize / 100);
         

@@ -338,7 +338,8 @@ class HostControl {
             // Header navigation buttons
             navOpenDisplayBtn: document.getElementById('nav-open-display-btn'),
             navOpenAdminBtn: document.getElementById('nav-open-admin-btn'),
-            
+            settingsBtn: document.getElementById('settings-btn'),
+
             // Toast container
             toastContainer: document.getElementById('toast-container'),
             
@@ -635,7 +636,8 @@ class HostControl {
         // Header navigation buttons
         if (this.elements.navOpenDisplayBtn) this.elements.navOpenDisplayBtn.addEventListener('click', () => window.open('/display', '_blank'));
         if (this.elements.navOpenAdminBtn) this.elements.navOpenAdminBtn.addEventListener('click', () => window.open('/admin', '_blank'));
-        
+        if (this.elements.settingsBtn) this.elements.settingsBtn.addEventListener('click', () => this.showGameActionsModal());
+
         // Close modals when clicking outside
         this.elements.answerEvaluationModal.addEventListener('click', (e) => {
             if (e.target === this.elements.answerEvaluationModal) {

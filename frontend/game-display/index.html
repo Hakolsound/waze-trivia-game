@@ -8,12 +8,23 @@
     <link rel="stylesheet" href="/shared/gameSelector.css">
     <script src="/socket.io/socket.io.js"></script>
     <script src="/shared/gameSelector.js"></script>
+    <script src="/shared/AudioManager.js"></script>
 </head>
 <body>
+    <!-- Audio Enable Overlay (shown on first load) -->
+    <div id="audio-enable-overlay" class="audio-enable-overlay">
+        <div class="audio-enable-card">
+            <h2>🔊 Enable Audio</h2>
+            <p>Click the button below to enable sound effects and voice announcements</p>
+            <button id="enable-audio-btn" class="btn-enable-audio">Enable Audio</button>
+            <button id="skip-audio-btn" class="btn-skip-audio">Continue without audio</button>
+        </div>
+    </div>
+
     <div id="app">
         <!-- Game Selector Container -->
         <div id="game-selector-container"></div>
-        
+
         <!-- Minimized Header -->
         <header class="game-header">
             <h1 id="game-title">Hakol Trivia Game</h1>

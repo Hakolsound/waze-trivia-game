@@ -202,6 +202,107 @@
                             </div>
                         </div>
                         
+                        <!-- Audio Settings -->
+                        <div class="panel">
+                            <h3>🔊 Audio Settings</h3>
+                            <div class="audio-settings">
+                                <!-- TTS Settings -->
+                                <div class="setting-section">
+                                    <h4>🗣️ Team Name Announcement (Text-to-Speech)</h4>
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label for="tts-enabled">Enable TTS Announcements</label>
+                                            <p class="setting-description">Announce team name when they buzz and get evaluated</p>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="tts-enabled">
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="tts-details" id="tts-details" style="display: none;">
+                                        <div class="setting-item">
+                                            <div class="setting-info">
+                                                <label for="tts-voice">Voice:</label>
+                                                <p class="setting-description">Voices loaded from your browser</p>
+                                            </div>
+                                            <select id="tts-voice" class="voice-select">
+                                                <option value="default">Default Voice</option>
+                                                <!-- Voices will be populated dynamically -->
+                                            </select>
+                                        </div>
+                                        <div class="setting-item">
+                                            <div class="setting-info">
+                                                <label for="tts-speed">Speech Speed: <span id="tts-speed-value">1.0</span>x</label>
+                                            </div>
+                                            <input type="range" id="tts-speed" min="0.5" max="2.0" step="0.1" value="1.0" class="slider-input">
+                                        </div>
+                                        <div class="setting-item">
+                                            <div class="setting-info">
+                                                <label for="tts-volume">Volume: <span id="tts-volume-value">80</span>%</label>
+                                            </div>
+                                            <input type="range" id="tts-volume" min="0" max="100" step="5" value="80" class="slider-input">
+                                        </div>
+                                        <div class="setting-item">
+                                            <button id="test-tts-btn" class="btn btn-secondary btn-small">🔊 Test Voice</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- SFX Settings -->
+                                <div class="setting-section">
+                                    <h4>🎵 Sound Effects</h4>
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <label for="sfx-enabled">Enable Sound Effects</label>
+                                            <p class="setting-description">Play sounds for correct/wrong answer evaluations</p>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="sfx-enabled">
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="sfx-details" id="sfx-details" style="display: none;">
+                                        <div class="setting-item">
+                                            <div class="setting-info">
+                                                <label for="correct-sfx">Correct Answer Sound:</label>
+                                            </div>
+                                            <select id="correct-sfx" class="sfx-select">
+                                                <option value="random">🎲 Random (changes each time)</option>
+                                                <option value="/shared/assets/sounds/correct/correct-1.wav">Sound 1</option>
+                                                <option value="/shared/assets/sounds/correct/correct-2.wav">Sound 2</option>
+                                                <option value="/shared/assets/sounds/correct/correct-3.wav">Sound 3</option>
+                                                <option value="/shared/assets/sounds/correct/correct-4.wav">Sound 4</option>
+                                            </select>
+                                            <button id="test-correct-sfx-btn" class="btn btn-secondary btn-small">▶️ Test</button>
+                                        </div>
+                                        <div class="setting-item">
+                                            <div class="setting-info">
+                                                <label for="wrong-sfx">Wrong Answer Sound:</label>
+                                            </div>
+                                            <select id="wrong-sfx" class="sfx-select">
+                                                <option value="random">🎲 Random (changes each time)</option>
+                                                <option value="/shared/assets/sounds/Wrong/wrong-1.wav">Sound 1</option>
+                                                <option value="/shared/assets/sounds/Wrong/wrong-2.wav">Sound 2</option>
+                                                <option value="/shared/assets/sounds/Wrong/wrong-3.wav">Sound 3</option>
+                                                <option value="/shared/assets/sounds/Wrong/wrong-4.wav">Sound 4</option>
+                                                <option value="/shared/assets/sounds/Wrong/wrong-5.wav">Sound 5</option>
+                                            </select>
+                                            <button id="test-wrong-sfx-btn" class="btn btn-secondary btn-small">▶️ Test</button>
+                                        </div>
+                                        <div class="setting-item">
+                                            <div class="setting-info">
+                                                <label for="sfx-volume">Volume: <span id="sfx-volume-value">70</span>%</label>
+                                            </div>
+                                            <input type="range" id="sfx-volume" min="0" max="100" step="5" value="70" class="slider-input">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="panel-actions">
+                                <button id="save-audio-settings-btn" class="btn btn-primary">💾 Save Audio Settings</button>
+                            </div>
+                        </div>
+
                         <!-- Question Data Management -->
                         <div class="panel">
                             <h3>📊 Question Data Management</h3>

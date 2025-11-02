@@ -178,6 +178,36 @@ class FirebaseService {
     return this.isConnectedFlag;
   }
 
+  async getAudioSettings(gameId) {
+    if (!this.isConnectedFlag) return null;
+
+    try {
+      const settingsRef = this.db.ref(`gameSettings/${gameId}/audioSettings`);
+      const snapshot = await settingsRef.once('value');
+      return snapshot.val();
+    } catch (error) {
+      console.error('Error getting audio settings from Firebase:', error);
+      return null;
+    }
+  }
+
+  async saveAudioSettings(gameId, settings) {
+    if (!this.isConnectedFlag) return false;
+
+    try {
+      const settingsRef = this.db.ref(`gameSettings/${gameId}/audioSettings`);
+      await settingsRef.set({
+        ...settings,
+        lastUpdated: admin.database.ServerValue.TIMESTAMP
+      });
+      console.log(`[Firebase] Audio settings saved for game ${gameId}`);
+      return true;
+    } catch (error) {
+      console.error('Error saving audio settings to Firebase:', error);
+      return false;
+    }
+  }
+
   async close() {
     if (this.app) {
       await this.app.delete();

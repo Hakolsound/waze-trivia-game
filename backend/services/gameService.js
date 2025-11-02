@@ -1340,6 +1340,58 @@ class GameService {
       fontSize: newFontSize
     };
   }
+
+  async getAudioSettings(gameId) {
+    const game = await this.db.get('SELECT audio_settings FROM games WHERE id = ?', [gameId]);
+    if (!game) throw new Error('Game not found');
+
+    // Parse the JSON audio settings from database
+    let settings;
+    try {
+      settings = game.audio_settings ? JSON.parse(game.audio_settings) : null;
+    } catch (e) {
+      console.error(`[AUDIO] Failed to parse audio settings for game ${gameId}:`, e);
+      settings = null;
+    }
+
+    // If settings exist in database, use them
+    if (settings) {
+      console.log(`[AUDIO] Loaded audio settings from database for game ${gameId}`);
+      return settings;
+    }
+
+    // Fallback to default settings
+    console.log(`[AUDIO] Using default audio settings for game ${gameId}`);
+    return {
+      ttsEnabled: false,
+      ttsVoice: 'default',
+      ttsSpeed: 1.0,
+      ttsVolume: 0.8,
+      sfxEnabled: false,
+      correctSfxUrl: 'random',
+      wrongSfxUrl: 'random',
+      sfxVolume: 0.7
+    };
+  }
+
+  async saveAudioSettings(gameId, settings) {
+    const game = await this.db.get('SELECT id FROM games WHERE id = ?', [gameId]);
+    if (!game) throw new Error('Game not found');
+
+    // Save to database as JSON
+    await this.db.run(
+      'UPDATE games SET audio_settings = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [JSON.stringify(settings), gameId]
+    );
+
+    console.log(`[AUDIO] Audio settings saved to database for game ${gameId}`);
+
+    // Broadcast to all displays immediately
+    this.io.to(`game-${gameId}`).emit('audio-settings-updated', settings);
+
+    console.log(`[AUDIO] Audio settings broadcasted to all clients for game ${gameId}`);
+    return { success: true, settings };
+  }
 }
 
 module.exports = GameService;

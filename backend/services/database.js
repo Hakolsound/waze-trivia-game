@@ -32,7 +32,7 @@ class Database {
     try {
       const tableInfo = await this.all("PRAGMA table_info(games)");
       const hasPlayedQuestions = tableInfo.some(column => column.name === 'played_questions');
-      
+
       if (!hasPlayedQuestions) {
         await this.run('ALTER TABLE games ADD COLUMN played_questions TEXT DEFAULT "[]"');
         console.log('Added played_questions column to existing games table');
@@ -41,6 +41,21 @@ class Database {
       }
     } catch (e) {
       console.log('Migration check error (likely first run):', e.message);
+    }
+
+    // Add audio settings columns if they don't exist
+    try {
+      const tableInfo = await this.all("PRAGMA table_info(games)");
+      const hasAudioSettings = tableInfo.some(column => column.name === 'audio_settings');
+
+      if (!hasAudioSettings) {
+        await this.run(`ALTER TABLE games ADD COLUMN audio_settings TEXT DEFAULT '{"ttsEnabled":false,"ttsVoice":"default","ttsSpeed":1.0,"ttsVolume":0.8,"sfxEnabled":false,"correctSfxUrl":"random","wrongSfxUrl":"random","sfxVolume":0.7}'`);
+        console.log('Added audio_settings column to existing games table');
+      } else {
+        console.log('audio_settings column already exists, skipping migration');
+      }
+    } catch (e) {
+      console.log('Audio settings migration check error:', e.message);
     }
 
     const tables = [

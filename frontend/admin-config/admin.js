@@ -951,7 +951,7 @@ class AdminConfig {
                         </div>
                     </div>
                     <div class="team-actions">
-                        <button class="btn btn-small btn-secondary" onclick="admin.testTeamTTS('${team.name}')" title="Test TTS pronunciation">🔊</button>
+                        <button class="btn btn-small btn-secondary" onclick="admin.testTeamTTS('${team.id}')" title="Test TTS pronunciation">🔊</button>
                         <button class="btn btn-small btn-info" onclick="admin.editTeam('${team.id}')">Edit</button>
                         <button class="btn btn-small btn-danger" onclick="admin.deleteTeam('${team.id}')">Delete</button>
                     </div>
@@ -1061,8 +1061,15 @@ class AdminConfig {
         }
     }
 
-    async testTeamTTS(teamName) {
+    async testTeamTTS(teamId) {
         try {
+            // Fetch team data to get pronunciation
+            const response = await fetch(`/api/groups/${teamId}`);
+            const team = await response.json();
+
+            // Use pronunciation if available, otherwise use team name
+            const textToSpeak = team.pronunciation || team.name;
+
             // Get current audio settings to use the configured voice
             const settings = await this.getAudioSettings();
 
@@ -1072,7 +1079,7 @@ class AdminConfig {
             }
 
             // Create TTS utterance
-            const utterance = new SpeechSynthesisUtterance(teamName);
+            const utterance = new SpeechSynthesisUtterance(textToSpeak);
 
             // Apply settings
             utterance.rate = settings.ttsSpeed || 1.0;
@@ -1090,10 +1097,10 @@ class AdminConfig {
             // Stop any currently speaking TTS
             window.speechSynthesis.cancel();
 
-            // Speak the team name
+            // Speak the team name (or pronunciation)
             window.speechSynthesis.speak(utterance);
 
-            console.log(`[Admin] Testing TTS for team: ${teamName}`);
+            console.log(`[Admin] Testing TTS for team ${team.name}: speaking "${textToSpeak}"`);
         } catch (error) {
             console.error('Failed to test TTS:', error);
             this.showToast('Failed to test TTS', 'error');

@@ -17,7 +17,7 @@
 
 // Binary Protocol Configuration
 #define BINARY_PROTOCOL_ENABLED true
-#define TEXT_DEBUG_ENABLED true  // Set to true for debugging
+#define TEXT_DEBUG_ENABLED false  // Set to false for production with binary protocol
 
 // Device state tracking
 typedef struct {

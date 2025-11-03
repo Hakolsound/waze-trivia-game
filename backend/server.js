@@ -23,6 +23,7 @@ const Database = require('./services/database');
 const GameService = require('./services/gameService');
 const ESP32Service = require('./services/esp32Service');
 const FirebaseService = require('./services/firebaseService');
+const systemMonitor = require('./services/systemMonitor');
 
 const gameRoutes = require('./routes/games');
 const groupRoutes = require('./routes/groups');
@@ -349,7 +350,7 @@ async function initialize() {
     await db.initialize();
     await esp32Service.initialize();
     await firebaseService.initialize();
-    
+
     server.listen(PORT, () => {
       console.log(`Trivia Game Server running on port ${PORT}`);
       console.log(`Game Display: http://localhost:${PORT}/display`);
@@ -357,6 +358,24 @@ async function initialize() {
       console.log(`Admin Panel: http://localhost:${PORT}/admin`);
       console.log(`Virtual Buzzer: http://pi.local:${PORT}/virtual-buzzer`);
     });
+
+    // Start periodic CPU temperature monitoring (every 5 seconds)
+    setInterval(async () => {
+      try {
+        const systemInfo = await systemMonitor.getSystemInfo();
+        io.emit('system-temperature', systemInfo);
+      } catch (error) {
+        console.error('Error broadcasting system temperature:', error);
+      }
+    }, 5000);
+
+    // Send initial temperature reading
+    try {
+      const systemInfo = await systemMonitor.getSystemInfo();
+      io.emit('system-temperature', systemInfo);
+    } catch (error) {
+      console.error('Error sending initial temperature:', error);
+    }
   } catch (error) {
     console.error('Failed to initialize server:', error);
     process.exit(1);

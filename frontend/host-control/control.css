@@ -155,6 +155,92 @@ body {
   font-size: 0.8rem;
 }
 
+/* CPU Temperature Display */
+.cpu-temp-item {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 6px 12px;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.cpu-temp-item.temp-safe {
+  background: rgba(76, 175, 80, 0.15);
+  border-color: rgba(76, 175, 80, 0.3);
+}
+
+.cpu-temp-item.temp-warm {
+  background: rgba(255, 193, 7, 0.15);
+  border-color: rgba(255, 193, 7, 0.3);
+}
+
+.cpu-temp-item.temp-hot {
+  background: rgba(255, 152, 0, 0.15);
+  border-color: rgba(255, 152, 0, 0.3);
+}
+
+.cpu-temp-item.temp-critical {
+  background: rgba(244, 67, 54, 0.15);
+  border-color: rgba(244, 67, 54, 0.3);
+  animation: tempPulse 1.5s infinite;
+}
+
+.temp-icon {
+  font-size: 1.2rem;
+  filter: grayscale(0.5);
+  transition: filter 0.3s ease;
+}
+
+.cpu-temp-item.temp-critical .temp-icon {
+  filter: grayscale(0);
+  animation: tempShake 0.5s infinite;
+}
+
+.temp-display {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  font-weight: 600;
+}
+
+#cpu-temp-value {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.cpu-temp-item.temp-safe #cpu-temp-value {
+  color: #4CAF50;
+}
+
+.cpu-temp-item.temp-warm #cpu-temp-value {
+  color: #FFC107;
+}
+
+.cpu-temp-item.temp-hot #cpu-temp-value {
+  color: #FF9800;
+}
+
+.cpu-temp-item.temp-critical #cpu-temp-value {
+  color: #f44336;
+  font-weight: 700;
+}
+
+.temp-unit {
+  font-size: 0.7rem;
+  opacity: 0.7;
+}
+
+@keyframes tempPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+}
+
+@keyframes tempShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
 .header-content {
   display: flex;
   justify-content: space-between;

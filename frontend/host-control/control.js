@@ -217,6 +217,8 @@ class HostControl {
             // Header elements
             connectionStatus: document.getElementById('connection-status'),
             statusIndicator: document.getElementById('status-indicator'),
+            cpuTempContainer: document.getElementById('cpu-temp-container'),
+            cpuTempValue: document.getElementById('cpu-temp-value'),
             currentGameName: document.getElementById('current-game-name'),
             questionProgress: document.getElementById('question-progress'),
             teamsCount: document.getElementById('teams-count'),
@@ -415,9 +417,14 @@ class HostControl {
                 this.parseESP32DeviceData(data.esp32_data, data.timestamp);
             }
         });
-        
+
         this.socket.on('esp32-status', (data) => {
             this.updateESP32Status(data);
+        });
+
+        // System temperature monitoring
+        this.socket.on('system-temperature', (data) => {
+            this.updateCpuTemperature(data);
         });
 
         // Timer pause/resume events
@@ -2041,6 +2048,33 @@ class HostControl {
     updateConnectionStatus(status, connected) {
         this.elements.connectionStatus.textContent = status;
         this.elements.statusIndicator.classList.toggle('connected', connected);
+    }
+
+    updateCpuTemperature(data) {
+        if (!this.elements.cpuTempContainer || !this.elements.cpuTempValue) {
+            return;
+        }
+
+        // Update temperature value
+        if (data.temperature !== null && data.temperature !== undefined) {
+            this.elements.cpuTempValue.textContent = Math.round(data.temperature);
+        } else {
+            this.elements.cpuTempValue.textContent = '--';
+        }
+
+        // Remove all temperature status classes
+        this.elements.cpuTempContainer.classList.remove('temp-safe', 'temp-warm', 'temp-hot', 'temp-critical');
+
+        // Add appropriate status class based on temperature level
+        if (data.status) {
+            this.elements.cpuTempContainer.classList.add(`temp-${data.status}`);
+        }
+
+        // Update tooltip
+        if (data.temperature !== null) {
+            const tooltip = `CPU: ${data.temperature.toFixed(1)}°C (${data.temperatureF}°F) - ${data.statusText}`;
+            this.elements.cpuTempContainer.setAttribute('title', tooltip);
+        }
     }
 
     showToast(message, type = 'info', duration = 4000) {

@@ -3985,21 +3985,24 @@ class HostControl {
 
             channelBar.className = `channel-bar ${isRecommended ? 'recommended-channel' : ''} ${isCurrent ? 'current-channel' : ''}`;
 
-            // Calculate signal strength percentage (signal is in dBm, typically -30 to -90)
-            // Formula: ((90 + signal) / 60) * 100
+            // Calculate ESP-NOW quality percentage (INVERTED: weak WiFi = good for ESP-NOW)
+            // Signal is in dBm, typically -30 (strong WiFi) to -90 (no WiFi)
+            // For ESP-NOW, we WANT weak/no WiFi signals (less interference)
+            // Formula: 100 - (((90 + signal) / 60) * 100)
             // Examples:
-            // -30 dBm (excellent) = ((90-30)/60)*100 = 100%
-            // -50 dBm (very good) = ((90-50)/60)*100 = 67%
-            // -60 dBm (good) = ((90-60)/60)*100 = 50%
-            // -70 dBm (fair) = ((90-70)/60)*100 = 33%
-            // -80 dBm (weak) = ((90-80)/60)*100 = 17%
-            // -90 dBm (very weak) = ((90-90)/60)*100 = 0%
-            const signalPercent = Math.max(0, Math.min(100, ((90 + channel.signal) / 60) * 100));
+            // -90 dBm (no WiFi) = 100% bar (excellent for ESP-NOW)
+            // -80 dBm (very weak WiFi) = 83% bar (very good for ESP-NOW)
+            // -70 dBm (weak WiFi) = 67% bar (good for ESP-NOW)
+            // -60 dBm (moderate WiFi) = 50% bar (fair for ESP-NOW)
+            // -50 dBm (strong WiFi) = 33% bar (poor for ESP-NOW)
+            // -30 dBm (very strong WiFi) = 0% bar (very poor for ESP-NOW)
+            const wifiStrength = Math.max(0, Math.min(100, ((90 + channel.signal) / 60) * 100));
+            const signalPercent = 100 - wifiStrength; // INVERT: low WiFi = high quality for ESP-NOW
 
-            // Determine signal quality class for appropriate color
+            // Determine signal quality class based on ESP-NOW suitability
             let signalQualityClass = 'signal-poor';
             if (signalPercent >= 67) {
-                signalQualityClass = 'signal-excellent';
+                signalQualityClass = 'signal-excellent'; // Weak/no WiFi = excellent for ESP-NOW
             } else if (signalPercent >= 50) {
                 signalQualityClass = 'signal-good';
             } else if (signalPercent >= 33) {

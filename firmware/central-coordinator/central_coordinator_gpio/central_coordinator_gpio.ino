@@ -111,14 +111,14 @@ EndRoundStatus endRoundTracking[MAX_GROUPS];
 bool endRoundInProgress = false;
 unsigned long endRoundStartTime = 0;
 
-#define END_ROUND_RETRY_INTERVAL_MS 100  // Retry every 100ms (was 200ms)
-#define END_ROUND_MAX_RETRIES 8          // Up to 8 retries (was 5) = 800ms total
+#define END_ROUND_RETRY_INTERVAL_MS 200  // Retry every 200ms
+#define END_ROUND_MAX_RETRIES 5          // Up to 5 retries (1 second total)
 
 // Acknowledgment system configuration
 #define MAX_PENDING_COMMANDS 20
-#define ACK_TIMEOUT_MS 200  // Reduced from 300ms - faster retries for better reliability
-#define MAX_RETRIES 6  // Increased from 4 - more attempts to reach all buzzers
-#define RETRY_DELAY_MS 50  // Reduced from 100ms - faster retry loop
+#define ACK_TIMEOUT_MS 300  // Reduced from 500ms - faster retries for better reliability
+#define MAX_RETRIES 4  // Increased from 2 - more attempts to reach all buzzers
+#define RETRY_DELAY_MS 100
 
 // WiFi Channel Management Configuration
 #define WIFI_CHANNEL_CHANGE_TIMEOUT_MS 5000  // 5 seconds for channel change coordination

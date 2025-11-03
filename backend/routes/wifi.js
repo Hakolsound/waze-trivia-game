@@ -405,17 +405,18 @@ function parseIwlistOutput(output) {
   for (let i = 1; i <= 13; i++) {
     const ch = channels[i];
 
-    // Calculate score based on signal strength and network count
+    // Calculate score based on signal strength (INVERTED: weak signal = better for ESP-NOW)
+    // No/weak WiFi signal means less interference for ESP-NOW communication
     let signalScore = 0;
-    if (ch.signal > -40) signalScore = 100;
-    else if (ch.signal > -50) signalScore = 90;
-    else if (ch.signal > -60) signalScore = 75;
-    else if (ch.signal > -70) signalScore = 60;
-    else if (ch.signal > -80) signalScore = 40;
-    else signalScore = 20;
+    if (ch.signal < -85) signalScore = 100;      // No networks = excellent (was 20)
+    else if (ch.signal < -75) signalScore = 80;  // Very weak = good (was 40)
+    else if (ch.signal < -65) signalScore = 60;  // Weak = fair (was 60)
+    else if (ch.signal < -55) signalScore = 40;  // Moderate = poor (was 75)
+    else if (ch.signal < -45) signalScore = 20;  // Strong = bad (was 90)
+    else signalScore = 10;                       // Very strong = very bad (was 100)
 
     // Network count penalty (more networks = lower score)
-    const networkPenalty = Math.min(ch.networkCount * 5, 30);
+    const networkPenalty = Math.min(ch.networkCount * 10, 40);
 
     // Non-overlapping channel bonus (1, 6, 11 are preferred in 2.4GHz)
     const nonOverlappingBonus = [1, 6, 11].includes(ch.channel) ? 15 : 0;
@@ -480,17 +481,18 @@ function parseNmcliOutput(output) {
   for (let i = 1; i <= 13; i++) {
     const ch = channels[i];
 
-    // Calculate score based on signal strength and network count
+    // Calculate score based on signal strength (INVERTED: weak signal = better for ESP-NOW)
+    // No/weak WiFi signal means less interference for ESP-NOW communication
     let signalScore = 0;
-    if (ch.signal > -40) signalScore = 100;
-    else if (ch.signal > -50) signalScore = 90;
-    else if (ch.signal > -60) signalScore = 75;
-    else if (ch.signal > -70) signalScore = 60;
-    else if (ch.signal > -80) signalScore = 40;
-    else signalScore = 20;
+    if (ch.signal < -85) signalScore = 100;      // No networks = excellent (was 20)
+    else if (ch.signal < -75) signalScore = 80;  // Very weak = good (was 40)
+    else if (ch.signal < -65) signalScore = 60;  // Weak = fair (was 60)
+    else if (ch.signal < -55) signalScore = 40;  // Moderate = poor (was 75)
+    else if (ch.signal < -45) signalScore = 20;  // Strong = bad (was 90)
+    else signalScore = 10;                       // Very strong = very bad (was 100)
 
     // Network count penalty (more networks = lower score)
-    const networkPenalty = Math.min(ch.networkCount * 5, 30);
+    const networkPenalty = Math.min(ch.networkCount * 10, 40);
 
     // Non-overlapping channel bonus (1, 6, 11 are preferred in 2.4GHz)
     const nonOverlappingBonus = [1, 6, 11].includes(ch.channel) ? 15 : 0;

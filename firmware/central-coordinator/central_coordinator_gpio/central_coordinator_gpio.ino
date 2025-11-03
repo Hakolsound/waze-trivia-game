@@ -17,7 +17,7 @@
 
 // Binary Protocol Configuration
 #define BINARY_PROTOCOL_ENABLED true
-#define TEXT_DEBUG_ENABLED false  // Set to false for production with binary protocol
+#define TEXT_DEBUG_ENABLED false  // Set to false for production binary protocol
 
 // Device state tracking
 typedef struct {
@@ -142,7 +142,6 @@ unsigned long endRoundStartTime = 0;
 #define BIN_CMD_ARM_SPECIFIC 8
 #define BIN_CMD_SCAN_CHANNELS 9
 #define BIN_CMD_SET_CHANNEL 10
-#define BIN_CMD_SET_CHANNEL_SILENT 11
 
 // WiFi Channel Management Structures
 
@@ -583,25 +582,6 @@ void handleBinaryCommand(CommandMessage cmd) {
           Serial.printf("[COORD] Channel change state set to inProgress: %s\n", channelChangeState.inProgress ? "true" : "false");
         } else {
           Serial.printf("WIFI_CHANNEL_CHANGE_FAILED:%d\n", targetChannel);
-        }
-      }
-      break;
-    case BIN_CMD_SET_CHANNEL_SILENT: // 11 - SET_CHANNEL_SILENT (coordinator only, no broadcast)
-      {
-        // Channel is encoded in targetDevice (1-13)
-        uint8_t targetChannel = cmd.targetDevice;
-        Serial.printf("[COORD] *** RECEIVED SET_CHANNEL_SILENT COMMAND *** for channel %d\n", targetChannel);
-        Serial.printf("[COORD] Changing coordinator channel ONLY (no buzzer broadcast)\n");
-
-        // Change coordinator channel immediately without broadcasting to buzzers
-        esp_err_t result = esp_wifi_set_channel(targetChannel, WIFI_SECOND_CHAN_NONE);
-        if (result == ESP_OK) {
-          currentWifiChannel = targetChannel;
-          Serial.printf("[COORD] ✓ Coordinator silently changed to channel %d\n", currentWifiChannel);
-          Serial.printf("COORD_CHANNEL_SILENT_CHANGED:%d\n", currentWifiChannel);
-        } else {
-          Serial.printf("[COORD] ERROR: Failed to change coordinator channel (ESP error %d)\n", result);
-          Serial.printf("COORD_CHANNEL_SILENT_FAILED:%d\n", targetChannel);
         }
       }
       break;

@@ -839,47 +839,6 @@ h1.question-text,
   animation: answerCardAppear 0.4s ease forwards;
 }
 
-.answer-indicator {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 50px; /* Slightly more space for bigger shape */
-  height: 80px; /* Bigger height for scaled up shape */
-}
-
-.amorphic-shape {
-  width: 240px; /* 2x bigger (was 120px) */
-  height: 64px; /* 2x bigger (was 32px) */
-  background: rgba(100, 116, 139, 0.15); /* 50% less opacity (was 0.3, now 0.15) */
-  border-radius: 100px 40px 80px 30px; /* 2x bigger irregular shape */
-  position: relative;
-  opacity: 0.3; /* 50% less opacity (was 0.6, now 0.3) */
-  animation: subtlePulse 3s ease-in-out infinite;
-}
-
-.amorphic-shape::before {
-  content: '';
-  position: absolute;
-  top: -16px; /* 2x bigger (was -8px) */
-  left: 40px; /* 2x bigger (was 20px) */
-  width: 80px; /* 2x bigger (was 40px) */
-  height: 40px; /* 2x bigger (was 20px) */
-  background: rgba(100, 116, 139, 0.1); /* 50% less opacity (was 0.2, now 0.1) */
-  border-radius: 40px 60px 30px 50px; /* 2x bigger */
-  opacity: 0.35; /* 50% less opacity (was 0.7, now 0.35) */
-}
-
-.amorphic-shape::after {
-  content: '';
-  position: absolute;
-  bottom: -12px; /* 2x bigger (was -6px) */
-  right: 30px; /* 2x bigger (was 15px) */
-  width: 70px; /* 2x bigger (was 35px) */
-  height: 36px; /* 2x bigger (was 18px) */
-  background: rgba(100, 116, 139, 0.125); /* 50% less opacity (was 0.25, now 0.125) */
-  border-radius: 50px 20px 60px 40px; /* 2x bigger */
-  opacity: 0.25; /* 50% less opacity (was 0.5, now 0.25) */
-}
 
 .correct-answer-text {
   font: var(--md-sys-typescale-headline-large); /* Bigger font size */
@@ -894,7 +853,7 @@ h1.question-text,
   hyphens: auto;
   text-align: center;
   font-weight: 600;
-  font-size: 2.7rem; /* 20% bigger - increased from 2.25rem */
+  font-size: 3.24rem; /* 20% bigger - increased from 2.7rem */
 }
 
 @keyframes subtlePulse {

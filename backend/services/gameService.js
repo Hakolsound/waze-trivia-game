@@ -753,6 +753,17 @@ class GameService {
       position: gameState.buzzerOrder.length + 1
     };
 
+    // RACE CONDITION FIX: Only accept the FIRST buzzer press
+    // If buzzerOrder is not empty and timer is paused, reject this press
+    // (it arrived while disarm commands were being sent)
+    if (gameState.buzzerOrder.length > 0 && gameState.isPaused) {
+      const firstBuzzer = gameState.buzzerOrder[0];
+      const timeDifference = timestamp - firstBuzzer.timestamp;
+      console.log(`[BUZZ] REJECTING buzzer ${buzzerIdStr} - arrived ${timeDifference}ms after first buzz (race condition)`);
+      console.log(`[BUZZ] First buzzer was ${firstBuzzer.buzzer_id} at deltaMs ${firstBuzzer.deltaMs}, this is ${buzzerIdStr} at deltaMs ${deltaMs}`);
+      return; // Reject this buzzer press
+    }
+
     console.log(`[BUZZ] Adding to buzzer order: ${team?.name || 'Unknown'} (${actualGroupId}) at position ${buzzerEntry.position}, deltaMs: ${deltaMs}`);
 
     gameState.buzzerOrder.push(buzzerEntry);

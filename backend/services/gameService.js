@@ -183,7 +183,8 @@ class GameService {
       timeoutId: timeoutId,
       isPaused: false,
       pausedAt: null,
-      totalPausedDuration: 0
+      totalPausedDuration: 0,
+      isProcessingFirstBuzz: false // Race condition protection flag
     });
 
     console.log(`[START] Question ${questionIndex} started - answered buzzers list reset to empty for new question`);
@@ -718,6 +719,13 @@ class GameService {
       return;
     }
 
+    // RACE CONDITION FIX: Reject additional buzzer presses if we're already processing the first one
+    // This prevents multiple buzzers from being accepted when they arrive in quick succession
+    if (gameState.isProcessingFirstBuzz) {
+      console.log(`[BUZZ] Rejecting buzzer ${buzzerIdStr} - first buzz is being processed (race condition protection)`);
+      return;
+    }
+
     // Resolve the actual group ID using simplified mapping logic
     const actualGroupId = await this.resolveGroupId(gameId, groupId, buzzer_id || buzzerId);
 
@@ -755,6 +763,13 @@ class GameService {
 
     console.log(`[BUZZ] Adding to buzzer order: ${team?.name || 'Unknown'} (${actualGroupId}) at position ${buzzerEntry.position}, deltaMs: ${deltaMs}`);
 
+    // RACE CONDITION FIX: Set flag to block additional buzzer presses during processing
+    const isFirstBuzz = gameState.buzzerOrder.length === 0;
+    if (isFirstBuzz) {
+      gameState.isProcessingFirstBuzz = true;
+      console.log(`[BUZZ] First buzz detected - setting lock to reject subsequent presses`);
+    }
+
     gameState.buzzerOrder.push(buzzerEntry);
 
     // PAUSE TIMER and DISARM ALL OTHER BUZZERS when first team buzzes in
@@ -783,6 +798,11 @@ class GameService {
           await this.esp32Service.disarmSpecificBuzzers(gameId, buzzersToDisarm);
         }
       }
+
+      // RACE CONDITION FIX: Clear the lock after disarm commands are sent
+      // This allows subsequent buzzers after wrong answers
+      console.log(`[BUZZ] Disarm complete - clearing lock to allow re-arming after wrong answer`);
+      gameState.isProcessingFirstBuzz = false;
     }
 
     await this.db.run(

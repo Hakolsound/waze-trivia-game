@@ -948,20 +948,23 @@ class GameDisplay {
         const points = feedback.querySelector('.feedback-points');
         const message = feedback.querySelector('.feedback-message');
 
+        // Clear previous state completely
+        feedback.className = 'answer-feedback';
+
         if (data.correct) {
             icon.textContent = '✓';
             icon.className = 'feedback-icon correct';
             points.className = 'feedback-points positive';
             points.innerHTML = `👍 ${data.points || 100}<span class="pts-label">pts</span>`;
             message.textContent = '';
-            feedback.className = 'answer-feedback correct show';
+            feedback.classList.add('correct', 'show');
         } else {
             icon.textContent = '✗';
             icon.className = 'feedback-icon incorrect';
             points.className = 'feedback-points negative';
             points.innerHTML = `👎 ${data.points || 100}<span class="pts-label">pts</span>`;
             message.textContent = '';
-            feedback.className = 'answer-feedback incorrect show';
+            feedback.classList.add('incorrect', 'show');
         }
 
         team.textContent = teamName;
@@ -977,6 +980,10 @@ class GameDisplay {
         // Hide after longer delay to let people appreciate the enhanced display
         setTimeout(() => {
             feedback.classList.remove('show');
+            // Also remove correct/incorrect after hiding to ensure clean state
+            setTimeout(() => {
+                feedback.classList.remove('correct', 'incorrect');
+            }, 500);
         }, 2500);
     }
 

@@ -354,7 +354,7 @@ h1.question-text,
   text-shadow: 0 0 200px rgba(99, 102, 241, 0.5) !important;
   animation: textGlow 3s ease-in-out infinite alternate !important;
   word-wrap: break-word !important;
-  hyphens: auto !important;
+  hyphens: none !important;
   font-family: inherit !important;
 }
 

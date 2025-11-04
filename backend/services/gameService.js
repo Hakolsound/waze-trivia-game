@@ -1239,32 +1239,40 @@ class GameService {
   }
 
   // Show correct answer on display
-  async showCorrectAnswer(gameId) {
+  async showCorrectAnswer(gameId, questionIndex) {
     const game = await this.getGame(gameId);
     if (!game) throw new Error('Game not found');
 
-    const currentQuestionIndex = game.current_question_index;
-    if (currentQuestionIndex === null || currentQuestionIndex === undefined) {
-      throw new Error('No current question available');
+    // Use provided questionIndex, or fall back to current question
+    const targetQuestionIndex = questionIndex !== undefined ? questionIndex : game.current_question_index;
+
+    if (targetQuestionIndex === null || targetQuestionIndex === undefined) {
+      throw new Error('No question index available');
     }
 
-    const currentQuestion = game.questions[currentQuestionIndex];
-    if (!currentQuestion) {
-      throw new Error('Current question not found');
+    if (targetQuestionIndex < 0 || targetQuestionIndex >= game.questions.length) {
+      throw new Error('Invalid question index');
+    }
+
+    const targetQuestion = game.questions[targetQuestionIndex];
+    if (!targetQuestion) {
+      throw new Error('Question not found');
     }
 
     // Emit socket event to display the correct answer
     this.io.to(`game-${gameId}`).emit('show-correct-answer', {
       gameId,
-      questionId: currentQuestion.id,
-      correctAnswer: currentQuestion.correct_answer,
-      questionText: currentQuestion.text
+      questionId: targetQuestion.id,
+      questionIndex: targetQuestionIndex,
+      correctAnswer: targetQuestion.correct_answer,
+      questionText: targetQuestion.text
     });
 
     return {
       success: true,
-      correctAnswer: currentQuestion.correct_answer,
-      questionText: currentQuestion.text
+      questionIndex: targetQuestionIndex,
+      correctAnswer: targetQuestion.correct_answer,
+      questionText: targetQuestion.text
     };
   }
 

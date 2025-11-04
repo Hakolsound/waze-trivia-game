@@ -1011,51 +1011,85 @@ class GameDisplay {
     adjustQuestionTextSize() {
         const questionElement = this.elements.questionText;
         const containerElement = questionElement.closest('.question-container');
-        
+
         if (!questionElement || !containerElement) return;
-        
-        // Base font size in rem (current default)
-        const baseFontSize = 8;
-        const minFontSize = 3; // Minimum font size in rem
+
+        // Get text length to determine base sizing approach
+        const textLength = questionElement.textContent.length;
+
+        // Base font size in rem - scale down for longer questions
+        let baseFontSize = 8;
+        if (textLength > 200) {
+            baseFontSize = 5; // Very long questions start smaller
+        } else if (textLength > 150) {
+            baseFontSize = 6;
+        } else if (textLength > 100) {
+            baseFontSize = 7;
+        }
+
+        const minFontSize = 2.5; // Minimum font size in rem for very long questions
         const maxFontSize = 10; // Maximum font size in rem
-        
+
         // Reset to base size first
         questionElement.style.fontSize = `${baseFontSize}rem`;
-        
+
         // Wait for next frame to ensure text is rendered
         requestAnimationFrame(() => {
             const containerRect = containerElement.getBoundingClientRect();
             const questionRect = questionElement.getBoundingClientRect();
-            
-            // Calculate available space (subtract padding and some margin for media)
-            const availableWidth = containerRect.width * 0.9; // 90% of container width
-            const availableHeight = containerRect.height * 0.6; // 60% of container height (leave room for media)
-            
+
+            // Check if we have media to account for less space
+            const hasMedia = questionElement.closest('.question-content').classList.contains('has-media');
+
+            // Calculate available space (more aggressive for media layouts)
+            const widthMultiplier = hasMedia ? 0.85 : 0.9;
+            const heightMultiplier = hasMedia ? 0.55 : 0.65;
+            const availableWidth = containerRect.width * widthMultiplier;
+            const availableHeight = containerRect.height * heightMultiplier;
+
             let fontSize = baseFontSize;
-            
+
             // If text is too wide or too tall, reduce font size
             if (questionRect.width > availableWidth || questionRect.height > availableHeight) {
                 const widthRatio = availableWidth / questionRect.width;
                 const heightRatio = availableHeight / questionRect.height;
                 const scaleFactor = Math.min(widthRatio, heightRatio);
-                
-                fontSize = Math.max(minFontSize, baseFontSize * scaleFactor);
+
+                // Apply scaling with a safety margin
+                fontSize = Math.max(minFontSize, baseFontSize * scaleFactor * 0.95);
+
+                // If still too large after first attempt, try iterative reduction
+                questionElement.style.fontSize = `${fontSize}rem`;
+
+                // Re-measure and adjust if needed
+                requestAnimationFrame(() => {
+                    const newRect = questionElement.getBoundingClientRect();
+                    if (newRect.width > availableWidth || newRect.height > availableHeight) {
+                        const newWidthRatio = availableWidth / newRect.width;
+                        const newHeightRatio = availableHeight / newRect.height;
+                        const newScaleFactor = Math.min(newWidthRatio, newHeightRatio);
+                        fontSize = Math.max(minFontSize, fontSize * newScaleFactor * 0.95);
+                        questionElement.style.fontSize = `${fontSize}rem`;
+
+                        // Update line height for smaller text
+                        questionElement.style.lineHeight = fontSize < 4 ? 1.35 : fontSize < 6 ? 1.3 : 1.2;
+                    }
+                });
             }
             // If text is much smaller than available space, increase font size (but not beyond max)
             else if (questionRect.width < availableWidth * 0.5 && questionRect.height < availableHeight * 0.5) {
                 const widthRatio = (availableWidth * 0.8) / questionRect.width;
                 const heightRatio = (availableHeight * 0.8) / questionRect.height;
                 const scaleFactor = Math.min(widthRatio, heightRatio);
-                
+
                 fontSize = Math.min(maxFontSize, baseFontSize * scaleFactor);
+                questionElement.style.fontSize = `${fontSize}rem`;
+                questionElement.style.lineHeight = fontSize >= 6 ? 1.2 : 1.3;
+            } else {
+                // Text fits well, just apply appropriate line height
+                const lineHeight = fontSize >= 6 ? 1.2 : fontSize >= 4 ? 1.3 : 1.35;
+                questionElement.style.lineHeight = lineHeight;
             }
-            
-            // Apply the calculated font size
-            questionElement.style.fontSize = `${fontSize}rem`;
-            
-            // Update line height proportionally
-            const lineHeight = fontSize >= 6 ? 1.2 : 1.3;
-            questionElement.style.lineHeight = lineHeight;
         });
     }
 

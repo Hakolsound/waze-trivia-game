@@ -1042,8 +1042,8 @@ class GameDisplay {
             const hasMedia = questionElement.closest('.question-content').classList.contains('has-media');
 
             // Calculate available space (more aggressive for media layouts)
-            const widthMultiplier = hasMedia ? 0.85 : 0.9;
-            const heightMultiplier = hasMedia ? 0.55 : 0.65;
+            const widthMultiplier = hasMedia ? 0.85 : 0.95;
+            const heightMultiplier = hasMedia ? 0.55 : 0.7;
             const availableWidth = containerRect.width * widthMultiplier;
             const availableHeight = containerRect.height * heightMultiplier;
 

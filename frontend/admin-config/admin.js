@@ -1227,14 +1227,14 @@ class AdminConfig {
         }
 
         this.elements.questionTabs.innerHTML = questions.map((question, index) => `
-            <div class="question-tab ${index === 0 ? 'active' : ''}" 
-                 data-question-id="${question.id}" 
+            <div class="question-tab ${index === 0 ? 'active' : ''}"
+                 data-question-id="${question.id}"
                  draggable="true"
                  ondragstart="admin.handleQuestionDragStart(event)"
                  ondragover="admin.handleQuestionDragOver(event)"
                  ondrop="admin.handleQuestionDrop(event)"
                  ondragend="admin.handleQuestionDragEnd(event)">
-                <span>Q${question.question_order || index + 1}</span>
+                <span>Q${index + 1}</span>
                 <button class="question-tab-close" onclick="admin.deleteQuestion('${question.id}')">&times;</button>
             </div>
         `).join('') + addButtonHtml;

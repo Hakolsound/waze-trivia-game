@@ -3774,12 +3774,12 @@ class HostControl {
             // Answer is hidden - button should show "off" state (down position)
             this.elements.showAnswerBtn.classList.remove('toggle-on');
             this.elements.showAnswerBtn.classList.add('toggle-off');
-            this.elements.showAnswerBtn.title = 'Show Correct Answer [CMD/Ctrl + Click] • Hold CMD/Ctrl and click';
-            
+            this.elements.showAnswerBtn.title = 'Show Previous Question\'s Answer [CMD/Ctrl + Click] • Hold CMD/Ctrl and click';
+
             // Update icon to show "off" state (answer is hidden)
             const icon = this.elements.showAnswerBtn.querySelector('.material-icons');
             if (icon) icon.textContent = 'lightbulb_outline';
-            
+
             const shortcut = this.elements.showAnswerBtn.querySelector('.control-shortcut');
             if (shortcut) shortcut.textContent = '⌘';
         }
@@ -3821,12 +3821,16 @@ class HostControl {
             this.showToast('No game selected', 'error');
             return;
         }
-        
-        if (this.currentQuestionIndex < 0 || this.currentQuestionIndex >= this.questions.length) {
-            this.showToast('No valid question selected', 'error');
+
+        // Show answer for PREVIOUS question (the one just played)
+        // When a round ends, currentQuestionIndex auto-advances, so we need to show previous question's answer
+        const questionIndexToShow = this.currentQuestionIndex - 1;
+
+        if (questionIndexToShow < 0 || questionIndexToShow >= this.questions.length) {
+            this.showToast('No previous question to show answer for', 'error');
             return;
         }
-        
+
         // Check if forced (triple-A, CMD/Ctrl click) or conditions met
         if (!forceShow && !this.canShowAnswer() && this.keyPressCount.A < 3) {
             this.showToast('Cannot show answer yet', 'error');
@@ -3834,12 +3838,12 @@ class HostControl {
         }
 
         try {
-            // Send show answer request to backend
+            // Send show answer request to backend for the PREVIOUS question
             const response = await fetch(`/api/games/${this.currentGame.id}/show-answer`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    questionIndex: this.currentQuestionIndex,
+                    questionIndex: questionIndexToShow,
                     forced: this.keyPressCount.A >= 3
                 })
             });
@@ -3848,7 +3852,7 @@ class HostControl {
                 this.answerShown = true;
                 this.isAnswerVisible = true;
                 this.updateShowAnswerButton();
-                this.showToast('💡 Correct answer revealed on display', 'success');
+                this.showToast(`💡 Answer for Q${questionIndexToShow + 1} revealed on display`, 'success');
             } else {
                 throw new Error('Failed to show answer');
             }

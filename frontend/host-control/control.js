@@ -39,7 +39,6 @@ class HostControl {
             this.checkAndLoadCurrentGame();
         }, 500);
         this.currentBuzzerPosition = 0;
-        this.evaluationHistory = [];
         this.questionTimer = null;
         this.questionStartTime = null;
         this.questionTimeLimit = 30;
@@ -306,9 +305,9 @@ class HostControl {
             nextInLineCard: document.getElementById('next-in-line-card'),
             nextTeamName: document.getElementById('next-team-name'),
             nextBuzzerTime: document.getElementById('next-buzzer-time'),
-            evaluationHistorySection: document.getElementById('evaluation-history-section'),
-            evaluationList: document.getElementById('evaluation-list'),
-            
+            correctAnswerSection: document.getElementById('correct-answer-section'),
+            correctAnswerContent: document.getElementById('correct-answer-content'),
+
             // Game actions modal
             gameActionsModal: document.getElementById('game-actions-modal'),
             closeGameActionsModalBtn: document.getElementById('close-game-actions-modal-btn'),
@@ -2211,7 +2210,6 @@ class HostControl {
     showNoActiveQuestion() {
         this.elements.noActiveQuestion.classList.remove('hidden');
         this.elements.currentAnswerer.classList.add('hidden');
-        this.elements.evaluationHistory.classList.add('hidden');
     }
 
     showCurrentAnswerer(buzzer) {
@@ -2266,10 +2264,6 @@ class HostControl {
             this.buzzerOrder[buzzerIndex].pointsAwarded = data.pointsAwarded;
         }
 
-        // Add to evaluation history
-        const teamName = this.getTeamName(data.groupId);
-        this.addToEvaluationHistory(teamName, data.isCorrect, data.pointsAwarded);
-
         // Refresh the evaluation modal to show backend-calculated points
         this.updateAnswerEvaluationModal();
 
@@ -2280,29 +2274,6 @@ class HostControl {
         if (data.questionComplete) {
             this.resetAnswerEvaluation();
         }
-    }
-
-    addToEvaluationHistory(teamName, isCorrect, points) {
-        this.evaluationHistory.push({ teamName, isCorrect, points });
-        
-        const historyItem = document.createElement('div');
-        historyItem.className = `evaluation-item ${isCorrect ? 'correct' : 'incorrect'}`;
-        historyItem.innerHTML = `
-            <span class="team-name">${teamName}</span>
-            <span class="result">${isCorrect ? '✅ Correct' : '❌ Incorrect'}</span>
-            <span class="points">${points > 0 ? '+' : ''}${points} pts</span>
-        `;
-        
-        this.elements.evaluationList.prepend(historyItem);
-        this.elements.evaluationHistory.classList.remove('hidden');
-
-        // Add entrance animation
-        historyItem.style.transform = 'translateX(-20px)';
-        historyItem.style.opacity = '0';
-        setTimeout(() => {
-            historyItem.style.transform = 'translateX(0)';
-            historyItem.style.opacity = '1';
-        }, 50);
     }
 
     async handleQuestionPrepared(data) {
@@ -2349,13 +2320,12 @@ class HostControl {
 
     resetAnswerEvaluation() {
         this.currentBuzzerPosition = -1;
-        this.evaluationHistory = [];
         this.answerShown = false; // Reset answer shown state
         this.isAnswerVisible = false; // Reset answer visibility state
-        if (this.elements.evaluationList) {
-            this.elements.evaluationList.innerHTML = '';
+        if (this.elements.correctAnswerContent) {
+            this.elements.correctAnswerContent.innerHTML = '';
         }
-        
+
         this.hideAnswerEvaluationModal();
     }
 
@@ -2376,7 +2346,7 @@ class HostControl {
             requestAnimationFrame(() => {
                 this.elements.noBuzzerContent.classList.remove('hidden');
                 this.elements.currentAnswererContent.classList.add('hidden');
-                this.elements.evaluationHistorySection.classList.add('hidden');
+                this.elements.correctAnswerSection.classList.add('hidden');
             });
             return;
         }
@@ -2408,12 +2378,8 @@ class HostControl {
         this.showCurrentAnswererInModal(currentBuzzer);
         this.showNextInLineInModal();
 
-        // Show evaluation history if there is any
-        if (this.evaluationHistory.length > 0) {
-            requestAnimationFrame(() => {
-                this.elements.evaluationHistorySection.classList.remove('hidden');
-            });
-        }
+        // Show correct answer section
+        this.updateCorrectAnswerDisplay();
     }
 
     showCurrentAnswererInModal(buzzer) {
@@ -2490,6 +2456,21 @@ class HostControl {
         });
     }
 
+    updateCorrectAnswerDisplay() {
+        // Get current question
+        const currentQuestion = this.questions[this.currentQuestionIndex];
+
+        if (!currentQuestion || !currentQuestion.correct_answer) {
+            // Hide answer section if no question or no answer
+            this.elements.correctAnswerSection.classList.add('hidden');
+            return;
+        }
+
+        // Display the correct answer
+        this.elements.correctAnswerContent.textContent = currentQuestion.correct_answer;
+        this.elements.correctAnswerSection.classList.remove('hidden');
+    }
+
     showManualPointsModal() {
         this.elements.manualPointsModal.classList.remove('hidden');
     }
@@ -2542,32 +2523,6 @@ class HostControl {
         if (!this.elements.answerEvaluationModal.classList.contains('hidden')) {
             console.log('[MODAL DEBUG] Updating answer evaluation modal due to buzzer order change');
             this.updateAnswerEvaluationModal();
-        }
-    }
-
-    // Override addToEvaluationHistory to work with new modal structure
-    addToEvaluationHistory(teamName, isCorrect, points) {
-        this.evaluationHistory.push({ teamName, isCorrect, points });
-        
-        if (this.elements.evaluationList) {
-            const historyItem = document.createElement('div');
-            historyItem.className = `evaluation-item ${isCorrect ? 'correct' : 'incorrect'}`;
-            historyItem.innerHTML = `
-                <span class="team-name">${teamName}</span>
-                <span class="result">${isCorrect ? '✅ Correct' : '❌ Incorrect'}</span>
-                <span class="points">${points > 0 ? '+' : ''}${points} pts</span>
-            `;
-            
-            this.elements.evaluationList.prepend(historyItem);
-            this.elements.evaluationHistorySection.classList.remove('hidden');
-
-            // Add entrance animation
-            historyItem.style.transform = 'translateX(-20px)';
-            historyItem.style.opacity = '0';
-            setTimeout(() => {
-                historyItem.style.transform = 'translateX(0)';
-                historyItem.style.opacity = '1';
-            }, 50);
         }
     }
 
@@ -2899,14 +2854,6 @@ class HostControl {
             if (currentBuzzer) {
                 const teamName = this.getTeamName(currentBuzzer.groupId);
                 this.updateQuestionTabFeedback(this.currentQuestionIndex, teamName, isCorrect);
-                
-                // Store in evaluation history
-                this.evaluationHistory.push({
-                    questionIndex: this.currentQuestionIndex,
-                    teamName: teamName,
-                    correct: isCorrect,
-                    pointsAwarded: result.pointsAwarded || 0
-                });
             }
 
             // Update buzzer results display
@@ -3486,18 +3433,6 @@ class HostControl {
         if (index < this.currentQuestionIndex) {
             tabState = 'completed';
             statusIcon = '✓';
-            // Add feedback from evaluation history if available
-            const evaluation = this.evaluationHistory.find(e => e.questionIndex === index);
-            if (evaluation) {
-                const iconClass = evaluation.correct ? 'correct' : 'incorrect';
-                const iconSymbol = evaluation.correct ? '✓' : '✗';
-                feedbackContent = `
-                    <div class="tab-feedback">
-                        <span class="feedback-icon ${iconClass}">${iconSymbol}</span>
-                        <span class="feedback-team">${evaluation.teamName}</span>
-                    </div>
-                `;
-            }
         } else if (index === this.currentQuestionIndex) {
             if (this.isQuestionActive) {
                 tabState = 'active';
@@ -4730,13 +4665,12 @@ class HostControl {
     }
 
     async clearGameHistory() {
-        // Clear evaluation history and logs
-        this.evaluationHistory.length = 0;
+        // Clear logs
         this.keyPressCount = { 'A': 0, lastTime: 0 };
 
-        // Clear evaluation display
-        if (this.elements.evaluationList) {
-            this.elements.evaluationList.innerHTML = '';
+        // Clear correct answer display
+        if (this.elements.correctAnswerContent) {
+            this.elements.correctAnswerContent.innerHTML = '';
         }
 
         // Note: Toast will be shown after confirmation in executeConfirmedAction

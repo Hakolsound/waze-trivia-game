@@ -1024,18 +1024,18 @@ class GameDisplay {
         // Get text length to determine base sizing approach
         const textLength = questionElement.textContent.length;
 
-        // Base font size in rem - 20% smaller than previous, scale down for longer questions
-        let baseFontSize = 5.12;
+        // Base font size in rem - 20% smaller again, scale down for longer questions
+        let baseFontSize = 4.096;
         if (textLength > 200) {
-            baseFontSize = 3.2; // Very long questions start smaller
+            baseFontSize = 2.56; // Very long questions start smaller
         } else if (textLength > 150) {
-            baseFontSize = 3.84;
+            baseFontSize = 3.072;
         } else if (textLength > 100) {
-            baseFontSize = 4.48;
+            baseFontSize = 3.584;
         }
 
-        const minFontSize = 1.6; // Minimum font size in rem for very long questions
-        const maxFontSize = 6.4; // Maximum font size in rem
+        const minFontSize = 1.28; // Minimum font size in rem for very long questions
+        const maxFontSize = 5.12; // Maximum font size in rem
 
         // Reset to base size first
         questionElement.style.fontSize = `${baseFontSize}rem`;

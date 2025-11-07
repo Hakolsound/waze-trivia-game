@@ -2654,10 +2654,9 @@ class HostControl {
 
         // If time-based scoring is enabled, calculate based on timing
         if (this.currentGame.time_based_scoring) {
-            // Use JavaScript timing calculation (same as backend now uses)
-            // Calculate elapsed time from when question started
-            const questionStartTime = this.questionStartTime || Date.now(); // Fallback if not set
-            const timeElapsed = buzzer.timestamp - questionStartTime;
+            // Use deltaMs from backend (authoritative timing) instead of calculating from timestamps
+            // This ensures frontend preview matches backend calculation exactly
+            const timeElapsed = buzzer.deltaMs;
             const totalTime = (currentQuestion.time_limit || 30) * 1000; // Convert to ms
             const timeRemaining = Math.max(0, totalTime - timeElapsed);
 
@@ -2685,8 +2684,8 @@ class HostControl {
 
         // If time-based scoring is enabled, calculate penalty based on timing
         if (this.currentGame.time_based_scoring) {
-            const questionStartTime = this.questionStartTime || Date.now();
-            const timeElapsed = buzzer.timestamp - questionStartTime;
+            // Use deltaMs from backend (authoritative timing) to match backend calculation
+            const timeElapsed = buzzer.deltaMs;
             const totalTime = (currentQuestion.time_limit || 30) * 1000;
             const timeRemaining = Math.max(0, totalTime - timeElapsed);
 

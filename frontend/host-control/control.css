@@ -2299,6 +2299,12 @@ kbd {
   gap: 12px;
 }
 
+#correct-answer-content {
+  font-size: 1.3em; /* 30% bigger than default */
+  font-weight: bold;
+  text-align: center;
+}
+
 /* Animations */
 @keyframes gentle-bounce {
   0%, 100% { transform: translateY(0); }

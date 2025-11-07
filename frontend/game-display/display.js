@@ -541,7 +541,7 @@ class GameDisplay {
         const displayData = {
             correct: data.isCorrect,
             buzzerId: data.groupId, // Backend uses groupId as identifier
-            points: Math.abs(data.pointsAwarded),
+            points: data.pointsAwarded, // Use raw backend value for consistency
             isCorrect: data.isCorrect
         };
 
@@ -955,14 +955,14 @@ class GameDisplay {
             icon.textContent = '✓';
             icon.className = 'feedback-icon correct';
             points.className = 'feedback-points positive';
-            points.innerHTML = `👍 ${data.points || 100}<span class="pts-label">pts</span>`;
+            points.innerHTML = `👍 ${Math.abs(data.points) || 100}<span class="pts-label">pts</span>`;
             message.textContent = '';
             feedback.classList.add('correct', 'show');
         } else {
             icon.textContent = '✗';
             icon.className = 'feedback-icon incorrect';
             points.className = 'feedback-points negative';
-            points.innerHTML = `👎 ${data.points || 100}<span class="pts-label">pts</span>`;
+            points.innerHTML = `👎 ${Math.abs(data.points) || 100}<span class="pts-label">pts</span>`;
             message.textContent = '';
             feedback.classList.add('incorrect', 'show');
         }

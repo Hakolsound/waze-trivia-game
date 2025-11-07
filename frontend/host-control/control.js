@@ -45,7 +45,16 @@ class HostControl {
 
         // Game actions state
         this.pendingAction = null;
-        
+
+        // Evaluation timeout state
+        this.evaluationTimeout = {
+            active: false,
+            duration: 30,
+            remainingTime: 30,
+            isPaused: false,
+            groupId: null
+        };
+
         // Initialize buzzer sidebar
         this.loadThresholdSetting();
         setTimeout(() => {
@@ -302,11 +311,16 @@ class HostControl {
             markCorrectBtn: document.getElementById('mark-correct-btn'),
             markIncorrectBtn: document.getElementById('mark-incorrect-btn'),
             giveUpBtn: document.getElementById('give-up-btn'),
-            nextInLineCard: document.getElementById('next-in-line-card'),
-            nextTeamName: document.getElementById('next-team-name'),
-            nextBuzzerTime: document.getElementById('next-buzzer-time'),
             correctAnswerSection: document.getElementById('correct-answer-section'),
             correctAnswerContent: document.getElementById('correct-answer-content'),
+
+            // Evaluation timeout elements
+            evaluationTimeoutBar: document.getElementById('evaluation-timeout-bar'),
+            evaluationTimeoutTime: document.getElementById('evaluation-timeout-time'),
+            evaluationTimeoutProgress: document.getElementById('evaluation-timeout-progress'),
+            pauseEvaluationTimeoutBtn: document.getElementById('pause-evaluation-timeout-btn'),
+            resumeEvaluationTimeoutBtn: document.getElementById('resume-evaluation-timeout-btn'),
+            cancelEvaluationTimeoutBtn: document.getElementById('cancel-evaluation-timeout-btn'),
 
             // Game actions modal
             gameActionsModal: document.getElementById('game-actions-modal'),
@@ -561,6 +575,35 @@ class HostControl {
             this.handleAnswerEvaluated(data);
         });
 
+        // Evaluation timeout listeners
+        this.socket.on('evaluation-timeout-started', (data) => {
+            this.handleEvaluationTimeoutStarted(data);
+        });
+
+        this.socket.on('evaluation-timeout-tick', (data) => {
+            this.handleEvaluationTimeoutTick(data);
+        });
+
+        this.socket.on('evaluation-timeout-paused', (data) => {
+            this.handleEvaluationTimeoutPaused(data);
+        });
+
+        this.socket.on('evaluation-timeout-resumed', (data) => {
+            this.handleEvaluationTimeoutResumed(data);
+        });
+
+        this.socket.on('evaluation-timeout-cancelled', (data) => {
+            this.handleEvaluationTimeoutCancelled(data);
+        });
+
+        this.socket.on('evaluation-timeout-stopped', (data) => {
+            this.handleEvaluationTimeoutStopped(data);
+        });
+
+        this.socket.on('evaluation-timeout-expired', (data) => {
+            this.handleEvaluationTimeoutExpired(data);
+        });
+
         this.socket.on('question-prepared', (data) => {
             this.handleQuestionPrepared(data);
         });
@@ -613,6 +656,26 @@ class HostControl {
         if (this.elements.markCorrectBtn) this.elements.markCorrectBtn.addEventListener('click', () => this.markAnswer(true));
         if (this.elements.markIncorrectBtn) this.elements.markIncorrectBtn.addEventListener('click', () => this.markAnswer(false));
         if (this.elements.giveUpBtn) this.elements.giveUpBtn.addEventListener('click', () => this.giveUpQuestion());
+
+        // Evaluation timeout controls
+        if (this.elements.pauseEvaluationTimeoutBtn) {
+            this.elements.pauseEvaluationTimeoutBtn.addEventListener('click', () => this.pauseEvaluationTimeout());
+        }
+        if (this.elements.resumeEvaluationTimeoutBtn) {
+            this.elements.resumeEvaluationTimeoutBtn.addEventListener('click', () => this.resumeEvaluationTimeout());
+        }
+        if (this.elements.cancelEvaluationTimeoutBtn) {
+            this.elements.cancelEvaluationTimeoutBtn.addEventListener('click', () => this.cancelEvaluationTimeout());
+        }
+
+        // EMERGENCY: Add keyboard shortcut to force refresh evaluation modal (Ctrl/Cmd + E)
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+                e.preventDefault();
+                console.log('[EMERGENCY] Force refreshing evaluation modal (Ctrl/Cmd+E pressed)');
+                this.forceRefreshEvaluationModal();
+            }
+        });
 
         // Game actions modal
         if (this.elements.closeGameActionsModalBtn) this.elements.closeGameActionsModalBtn.addEventListener('click', () => this.hideGameActionsModal());
@@ -2244,16 +2307,7 @@ class HostControl {
             index > this.currentBuzzerPosition && !b.evaluated
         );
 
-        if (nextBuzzer) {
-            const nextTeamName = this.getTeamName(nextBuzzer.groupId);
-            const nextDeltaTime = (nextBuzzer.deltaMs / 1000).toFixed(2);
-            
-            this.elements.nextTeamName.textContent = nextTeamName;
-            this.elements.nextBuzzerTime.textContent = `${nextDeltaTime}s`;
-            this.elements.nextInLineInfo.classList.remove('hidden');
-        } else {
-            this.elements.nextInLineInfo.classList.add('hidden');
-        }
+        // Next buzzer info removed - no longer displayed
     }
 
 
@@ -2340,6 +2394,33 @@ class HostControl {
         this.elements.answerEvaluationModal.classList.add('hidden');
     }
 
+    // EMERGENCY: Force refresh evaluation modal (callable via Ctrl/Cmd+E)
+    forceRefreshEvaluationModal() {
+        console.log('[EMERGENCY] Force refresh triggered');
+        console.log('[EMERGENCY] Current state:', {
+            buzzerOrderLength: this.buzzerOrder.length,
+            buzzerOrder: this.buzzerOrder.map(b => ({
+                groupId: b.groupId,
+                evaluated: b.evaluated,
+                teamName: this.getTeamName(b.groupId)
+            })),
+            currentBuzzerPosition: this.currentBuzzerPosition,
+            isQuestionActive: this.isQuestionActive
+        });
+
+        // Find any unevaluated buzzer
+        const unevaluated = this.buzzerOrder.find(b => !b.evaluated);
+
+        if (unevaluated) {
+            console.log('[EMERGENCY] Found unevaluated buzzer - forcing modal to show');
+            this.showAnswerEvaluationModal();
+            this.showToast('✅ Evaluation modal refreshed!', 'success');
+        } else {
+            console.log('[EMERGENCY] No unevaluated buzzers found');
+            this.showToast('⚠️ No pending evaluations found', 'warning');
+        }
+    }
+
     updateAnswerEvaluationModal() {
         // Early return for invalid state to avoid unnecessary DOM operations
         if (!this.currentGame || !this.isQuestionActive) {
@@ -2353,6 +2434,15 @@ class HostControl {
 
         // If no buzzers in queue, hide the modal completely - no "waiting for teams" needed
         if (this.buzzerOrder.length === 0) {
+            console.log('[MODAL] No buzzers in queue - hiding modal');
+            this.hideAnswerEvaluationModal();
+            return;
+        }
+
+        // SAFEGUARD: Even if buzzerOrder has items, check if any are unevaluated
+        const hasUnevaluated = this.buzzerOrder.some(b => !b.evaluated);
+        if (!hasUnevaluated) {
+            console.log('[MODAL] All buzzers evaluated - hiding modal');
             this.hideAnswerEvaluationModal();
             return;
         }
@@ -2443,16 +2533,7 @@ class HostControl {
         }
 
         requestAnimationFrame(() => {
-            if (nextBuzzer) {
-                const nextTeamName = this.getTeamName(nextBuzzer.groupId);
-                const nextDeltaTime = (nextBuzzer.deltaMs / 1000).toFixed(2);
-
-                this.elements.nextTeamName.textContent = nextTeamName;
-                this.elements.nextBuzzerTime.textContent = `${nextDeltaTime}s`;
-                this.elements.nextInLineCard.classList.remove('hidden');
-            } else {
-                this.elements.nextInLineCard.classList.add('hidden');
-            }
+            // Next buzzer info removed - no longer displayed
         });
     }
 
@@ -2682,20 +2763,40 @@ class HostControl {
             return 0;
         }
 
-        // If time-based scoring is enabled, calculate penalty based on timing
+        // Check if wrong answer penalty is enabled
+        if (!this.currentGame.wrong_answer_penalty_enabled) {
+            return 0;
+        }
+
+        // Calculate base points (same logic as backend)
+        let basePoints;
         if (this.currentGame.time_based_scoring) {
             // Use deltaMs from backend (authoritative timing) to match backend calculation
             const timeElapsed = buzzer.deltaMs;
             const totalTime = (currentQuestion.time_limit || 30) * 1000;
             const timeRemaining = Math.max(0, totalTime - timeElapsed);
-
-            const timeBasedPoints = this.calculateTimeBasedPoints(currentQuestion.points, timeRemaining, totalTime);
-            // Wrong answer penalty is half of time-based points (negative)
-            return -Math.floor(timeBasedPoints * 0.5);
+            basePoints = this.calculateTimeBasedPoints(currentQuestion.points, timeRemaining, totalTime);
+        } else {
+            basePoints = currentQuestion.points;
         }
 
-        // If time-based scoring is disabled, no penalty
-        return 0;
+        // Apply penalty based on configured ratio (same logic as backend)
+        const penaltyPoints = this.calculatePenaltyPoints(
+            basePoints,
+            this.currentGame.wrong_answer_penalty_ratio || '1:1',
+            this.currentGame.wrong_answer_penalty_custom || 0
+        );
+
+        return -penaltyPoints;
+    }
+
+    calculatePenaltyPoints(questionPoints, ratio, customPoints) {
+        if (ratio === 'custom') {
+            return customPoints;
+        }
+
+        const [numerator, denominator] = ratio.split(':').map(Number);
+        return Math.round((questionPoints * numerator) / denominator);
     }
 
     // Current Answerer Highlight Methods
@@ -2779,32 +2880,48 @@ class HostControl {
         this.buzzerOrder.forEach((buzzer, index) => {
             const buzzerItem = document.createElement('div');
             buzzerItem.className = 'buzzer-result-item';
-            
+
             const teamName = this.getTeamName(buzzer.groupId);
             const deltaTime = (buzzer.deltaMs / 1000).toFixed(2);
             const deltaFromFirst = index === 0 ? 0 : ((buzzer.deltaMs - firstBuzzTime) / 1000).toFixed(2);
-            
+
             // Add evaluation status if available
             if (buzzer.evaluated) {
                 buzzerItem.classList.add(buzzer.isCorrect ? 'evaluated-correct' : 'evaluated-incorrect');
+            } else {
+                // Make unevaluated items clickable
+                buzzerItem.classList.add('unevaluated-clickable');
+                buzzerItem.style.cursor = 'pointer';
+                buzzerItem.title = 'Click to evaluate this team';
+
+                // Add click handler to show evaluation modal
+                buzzerItem.addEventListener('click', () => {
+                    console.log(`[EMERGENCY] Buzzer item clicked for team: ${teamName}, position: ${index}`);
+                    // Set the current position to this buzzer
+                    this.currentBuzzerPosition = index;
+                    // Show the evaluation modal
+                    this.updateAnswerEvaluationModal();
+                    this.showAnswerEvaluationModal();
+                    this.showToast(`Evaluation modal opened for ${teamName}`, 'success');
+                });
             }
-            
+
             buzzerItem.innerHTML = `
                 <div class="buzzer-rank-badge ${index === 0 ? 'first' : ''}">${index + 1}</div>
                 <div class="buzzer-team-info">
                     <div class="buzzer-team-name">
                         ${teamName}
-                        ${buzzer.evaluated ? (buzzer.isCorrect ? ' ✅' : ' ❌') : ''}
+                        ${buzzer.evaluated ? (buzzer.isCorrect ? ' ✅' : ' ❌') : ' 👆'}
                     </div>
                     <div class="buzzer-timing">
-                        ${index === 0 ? 
-                            `${deltaTime}s` : 
+                        ${index === 0 ?
+                            `${deltaTime}s` :
                             `+${deltaFromFirst}s`
                         }
                     </div>
                 </div>
             `;
-            
+
             this.elements.buzzerResults.appendChild(buzzerItem);
         });
     }
@@ -2865,20 +2982,38 @@ class HostControl {
                     this.hideAnswerEvaluationModal();
                 }, 1000);
             } else {
-                // Wrong answer - clear buzzer order (backend handles selective re-arming)
-                console.log(`[FRONTEND] Wrong answer - clearing buzzer order (backend handles re-arming)`);
+                // Wrong answer - remove evaluated buzzer from frontend array to match backend
+                console.log(`[FRONTEND] Wrong answer - removing buzzer at position ${this.currentBuzzerPosition} from buzzerOrder`);
 
+                // Remove the evaluated buzzer from the array (backend clears them)
                 setTimeout(() => {
-                    // Clear the buzzer order and reset state
-                    this.buzzerOrder = [];
+                    // Store the position to remove BEFORE any async operations
+                    const positionToRemove = this.currentBuzzerPosition;
+
+                    // Filter out the buzzer at the position we just evaluated
+                    const unevaluatedBuzzers = this.buzzerOrder.filter((b, idx) => idx !== positionToRemove);
+                    console.log(`[FRONTEND] Before filter: ${this.buzzerOrder.length} buzzers, after: ${unevaluatedBuzzers.length}, removed position: ${positionToRemove}`);
+
+                    this.buzzerOrder = unevaluatedBuzzers;
                     this.currentBuzzerPosition = -1;
 
-                    // Hide modal completely - no "waiting for teams" modal needed
-                    this.hideAnswerEvaluationModal();
+                    // Update the buzzer results display to reflect the filtered list
+                    this.updateBuzzerResults();
+
+                    if (this.buzzerOrder.length > 0) {
+                        // There are more teams waiting - update modal to show next team
+                        console.log('[FRONTEND] More teams waiting - updating modal');
+                        this.updateAnswerEvaluationModal();
+                        this.showAnswerEvaluationModal(); // Ensure modal stays visible
+                    } else {
+                        // No more teams waiting - hide modal
+                        console.log('[FRONTEND] No more teams waiting - hiding modal');
+                        this.hideAnswerEvaluationModal();
+                    }
 
                     // NOTE: Removed this.armBuzzers() call - backend already handles selective re-arming
                     // The backend only arms buzzers that haven't answered wrong yet
-                }, 1000);
+                }, 100); // Reduced from 1000ms to 100ms for faster response
             }
 
         } catch (error) {
@@ -4673,6 +4808,176 @@ class HostControl {
         }
 
         // Note: Toast will be shown after confirmation in executeConfirmedAction
+    }
+
+    // Evaluation Timeout Methods
+    handleEvaluationTimeoutStarted(data) {
+        console.log('[EVAL-TIMEOUT] Started:', data);
+        this.evaluationTimeout = {
+            active: true,
+            duration: data.duration,
+            remainingTime: data.remainingTime,
+            isPaused: false,
+            groupId: data.groupId
+        };
+        this.showEvaluationTimeoutBar();
+        this.updateEvaluationTimeoutDisplay();
+    }
+
+    handleEvaluationTimeoutTick(data) {
+        if (!this.evaluationTimeout.active) return;
+
+        this.evaluationTimeout.remainingTime = data.remainingTime;
+        this.evaluationTimeout.isPaused = data.isPaused;
+        this.updateEvaluationTimeoutDisplay();
+    }
+
+    handleEvaluationTimeoutPaused(data) {
+        console.log('[EVAL-TIMEOUT] Paused:', data);
+        this.evaluationTimeout.isPaused = true;
+        this.evaluationTimeout.remainingTime = data.remainingTime;
+        this.updateEvaluationTimeoutDisplay();
+        this.showPausedState();
+    }
+
+    handleEvaluationTimeoutResumed(data) {
+        console.log('[EVAL-TIMEOUT] Resumed:', data);
+        this.evaluationTimeout.isPaused = false;
+        this.evaluationTimeout.remainingTime = data.remainingTime;
+        this.updateEvaluationTimeoutDisplay();
+        this.hidePausedState();
+    }
+
+    handleEvaluationTimeoutCancelled(data) {
+        console.log('[EVAL-TIMEOUT] Cancelled:', data);
+        this.hideEvaluationTimeoutBar();
+        this.evaluationTimeout.active = false;
+    }
+
+    handleEvaluationTimeoutStopped(data) {
+        console.log('[EVAL-TIMEOUT] Stopped:', data);
+        this.hideEvaluationTimeoutBar();
+        this.evaluationTimeout.active = false;
+    }
+
+    handleEvaluationTimeoutExpired(data) {
+        console.log('[EVAL-TIMEOUT] Expired - auto-wrong evaluation:', data);
+        this.hideEvaluationTimeoutBar();
+        this.evaluationTimeout.active = false;
+        this.showToast('Time expired - marked as wrong', 'warning');
+    }
+
+    showEvaluationTimeoutBar() {
+        if (this.elements.evaluationTimeoutBar) {
+            this.elements.evaluationTimeoutBar.classList.remove('hidden');
+        }
+    }
+
+    hideEvaluationTimeoutBar() {
+        if (this.elements.evaluationTimeoutBar) {
+            this.elements.evaluationTimeoutBar.classList.add('hidden');
+            this.elements.evaluationTimeoutBar.classList.remove('timeout-warning', 'timeout-paused');
+        }
+    }
+
+    updateEvaluationTimeoutDisplay() {
+        if (!this.elements.evaluationTimeoutTime || !this.elements.evaluationTimeoutProgress) return;
+
+        const remaining = this.evaluationTimeout.remainingTime;
+        const duration = this.evaluationTimeout.duration;
+
+        // Update time display
+        this.elements.evaluationTimeoutTime.textContent = remaining;
+
+        // Update progress bar
+        const percentage = (remaining / duration) * 100;
+        this.elements.evaluationTimeoutProgress.style.width = `${percentage}%`;
+
+        // Add warning class if less than 25% time remaining
+        if (percentage < 25) {
+            this.elements.evaluationTimeoutBar.classList.add('timeout-warning');
+        } else {
+            this.elements.evaluationTimeoutBar.classList.remove('timeout-warning');
+        }
+
+        // Update pause/resume button visibility
+        if (this.evaluationTimeout.isPaused) {
+            this.elements.evaluationTimeoutBar.classList.add('timeout-paused');
+        } else {
+            this.elements.evaluationTimeoutBar.classList.remove('timeout-paused');
+        }
+    }
+
+    showPausedState() {
+        if (this.elements.pauseEvaluationTimeoutBtn && this.elements.resumeEvaluationTimeoutBtn) {
+            this.elements.pauseEvaluationTimeoutBtn.classList.add('hidden');
+            this.elements.resumeEvaluationTimeoutBtn.classList.remove('hidden');
+        }
+    }
+
+    hidePausedState() {
+        if (this.elements.pauseEvaluationTimeoutBtn && this.elements.resumeEvaluationTimeoutBtn) {
+            this.elements.pauseEvaluationTimeoutBtn.classList.remove('hidden');
+            this.elements.resumeEvaluationTimeoutBtn.classList.add('hidden');
+        }
+    }
+
+    async pauseEvaluationTimeout() {
+        if (!this.currentGame) return;
+
+        try {
+            const response = await fetch(`/api/games/${this.currentGame.id}/evaluation-timeout/pause`, {
+                method: 'POST'
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to pause evaluation timeout');
+            }
+
+            console.log('[EVAL-TIMEOUT] Pause requested');
+        } catch (error) {
+            console.error('Failed to pause evaluation timeout:', error);
+            this.showToast('Failed to pause timeout', 'error');
+        }
+    }
+
+    async resumeEvaluationTimeout() {
+        if (!this.currentGame) return;
+
+        try {
+            const response = await fetch(`/api/games/${this.currentGame.id}/evaluation-timeout/resume`, {
+                method: 'POST'
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to resume evaluation timeout');
+            }
+
+            console.log('[EVAL-TIMEOUT] Resume requested');
+        } catch (error) {
+            console.error('Failed to resume evaluation timeout:', error);
+            this.showToast('Failed to resume timeout', 'error');
+        }
+    }
+
+    async cancelEvaluationTimeout() {
+        if (!this.currentGame) return;
+
+        try {
+            const response = await fetch(`/api/games/${this.currentGame.id}/evaluation-timeout/cancel`, {
+                method: 'POST'
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to cancel evaluation timeout');
+            }
+
+            console.log('[EVAL-TIMEOUT] Cancel requested');
+            this.showToast('Auto-wrong evaluation cancelled', 'success');
+        } catch (error) {
+            console.error('Failed to cancel evaluation timeout:', error);
+            this.showToast('Failed to cancel timeout', 'error');
+        }
     }
 }
 

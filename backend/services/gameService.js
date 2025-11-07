@@ -387,6 +387,9 @@ class GameService {
       throw new Error('No active question or buzzer presses found');
     }
 
+    // Stop evaluation timeout when answer is being evaluated manually
+    this.stopEvaluationTimeout(gameId);
+
     console.log(`[EVAL] BuzzerOrder: ${JSON.stringify(gameState.buzzerOrder.map(b => ({groupId: b.groupId, position: b.position, evaluated: b.evaluated})))}`);
 
     const game = await this.getGame(gameId);
@@ -427,20 +430,31 @@ class GameService {
         pointsToAward = currentQuestion.points;
       }
     } else {
-      // Incorrect answers - apply time-based scoring to negative points too
-      if (game.time_based_scoring) {
-        // Calculate time remaining when buzzer was pressed
-        const timeElapsed = buzzerEntry.deltaMs;
-        const questionTimeLimit = currentQuestion.time_limit || 30; // Default to 30s if not set
-        const totalTime = questionTimeLimit * 1000;
-        const timeRemaining = Math.max(0, totalTime - timeElapsed);
+      // Incorrect answers - check if penalty is enabled
+      if (game.wrong_answer_penalty_enabled) {
+        // Get base points to calculate penalty from
+        let basePoints;
+        if (game.time_based_scoring) {
+          // Calculate time remaining when buzzer was pressed
+          const timeElapsed = buzzerEntry.deltaMs;
+          const questionTimeLimit = currentQuestion.time_limit || 30;
+          const totalTime = questionTimeLimit * 1000;
+          const timeRemaining = Math.max(0, totalTime - timeElapsed);
+          basePoints = this.calculateTimeBasedPoints(currentQuestion.points, timeRemaining, totalTime);
+        } else {
+          basePoints = currentQuestion.points;
+        }
 
-        // Calculate time-based points, then make negative and apply half penalty
-        const timeBasedPoints = this.calculateTimeBasedPoints(currentQuestion.points, timeRemaining, totalTime);
-        pointsToAward = -Math.floor(timeBasedPoints * 0.5);
+        // Apply penalty based on configured ratio
+        const penaltyPoints = this.calculatePenaltyPoints(
+          basePoints,
+          game.wrong_answer_penalty_ratio || '1:1',
+          game.wrong_answer_penalty_custom || 0
+        );
+        pointsToAward = -penaltyPoints;
       } else {
-        // Non time-based: lose half of base points
-        pointsToAward = -Math.floor(currentQuestion.points * 0.5);
+        // Penalty disabled - no points deducted
+        pointsToAward = 0;
       }
     }
     console.log(`[EVAL] Calculated points: ${pointsToAward} for team ${currentTeam?.name} (${buzzerEntry.groupId})`);
@@ -771,6 +785,9 @@ class GameService {
     // PAUSE TIMER and DISARM ALL OTHER BUZZERS when first team buzzes in
     if (gameState.buzzerOrder.length === 1 && !gameState.isPaused) {
       this.pauseQuestion(gameId);
+
+      // Start evaluation timeout for the first buzzer
+      this.startEvaluationTimeout(gameId, actualGroupId);
 
       // DISARM ALL BUZZERS except the one that just buzzed
       console.log(`[BUZZ] Timer paused, disarming all other buzzers - only buzzing buzzer stays armed`);
@@ -1414,6 +1431,383 @@ class GameService {
 
     console.log(`[AUDIO] Audio settings broadcasted to all clients for game ${gameId}`);
     return { success: true, settings };
+  }
+
+  // Evaluation Timeout Settings Methods
+  async getEvaluationTimeoutSettings(gameId) {
+    const game = await this.db.get(
+      'SELECT evaluation_timeout_enabled, evaluation_timeout_duration FROM games WHERE id = ?',
+      [gameId]
+    );
+    if (!game) throw new Error('Game not found');
+
+    return {
+      enabled: Boolean(game.evaluation_timeout_enabled),
+      duration: game.evaluation_timeout_duration || 30
+    };
+  }
+
+  async updateEvaluationTimeoutSettings(gameId, settings) {
+    const game = await this.db.get('SELECT id FROM games WHERE id = ?', [gameId]);
+    if (!game) throw new Error('Game not found');
+
+    const updates = [];
+    const values = [];
+
+    if (settings.hasOwnProperty('enabled')) {
+      updates.push('evaluation_timeout_enabled = ?');
+      values.push(settings.enabled ? 1 : 0);
+    }
+
+    if (settings.hasOwnProperty('duration')) {
+      updates.push('evaluation_timeout_duration = ?');
+      values.push(settings.duration);
+    }
+
+    if (updates.length === 0) {
+      throw new Error('No valid settings to update');
+    }
+
+    values.push(gameId);
+    await this.db.run(
+      `UPDATE games SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      values
+    );
+
+    console.log(`[EVAL-TIMEOUT] Settings updated for game ${gameId}:`, settings);
+
+    // Get updated settings
+    const updatedSettings = await this.getEvaluationTimeoutSettings(gameId);
+
+    // Broadcast to all clients
+    this.io.to(`game-${gameId}`).emit('evaluation-timeout-settings-updated', updatedSettings);
+    this.io.to('control-panel').emit('evaluation-timeout-settings-updated', { gameId, ...updatedSettings });
+
+    console.log(`[EVAL-TIMEOUT] Settings broadcasted to all clients for game ${gameId}`);
+
+    return { success: true, settings: updatedSettings };
+  }
+
+  // Start evaluation timeout when a buzzer is pressed
+  startEvaluationTimeout(gameId, groupId) {
+    const gameState = this.activeGames.get(gameId);
+    if (!gameState) {
+      console.log(`[EVAL-TIMEOUT] No active game state for game ${gameId}`);
+      return;
+    }
+
+    // Clear any existing timeout
+    if (gameState.evaluationTimeoutId) {
+      clearInterval(gameState.evaluationTimeoutId);
+      clearTimeout(gameState.evaluationAutoWrongId);
+    }
+
+    // Initialize timeout state
+    gameState.evaluationTimeout = {
+      groupId,
+      startTime: TimingService.now(),
+      duration: 0, // Will be set from database
+      remainingTime: 0,
+      isPaused: false,
+      pausedAt: null,
+      totalPausedDuration: 0
+    };
+
+    // Load settings from database and start timer
+    this.db.get(
+      'SELECT evaluation_timeout_enabled, evaluation_timeout_duration FROM games WHERE id = ?',
+      [gameId]
+    ).then(game => {
+      if (!game || !game.evaluation_timeout_enabled) {
+        console.log(`[EVAL-TIMEOUT] Timeout not enabled for game ${gameId}`);
+        return;
+      }
+
+      const duration = (game.evaluation_timeout_duration || 30) * 1000; // Convert to milliseconds
+      gameState.evaluationTimeout.duration = duration;
+      gameState.evaluationTimeout.remainingTime = duration;
+
+      console.log(`[EVAL-TIMEOUT] Starting ${duration}ms timeout for team ${groupId} in game ${gameId}`);
+
+      // Broadcast initial state
+      const timeoutData = {
+        gameId,
+        groupId,
+        duration: duration / 1000,
+        remainingTime: duration / 1000,
+        isPaused: false
+      };
+      this.io.to(`game-${gameId}`).emit('evaluation-timeout-started', timeoutData);
+      this.io.to('control-panel').emit('evaluation-timeout-started', timeoutData);
+
+      // Start interval to broadcast remaining time every second
+      gameState.evaluationTimeoutId = setInterval(() => {
+        if (!gameState.evaluationTimeout || gameState.evaluationTimeout.isPaused) {
+          return;
+        }
+
+        const elapsed = TimingService.now() - gameState.evaluationTimeout.startTime - gameState.evaluationTimeout.totalPausedDuration;
+        const remaining = Math.max(0, gameState.evaluationTimeout.duration - elapsed);
+        gameState.evaluationTimeout.remainingTime = remaining;
+
+        // Broadcast update
+        const updateData = {
+          gameId,
+          groupId,
+          remainingTime: Math.ceil(remaining / 1000),
+          isPaused: false
+        };
+        this.io.to(`game-${gameId}`).emit('evaluation-timeout-tick', updateData);
+        this.io.to('control-panel').emit('evaluation-timeout-tick', updateData);
+
+        // If time is up, clear interval (the timeout callback will handle auto-wrong)
+        if (remaining <= 0) {
+          clearInterval(gameState.evaluationTimeoutId);
+          gameState.evaluationTimeoutId = null;
+        }
+      }, 1000);
+
+      // Set timeout for auto-wrong evaluation
+      gameState.evaluationAutoWrongId = setTimeout(async () => {
+        console.log(`[EVAL-TIMEOUT] Time expired! Auto-evaluating as WRONG for team ${groupId} in game ${gameId}`);
+
+        // Clear interval
+        if (gameState.evaluationTimeoutId) {
+          clearInterval(gameState.evaluationTimeoutId);
+          gameState.evaluationTimeoutId = null;
+        }
+
+        // Broadcast timeout expired
+        this.io.to(`game-${gameId}`).emit('evaluation-timeout-expired', { gameId, groupId });
+        this.io.to('control-panel').emit('evaluation-timeout-expired', { gameId, groupId });
+
+        // Auto-evaluate as wrong
+        try {
+          // Find the buzzer position for this groupId
+          const buzzerPosition = gameState.buzzerOrder.findIndex(b => b.groupId === groupId && !b.evaluated);
+          if (buzzerPosition !== -1) {
+            await this.evaluateAnswer(gameId, false, buzzerPosition);
+          }
+        } catch (error) {
+          console.error(`[EVAL-TIMEOUT] Failed to auto-evaluate answer:`, error);
+        }
+
+        // Clean up timeout state
+        gameState.evaluationTimeout = null;
+      }, duration);
+    }).catch(error => {
+      console.error(`[EVAL-TIMEOUT] Failed to start timeout:`, error);
+    });
+  }
+
+  // Stop evaluation timeout (when answer is evaluated manually)
+  stopEvaluationTimeout(gameId) {
+    const gameState = this.activeGames.get(gameId);
+    if (!gameState) return;
+
+    if (gameState.evaluationTimeoutId) {
+      clearInterval(gameState.evaluationTimeoutId);
+      gameState.evaluationTimeoutId = null;
+    }
+
+    if (gameState.evaluationAutoWrongId) {
+      clearTimeout(gameState.evaluationAutoWrongId);
+      gameState.evaluationAutoWrongId = null;
+    }
+
+    if (gameState.evaluationTimeout) {
+      console.log(`[EVAL-TIMEOUT] Stopped timeout for game ${gameId}`);
+
+      // Broadcast stopped event
+      this.io.to(`game-${gameId}`).emit('evaluation-timeout-stopped', { gameId });
+      this.io.to('control-panel').emit('evaluation-timeout-stopped', { gameId });
+
+      gameState.evaluationTimeout = null;
+    }
+  }
+
+  // Pause evaluation timeout
+  async pauseEvaluationTimeout(gameId) {
+    const gameState = this.activeGames.get(gameId);
+    if (!gameState || !gameState.evaluationTimeout) {
+      throw new Error('No active evaluation timeout');
+    }
+
+    if (gameState.evaluationTimeout.isPaused) {
+      return { success: true, message: 'Already paused' };
+    }
+
+    gameState.evaluationTimeout.isPaused = true;
+    gameState.evaluationTimeout.pausedAt = TimingService.now();
+
+    // Clear the auto-wrong timeout (will be recalculated on resume)
+    if (gameState.evaluationAutoWrongId) {
+      clearTimeout(gameState.evaluationAutoWrongId);
+      gameState.evaluationAutoWrongId = null;
+    }
+
+    console.log(`[EVAL-TIMEOUT] Paused for game ${gameId}`);
+
+    // Broadcast pause event
+    const pauseData = {
+      gameId,
+      groupId: gameState.evaluationTimeout.groupId,
+      remainingTime: Math.ceil(gameState.evaluationTimeout.remainingTime / 1000),
+      isPaused: true
+    };
+    this.io.to(`game-${gameId}`).emit('evaluation-timeout-paused', pauseData);
+    this.io.to('control-panel').emit('evaluation-timeout-paused', pauseData);
+
+    return { success: true, remainingTime: gameState.evaluationTimeout.remainingTime };
+  }
+
+  // Resume evaluation timeout
+  async resumeEvaluationTimeout(gameId) {
+    const gameState = this.activeGames.get(gameId);
+    if (!gameState || !gameState.evaluationTimeout) {
+      throw new Error('No active evaluation timeout');
+    }
+
+    if (!gameState.evaluationTimeout.isPaused) {
+      return { success: true, message: 'Already running' };
+    }
+
+    // Calculate paused duration
+    const pausedDuration = TimingService.now() - gameState.evaluationTimeout.pausedAt;
+    gameState.evaluationTimeout.totalPausedDuration += pausedDuration;
+    gameState.evaluationTimeout.isPaused = false;
+    gameState.evaluationTimeout.pausedAt = null;
+
+    console.log(`[EVAL-TIMEOUT] Resumed for game ${gameId} (was paused for ${pausedDuration}ms)`);
+
+    // Set new auto-wrong timeout for remaining time
+    const remainingTime = gameState.evaluationTimeout.remainingTime;
+    gameState.evaluationAutoWrongId = setTimeout(async () => {
+      console.log(`[EVAL-TIMEOUT] Time expired! Auto-evaluating as WRONG for team ${gameState.evaluationTimeout.groupId} in game ${gameId}`);
+
+      // Clear interval
+      if (gameState.evaluationTimeoutId) {
+        clearInterval(gameState.evaluationTimeoutId);
+        gameState.evaluationTimeoutId = null;
+      }
+
+      // Broadcast timeout expired
+      this.io.to(`game-${gameId}`).emit('evaluation-timeout-expired', { gameId, groupId: gameState.evaluationTimeout.groupId });
+      this.io.to('control-panel').emit('evaluation-timeout-expired', { gameId, groupId: gameState.evaluationTimeout.groupId });
+
+      // Auto-evaluate as wrong
+      try {
+        const buzzerPosition = gameState.buzzerOrder.findIndex(b => b.groupId === gameState.evaluationTimeout.groupId && !b.evaluated);
+        if (buzzerPosition !== -1) {
+          await this.evaluateAnswer(gameId, false, buzzerPosition);
+        }
+      } catch (error) {
+        console.error(`[EVAL-TIMEOUT] Failed to auto-evaluate answer:`, error);
+      }
+
+      // Clean up timeout state
+      gameState.evaluationTimeout = null;
+    }, remainingTime);
+
+    // Broadcast resume event
+    const resumeData = {
+      gameId,
+      groupId: gameState.evaluationTimeout.groupId,
+      remainingTime: Math.ceil(remainingTime / 1000),
+      isPaused: false
+    };
+    this.io.to(`game-${gameId}`).emit('evaluation-timeout-resumed', resumeData);
+    this.io.to('control-panel').emit('evaluation-timeout-resumed', resumeData);
+
+    return { success: true, remainingTime };
+  }
+
+  // Cancel evaluation timeout (prevents auto-wrong)
+  async cancelEvaluationTimeout(gameId) {
+    const gameState = this.activeGames.get(gameId);
+    if (!gameState || !gameState.evaluationTimeout) {
+      throw new Error('No active evaluation timeout');
+    }
+
+    console.log(`[EVAL-TIMEOUT] Cancelled for game ${gameId}`);
+
+    this.stopEvaluationTimeout(gameId);
+
+    // Broadcast cancel event
+    this.io.to(`game-${gameId}`).emit('evaluation-timeout-cancelled', { gameId });
+    this.io.to('control-panel').emit('evaluation-timeout-cancelled', { gameId });
+
+    return { success: true };
+  }
+
+  // Wrong Answer Penalty Settings
+  async getPenaltySettings(gameId) {
+    const game = await this.db.get(
+      'SELECT wrong_answer_penalty_enabled, wrong_answer_penalty_ratio, wrong_answer_penalty_custom FROM games WHERE id = ?',
+      [gameId]
+    );
+    if (!game) throw new Error('Game not found');
+
+    return {
+      enabled: Boolean(game.wrong_answer_penalty_enabled),
+      ratio: game.wrong_answer_penalty_ratio || '1:1',
+      customPoints: game.wrong_answer_penalty_custom || 0
+    };
+  }
+
+  async updatePenaltySettings(gameId, settings) {
+    const game = await this.db.get('SELECT id FROM games WHERE id = ?', [gameId]);
+    if (!game) throw new Error('Game not found');
+
+    const updates = [];
+    const values = [];
+
+    if (settings.hasOwnProperty('enabled')) {
+      updates.push('wrong_answer_penalty_enabled = ?');
+      values.push(settings.enabled ? 1 : 0);
+    }
+
+    if (settings.hasOwnProperty('ratio')) {
+      updates.push('wrong_answer_penalty_ratio = ?');
+      values.push(settings.ratio);
+    }
+
+    if (settings.hasOwnProperty('customPoints')) {
+      updates.push('wrong_answer_penalty_custom = ?');
+      values.push(settings.customPoints);
+    }
+
+    if (updates.length === 0) {
+      throw new Error('No valid settings to update');
+    }
+
+    values.push(gameId);
+    await this.db.run(
+      `UPDATE games SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      values
+    );
+
+    console.log(`[PENALTY] Settings updated for game ${gameId}:`, settings);
+
+    // Get updated settings
+    const updatedSettings = await this.getPenaltySettings(gameId);
+
+    // Broadcast to all clients
+    this.io.to(`game-${gameId}`).emit('penalty-settings-updated', updatedSettings);
+    this.io.to('control-panel').emit('penalty-settings-updated', { gameId, ...updatedSettings });
+
+    console.log(`[PENALTY] Settings broadcasted to all clients for game ${gameId}`);
+
+    return { success: true, settings: updatedSettings };
+  }
+
+  calculatePenaltyPoints(questionPoints, ratio, customPoints) {
+    if (ratio === 'custom') {
+      return customPoints;
+    }
+
+    const [numerator, denominator] = ratio.split(':').map(Number);
+    return Math.round((questionPoints * numerator) / denominator);
   }
 }
 

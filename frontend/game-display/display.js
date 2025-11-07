@@ -13,7 +13,15 @@ class GameDisplay {
         this.sidebarExpanded = true;
         this.answerWasShown = false; // Track if answer was shown for current question
         this.showingAllTeams = false; // Track if we're showing all teams in leaderboard
-        
+
+        // Evaluation timeout state
+        this.evaluationTimeout = {
+            active: false,
+            duration: 30,
+            remainingTime: 30,
+            isPaused: false
+        };
+
         // Performance optimization caches
         this.lastTimerPercentage = -1;
         this.lastDisplayedSeconds = -1;
@@ -159,7 +167,12 @@ class GameDisplay {
             
             // Buzzer elements
             buzzerQueue: document.getElementById('buzzer-queue'),
-            
+
+            // Evaluation timeout elements
+            displayEvaluationTimeoutBar: document.getElementById('display-evaluation-timeout-bar'),
+            displayEvaluationTimeoutTime: document.getElementById('display-evaluation-timeout-time'),
+            displayTimeoutProgressRing: document.getElementById('display-timeout-progress-ring'),
+
             // Feedback elements
             answerFeedback: document.getElementById('answer-feedback'),
             
@@ -229,6 +242,35 @@ class GameDisplay {
 
         this.socket.on('answer-evaluated', (data) => {
             this.handleAnswerResult(data);
+        });
+
+        // Evaluation timeout listeners
+        this.socket.on('evaluation-timeout-started', (data) => {
+            this.handleEvaluationTimeoutStarted(data);
+        });
+
+        this.socket.on('evaluation-timeout-tick', (data) => {
+            this.handleEvaluationTimeoutTick(data);
+        });
+
+        this.socket.on('evaluation-timeout-paused', (data) => {
+            this.handleEvaluationTimeoutPaused(data);
+        });
+
+        this.socket.on('evaluation-timeout-resumed', (data) => {
+            this.handleEvaluationTimeoutResumed(data);
+        });
+
+        this.socket.on('evaluation-timeout-cancelled', (data) => {
+            this.handleEvaluationTimeoutCancelled(data);
+        });
+
+        this.socket.on('evaluation-timeout-stopped', (data) => {
+            this.handleEvaluationTimeoutStopped(data);
+        });
+
+        this.socket.on('evaluation-timeout-expired', (data) => {
+            this.handleEvaluationTimeoutExpired(data);
         });
 
         // Team/score updates
@@ -886,6 +928,10 @@ class GameDisplay {
         buzzerItem.className = itemClass;
         buzzerItem.dataset.buzzerId = item.buzzerId;
 
+        // Check if this is the fastest (selected) buzzer and if evaluation timeout is active
+        const isSelected = itemClass.includes('fastest');
+        const showTimeout = isSelected && this.evaluationTimeout.active;
+
         // Use textContent for better performance than innerHTML
         buzzerItem.innerHTML = `
             <div class="buzzer-team">${item.teamName}</div>
@@ -893,6 +939,12 @@ class GameDisplay {
                 <span class="buzzer-order">${item.order}</span>
                 <span class="buzzer-time">${item.deltaTime.toFixed(2)}s</span>
             </div>
+            ${showTimeout ? `
+            <div class="buzzer-timeout" data-timeout-display>
+                <span class="timeout-icon">⏲️</span>
+                <span class="timeout-label">Answer in <span class="timeout-seconds">${this.evaluationTimeout.remainingTime}</span>s</span>
+            </div>
+            ` : ''}
         `;
 
         return buzzerItem;
@@ -1963,6 +2015,116 @@ class GameDisplay {
         }
 
         console.log('GameDisplay cleanup completed');
+    }
+
+    // Evaluation Timeout Methods
+    handleEvaluationTimeoutStarted(data) {
+        console.log('[EVAL-TIMEOUT] Started:', data);
+        this.evaluationTimeout = {
+            active: true,
+            duration: data.duration,
+            remainingTime: data.remainingTime,
+            isPaused: false
+        };
+        this.updateBuzzerQueue(); // Refresh to show timeout
+    }
+
+    handleEvaluationTimeoutTick(data) {
+        if (!this.evaluationTimeout.active) return;
+
+        this.evaluationTimeout.remainingTime = data.remainingTime;
+        this.evaluationTimeout.isPaused = data.isPaused;
+
+        // Update only the timeout seconds display without full re-render
+        const timeoutSecondsEl = document.querySelector('.buzzer-item.fastest .timeout-seconds');
+        if (timeoutSecondsEl) {
+            timeoutSecondsEl.textContent = data.remainingTime;
+
+            // Add urgency styling when time is low
+            const buzzerItem = timeoutSecondsEl.closest('.buzzer-item');
+            if (buzzerItem) {
+                if (data.remainingTime <= 5) {
+                    buzzerItem.classList.add('timeout-urgent');
+                } else {
+                    buzzerItem.classList.remove('timeout-urgent');
+                }
+            }
+        }
+    }
+
+    handleEvaluationTimeoutPaused(data) {
+        console.log('[EVAL-TIMEOUT] Paused:', data);
+        this.evaluationTimeout.isPaused = true;
+        this.evaluationTimeout.remainingTime = data.remainingTime;
+        this.updateBuzzerQueue(); // Refresh to show paused state
+    }
+
+    handleEvaluationTimeoutResumed(data) {
+        console.log('[EVAL-TIMEOUT] Resumed:', data);
+        this.evaluationTimeout.isPaused = false;
+        this.evaluationTimeout.remainingTime = data.remainingTime;
+        this.updateBuzzerQueue(); // Refresh to show resumed state
+    }
+
+    handleEvaluationTimeoutCancelled(data) {
+        console.log('[EVAL-TIMEOUT] Cancelled:', data);
+        this.evaluationTimeout.active = false;
+        this.updateBuzzerQueue(); // Refresh to hide timeout
+    }
+
+    handleEvaluationTimeoutStopped(data) {
+        console.log('[EVAL-TIMEOUT] Stopped:', data);
+        this.evaluationTimeout.active = false;
+        this.updateBuzzerQueue(); // Refresh to hide timeout
+    }
+
+    handleEvaluationTimeoutExpired(data) {
+        console.log('[EVAL-TIMEOUT] Expired - auto-wrong evaluation:', data);
+        this.evaluationTimeout.active = false;
+        this.updateBuzzerQueue(); // Refresh to hide timeout
+    }
+
+    showDisplayEvaluationTimeoutBar() {
+        if (this.elements.displayEvaluationTimeoutBar) {
+            this.elements.displayEvaluationTimeoutBar.classList.remove('hidden');
+        }
+    }
+
+    hideDisplayEvaluationTimeoutBar() {
+        if (this.elements.displayEvaluationTimeoutBar) {
+            this.elements.displayEvaluationTimeoutBar.classList.add('hidden');
+            this.elements.displayEvaluationTimeoutBar.classList.remove('timeout-warning', 'timeout-paused');
+        }
+    }
+
+    updateDisplayEvaluationTimeoutDisplay() {
+        if (!this.elements.displayEvaluationTimeoutTime || !this.elements.displayTimeoutProgressRing) return;
+
+        const remaining = this.evaluationTimeout.remainingTime;
+        const duration = this.evaluationTimeout.duration;
+
+        // Update time display
+        this.elements.displayEvaluationTimeoutTime.textContent = remaining;
+
+        // Update circular progress ring (SVG stroke-dashoffset)
+        const circumference = 2 * Math.PI * 26; // radius = 26
+        const percentage = (remaining / duration);
+        const offset = circumference * (1 - percentage);
+        this.elements.displayTimeoutProgressRing.style.strokeDashoffset = offset;
+
+        // Add warning class if less than 25% time remaining
+        if (percentage < 0.25) {
+            this.elements.displayEvaluationTimeoutBar.classList.add('timeout-warning');
+        } else {
+            this.elements.displayEvaluationTimeoutBar.classList.remove('timeout-warning');
+        }
+
+        // Update paused state
+        if (this.evaluationTimeout.isPaused) {
+            this.elements.displayEvaluationTimeoutBar.classList.add('timeout-paused');
+        } else {
+            this.elements.displayEvaluationTimeoutBar.classList.remove('timeout-paused');
+        }
     }
 }
 

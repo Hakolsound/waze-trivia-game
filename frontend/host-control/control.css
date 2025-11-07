@@ -1621,6 +1621,7 @@ kbd {
   color: #ffffff;
   line-height: 1.2;
   flex: 1;
+  text-align: center;
 }
 
 .team-score {
@@ -1632,10 +1633,18 @@ kbd {
   color: #ffffff;
   font-family: inherit;
   font-size: 10px;
-  width: 50px;
+  width: 70px;
   text-align: center;
   cursor: pointer;
   transition: all 0.2s ease;
+  -moz-appearance: textfield;
+}
+
+/* Remove spinner arrows from number input */
+.team-score::-webkit-outer-spin-button,
+.team-score::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .team-score:focus {
@@ -2223,48 +2232,6 @@ kbd {
 }
 
 /* Next in Line Redesign */
-.next-in-line-redesign {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(15px);
-  border-radius: 16px;
-  padding: 20px 30px;
-  margin-top: 40px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  max-width: 500px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.next-indicator {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 0.9rem;
-  font-weight: 700;
-  letter-spacing: 1px;
-}
-
-.next-team-info {
-  text-align: right;
-  color: white;
-}
-
-.next-team-name {
-  display: block;
-  font-size: 1.4rem;
-  font-weight: 700;
-  margin-bottom: 4px;
-}
-
-.next-timing {
-  font-size: 1rem;
-  opacity: 0.8;
-}
-
 /* History Redesign */
 .evaluation-history-redesign {
   margin-top: 40px;
@@ -3361,6 +3328,19 @@ kbd {
 .buzzer-result-item.evaluated-incorrect {
     background: rgba(244, 67, 54, 0.1);
     border-color: rgba(244, 67, 54, 0.3);
+}
+
+.buzzer-result-item.unevaluated-clickable {
+    background: rgba(103, 126, 234, 0.05);
+    border: 2px dashed rgba(103, 126, 234, 0.4);
+    cursor: pointer;
+}
+
+.buzzer-result-item.unevaluated-clickable:hover {
+    background: rgba(103, 126, 234, 0.15);
+    border-color: rgba(103, 126, 234, 0.6);
+    transform: translateX(2px);
+    box-shadow: 0 2px 8px rgba(103, 126, 234, 0.2);
 }
 
 .buzzer-rank-badge {
@@ -4762,3 +4742,164 @@ kbd {
     }
 }
 
+/* Evaluation Timeout Bar */
+.evaluation-timeout-bar {
+    margin: 8px 0;
+    padding: 8px 12px;
+    background: rgba(100, 100, 100, 0.15);
+    border: 1px solid rgba(150, 150, 150, 0.2);
+    border-radius: 8px;
+    box-shadow: none;
+}
+
+.evaluation-timeout-bar.hidden {
+    display: none;
+}
+
+.evaluation-timeout-bar.timeout-warning {
+    background: rgba(139, 0, 0, 0.2);
+    border-color: rgba(220, 53, 69, 0.3);
+    animation: pulse-warning 1s ease-in-out infinite;
+}
+
+@keyframes pulse-warning {
+    0%, 100% {
+        border-color: rgba(220, 53, 69, 0.3);
+    }
+    50% {
+        border-color: rgba(220, 53, 69, 0.5);
+    }
+}
+
+.timeout-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.timeout-icon {
+    font-size: 16px;
+    opacity: 0.7;
+}
+
+.timeout-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.timeout-status {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+
+.timeout-timer {
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+    min-width: 50px;
+}
+
+.timeout-time {
+    font-size: 22px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.95);
+    font-family: 'Courier New', monospace;
+}
+
+.timeout-unit {
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.timeout-progress-bar {
+    flex: 1;
+    height: 14px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 7px;
+    overflow: hidden;
+    position: relative;
+}
+
+.timeout-progress-fill {
+    height: 100%;
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 7px;
+    transition: width 0.3s ease, background 0.3s ease;
+}
+
+.evaluation-timeout-bar.timeout-warning .timeout-progress-fill {
+    background: rgba(220, 53, 69, 0.5);
+}
+
+.timeout-controls {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+}
+
+.timeout-btn {
+    padding: 4px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 28px;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.timeout-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateY(-1px);
+}
+
+.timeout-btn:active {
+    transform: translateY(0);
+}
+
+.timeout-btn-pause {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.timeout-btn-pause:hover {
+    border-color: rgba(255, 152, 0, 0.5);
+}
+
+.timeout-btn-resume {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.timeout-btn-resume:hover {
+    border-color: rgba(76, 175, 80, 0.5);
+}
+
+.timeout-btn-cancel {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.timeout-btn-cancel:hover {
+    border-color: rgba(220, 53, 69, 0.5);
+}
+
+.timeout-btn.hidden {
+    display: none;
+}
+
+.timeout-paused .timeout-time {
+    color: rgba(255, 152, 0, 0.9);
+}
+
+.timeout-paused .timeout-progress-fill {
+    background: rgba(255, 152, 0, 0.5);
+}

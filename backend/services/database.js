@@ -98,6 +98,11 @@ class Database {
         virtual_buzzers_enabled BOOLEAN DEFAULT 0,
         buzzer_offline_threshold INTEGER DEFAULT 120,
         allow_negative_scores BOOLEAN DEFAULT 0,
+        evaluation_timeout_enabled BOOLEAN DEFAULT 0,
+        evaluation_timeout_duration INTEGER DEFAULT 30,
+        wrong_answer_penalty_enabled BOOLEAN DEFAULT 0,
+        wrong_answer_penalty_ratio TEXT DEFAULT '1:1',
+        wrong_answer_penalty_custom INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`,
@@ -187,12 +192,54 @@ class Database {
       }
     }
 
+    // Add evaluation timeout columns to existing games if they don't exist
+    try {
+      await this.run('ALTER TABLE games ADD COLUMN evaluation_timeout_enabled BOOLEAN DEFAULT 0');
+    } catch (error) {
+      if (!error.message.includes('duplicate column name')) {
+        console.error('Error adding evaluation_timeout_enabled column:', error.message);
+      }
+    }
+
+    try {
+      await this.run('ALTER TABLE games ADD COLUMN evaluation_timeout_duration INTEGER DEFAULT 30');
+    } catch (error) {
+      if (!error.message.includes('duplicate column name')) {
+        console.error('Error adding evaluation_timeout_duration column:', error.message);
+      }
+    }
+
     // Add display_font_size column to existing games if it doesn't exist
     try {
       await this.run('ALTER TABLE games ADD COLUMN display_font_size INTEGER DEFAULT 100');
     } catch (error) {
       if (!error.message.includes('duplicate column name')) {
         console.error('Error adding display_font_size column:', error.message);
+      }
+    }
+
+    // Add wrong answer penalty columns to existing games if they don't exist
+    try {
+      await this.run('ALTER TABLE games ADD COLUMN wrong_answer_penalty_enabled BOOLEAN DEFAULT 0');
+    } catch (error) {
+      if (!error.message.includes('duplicate column name')) {
+        console.error('Error adding wrong_answer_penalty_enabled column:', error.message);
+      }
+    }
+
+    try {
+      await this.run('ALTER TABLE games ADD COLUMN wrong_answer_penalty_ratio TEXT DEFAULT \'1:1\'');
+    } catch (error) {
+      if (!error.message.includes('duplicate column name')) {
+        console.error('Error adding wrong_answer_penalty_ratio column:', error.message);
+      }
+    }
+
+    try {
+      await this.run('ALTER TABLE games ADD COLUMN wrong_answer_penalty_custom INTEGER DEFAULT 0');
+    } catch (error) {
+      if (!error.message.includes('duplicate column name')) {
+        console.error('Error adding wrong_answer_penalty_custom column:', error.message);
       }
     }
 

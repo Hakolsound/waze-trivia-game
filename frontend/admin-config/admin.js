@@ -197,6 +197,12 @@ class AdminConfig {
             // Load virtual buzzer settings
             await this.loadVirtualBuzzerSettings();
 
+            // Load evaluation timeout settings
+            await this.loadEvaluationTimeoutSettings();
+
+            // Load penalty settings
+            await this.loadPenaltySettings();
+
             // Load audio settings
             await this.loadAudioSettings();
 
@@ -285,6 +291,19 @@ class AdminConfig {
             virtualBuzzerUrl: document.getElementById('virtual-buzzer-url'),
             copyUrlBtn: document.getElementById('copy-url-btn'),
             saveVirtualBuzzerSettingsBtn: document.getElementById('save-virtual-buzzer-settings-btn'),
+
+            // Evaluation timeout settings elements
+            evaluationTimeoutEnabled: document.getElementById('evaluation-timeout-enabled'),
+            evaluationTimeoutDetails: document.getElementById('evaluation-timeout-details'),
+            evaluationTimeoutDuration: document.getElementById('evaluation-timeout-duration'),
+            saveEvaluationTimeoutSettingsBtn: document.getElementById('save-evaluation-timeout-settings-btn'),
+
+            // Penalty settings elements
+            penaltyEnabled: document.getElementById('penalty-enabled'),
+            penaltyDetails: document.getElementById('penalty-details'),
+            penaltyRatio: document.getElementById('penalty-ratio'),
+            penaltyCustomDetails: document.getElementById('penalty-custom-details'),
+            penaltyCustomPoints: document.getElementById('penalty-custom-points'),
 
             // Audio settings elements
             ttsEnabled: document.getElementById('tts-enabled'),
@@ -485,6 +504,39 @@ class AdminConfig {
         if (this.elements.saveVirtualBuzzerSettingsBtn) {
             this.elements.saveVirtualBuzzerSettingsBtn.addEventListener('click', () => {
                 this.saveVirtualBuzzerSettingsWithToast();
+            });
+        }
+
+        // Evaluation timeout settings
+        if (this.elements.evaluationTimeoutEnabled) {
+            this.elements.evaluationTimeoutEnabled.addEventListener('change', () => {
+                this.toggleEvaluationTimeoutDetails();
+                this.markDirty();
+            });
+        }
+
+        if (this.elements.evaluationTimeoutDuration) {
+            this.elements.evaluationTimeoutDuration.addEventListener('change', () => {
+                this.markDirty();
+            });
+        }
+
+        if (this.elements.saveEvaluationTimeoutSettingsBtn) {
+            this.elements.saveEvaluationTimeoutSettingsBtn.addEventListener('click', () => {
+                this.saveEvaluationTimeoutSettingsWithToast();
+            });
+        }
+
+        // Penalty settings
+        if (this.elements.penaltyEnabled) {
+            this.elements.penaltyEnabled.addEventListener('change', () => {
+                this.togglePenaltyDetails();
+            });
+        }
+
+        if (this.elements.penaltyRatio) {
+            this.elements.penaltyRatio.addEventListener('change', () => {
+                this.togglePenaltyCustomDetails();
             });
         }
 
@@ -3062,7 +3114,9 @@ class AdminConfig {
         }
 
         try {
+            // Save both scoring settings and penalty settings together
             await this.saveScoringSettings();
+            await this.savePenaltySettings();
             this.showToast('Scoring settings saved successfully', 'success');
         } catch (error) {
             console.error('Failed to save scoring settings:', error);
@@ -3245,6 +3299,158 @@ class AdminConfig {
         } catch (error) {
             console.error('Failed to save virtual buzzer settings:', error);
             this.showToast('Failed to save virtual buzzer settings', 'error');
+        }
+    }
+
+    // Evaluation Timeout Settings Methods
+    toggleEvaluationTimeoutDetails() {
+        if (this.elements.evaluationTimeoutEnabled && this.elements.evaluationTimeoutDetails) {
+            if (this.elements.evaluationTimeoutEnabled.checked) {
+                this.elements.evaluationTimeoutDetails.style.display = 'flex';
+            } else {
+                this.elements.evaluationTimeoutDetails.style.display = 'none';
+            }
+        }
+    }
+
+    async loadEvaluationTimeoutSettings() {
+        if (!this.currentGame) return;
+
+        try {
+            const response = await fetch(`/api/games/${this.currentGame.id}/evaluation-timeout-settings`);
+            if (!response.ok) {
+                throw new Error('Failed to load evaluation timeout settings');
+            }
+
+            const settings = await response.json();
+
+            if (this.elements.evaluationTimeoutEnabled) {
+                this.elements.evaluationTimeoutEnabled.checked = settings.enabled || false;
+            }
+
+            if (this.elements.evaluationTimeoutDuration) {
+                this.elements.evaluationTimeoutDuration.value = settings.duration || 30;
+            }
+
+            this.toggleEvaluationTimeoutDetails();
+        } catch (error) {
+            console.error('Failed to load evaluation timeout settings:', error);
+        }
+    }
+
+    async saveEvaluationTimeoutSettings() {
+        if (!this.currentGame) return;
+
+        const settings = {
+            enabled: this.elements.evaluationTimeoutEnabled ? this.elements.evaluationTimeoutEnabled.checked : false,
+            duration: this.elements.evaluationTimeoutDuration ? parseInt(this.elements.evaluationTimeoutDuration.value) : 30
+        };
+
+        try {
+            const response = await fetch(`/api/games/${this.currentGame.id}/evaluation-timeout-settings`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(settings)
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to save evaluation timeout settings');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Failed to save evaluation timeout settings:', error);
+            throw error;
+        }
+    }
+
+    async saveEvaluationTimeoutSettingsWithToast() {
+        if (!this.currentGame) {
+            this.showToast('No game selected', 'error');
+            return;
+        }
+
+        try {
+            await this.saveEvaluationTimeoutSettings();
+            this.showToast('Evaluation timeout settings saved successfully', 'success');
+        } catch (error) {
+            console.error('Failed to save evaluation timeout settings:', error);
+            this.showToast('Failed to save evaluation timeout settings', 'error');
+        }
+    }
+
+    // Penalty Settings Methods
+    togglePenaltyDetails() {
+        if (this.elements.penaltyDetails && this.elements.penaltyEnabled) {
+            this.elements.penaltyDetails.style.display =
+                this.elements.penaltyEnabled.checked ? 'block' : 'none';
+        }
+    }
+
+    togglePenaltyCustomDetails() {
+        if (this.elements.penaltyCustomDetails && this.elements.penaltyRatio) {
+            this.elements.penaltyCustomDetails.style.display =
+                this.elements.penaltyRatio.value === 'custom' ? 'block' : 'none';
+        }
+    }
+
+    async loadPenaltySettings() {
+        if (!this.currentGame) return;
+
+        try {
+            const response = await fetch(`/api/games/${this.currentGame.id}/penalty-settings`);
+            if (!response.ok) {
+                throw new Error('Failed to load penalty settings');
+            }
+
+            const settings = await response.json();
+
+            // Update UI
+            if (this.elements.penaltyEnabled) {
+                this.elements.penaltyEnabled.checked = settings.enabled;
+            }
+            if (this.elements.penaltyRatio) {
+                this.elements.penaltyRatio.value = settings.ratio || '1:1';
+            }
+            if (this.elements.penaltyCustomPoints) {
+                this.elements.penaltyCustomPoints.value = settings.customPoints || 50;
+            }
+
+            this.togglePenaltyDetails();
+            this.togglePenaltyCustomDetails();
+        } catch (error) {
+            console.error('Failed to load penalty settings:', error);
+        }
+    }
+
+    async savePenaltySettings() {
+        if (!this.currentGame) return;
+
+        const settings = {
+            enabled: this.elements.penaltyEnabled?.checked || false,
+            ratio: this.elements.penaltyRatio?.value || '1:1',
+            customPoints: parseInt(this.elements.penaltyCustomPoints?.value) || 50
+        };
+
+        try {
+            const response = await fetch(`/api/games/${this.currentGame.id}/penalty-settings`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(settings)
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to save penalty settings');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Failed to save penalty settings:', error);
+            throw error;
         }
     }
 

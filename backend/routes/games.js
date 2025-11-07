@@ -427,5 +427,75 @@ module.exports = (gameService) => {
     }
   });
 
+  // Evaluation timeout settings endpoints
+  router.get('/:id/evaluation-timeout-settings', async (req, res) => {
+    try {
+      const settings = await gameService.getEvaluationTimeoutSettings(req.params.id);
+      res.json(settings);
+    } catch (error) {
+      res.status(404).json({ error: error.message });
+    }
+  });
+
+  router.put('/:id/evaluation-timeout-settings', async (req, res) => {
+    try {
+      console.log('Updating evaluation timeout settings for game:', req.params.id, 'with data:', req.body);
+      const result = await gameService.updateEvaluationTimeoutSettings(req.params.id, req.body);
+      res.json(result);
+    } catch (error) {
+      console.error('Evaluation timeout settings update error:', error);
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Evaluation timeout control endpoints
+  router.post('/:id/evaluation-timeout/pause', async (req, res) => {
+    try {
+      const result = await gameService.pauseEvaluationTimeout(req.params.id);
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  router.post('/:id/evaluation-timeout/resume', async (req, res) => {
+    try {
+      const result = await gameService.resumeEvaluationTimeout(req.params.id);
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  router.post('/:id/evaluation-timeout/cancel', async (req, res) => {
+    try {
+      const result = await gameService.cancelEvaluationTimeout(req.params.id);
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Wrong answer penalty settings endpoints
+  router.get('/:id/penalty-settings', async (req, res) => {
+    try {
+      const settings = await gameService.getPenaltySettings(req.params.id);
+      res.json(settings);
+    } catch (error) {
+      res.status(404).json({ error: error.message });
+    }
+  });
+
+  router.put('/:id/penalty-settings', async (req, res) => {
+    try {
+      console.log('Updating penalty settings for game:', req.params.id, 'with data:', req.body);
+      const result = await gameService.updatePenaltySettings(req.params.id, req.body);
+      res.json(result);
+    } catch (error) {
+      console.error('Penalty settings update error:', error);
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   return router;
 };

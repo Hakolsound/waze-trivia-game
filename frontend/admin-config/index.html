@@ -140,7 +140,7 @@
                                         <p class="setting-description">30s timer: 100pts → 90pts → 80pts → ... → 0pts at timeout</p>
                                     </div>
                                 </div>
-                                
+
                                 <div class="setting-item">
                                     <div class="setting-info">
                                         <label for="allow-negative-scores">➖ Allow Negative Scores</label>
@@ -150,6 +150,40 @@
                                         <input type="checkbox" id="allow-negative-scores">
                                         <span class="slider"></span>
                                     </label>
+                                </div>
+
+                                <!-- Wrong Answer Penalty Settings (moved from separate panel) -->
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <label for="penalty-enabled">⚠️ Enable Wrong Answer Penalty</label>
+                                        <p class="setting-description">Deduct points from teams when they answer incorrectly</p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="penalty-enabled">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="setting-item penalty-details" id="penalty-details" style="display: none;">
+                                    <div class="setting-info">
+                                        <label for="penalty-ratio">📊 Penalty Ratio:</label>
+                                        <p class="setting-description">How much to deduct relative to the question points</p>
+                                    </div>
+                                    <select id="penalty-ratio" class="form-select">
+                                        <option value="1:1">Equal (1:1) - Wrong answer costs same as question points</option>
+                                        <option value="1:2">Half (1:2) - Wrong answer costs half the question points</option>
+                                        <option value="2:1">Double (2:1) - Wrong answer costs double the question points</option>
+                                        <option value="custom">Custom - Set a fixed penalty amount</option>
+                                    </select>
+                                </div>
+                                <div class="setting-item penalty-custom-details" id="penalty-custom-details" style="display: none;">
+                                    <div class="setting-info">
+                                        <label for="penalty-custom-points">🎯 Custom Penalty Points:</label>
+                                        <p class="setting-description">Fixed points to deduct for wrong answers (regardless of question value)</p>
+                                    </div>
+                                    <div class="threshold-input-container">
+                                        <input type="number" id="penalty-custom-points" min="0" max="1000" value="50" class="threshold-input">
+                                        <span class="input-suffix">points</span>
+                                    </div>
                                 </div>
                             </div>
                             <div class="panel-actions">
@@ -201,7 +235,37 @@
                                 <button id="save-virtual-buzzer-settings-btn" class="btn btn-primary">💾 Save Virtual Buzzer Settings</button>
                             </div>
                         </div>
-                        
+
+                        <!-- Evaluation Timeout Settings -->
+                        <div class="panel">
+                            <h3>⏲️ Evaluation Timeout Settings</h3>
+                            <div class="evaluation-timeout-settings">
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <label for="evaluation-timeout-enabled">⏲️ Enable Auto-Wrong Evaluation</label>
+                                        <p class="setting-description">Automatically mark answer as wrong if team doesn't answer within the time limit</p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="evaluation-timeout-enabled">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="setting-item evaluation-timeout-details" id="evaluation-timeout-details" style="display: none;">
+                                    <div class="setting-info">
+                                        <label for="evaluation-timeout-duration">⏱️ Timeout Duration (seconds):</label>
+                                        <p class="setting-description">How long a team has to answer before auto-wrong evaluation</p>
+                                    </div>
+                                    <div class="threshold-input-container">
+                                        <input type="number" id="evaluation-timeout-duration" min="5" max="120" value="30" class="threshold-input">
+                                        <span class="input-suffix">seconds</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="panel-actions">
+                                <button id="save-evaluation-timeout-settings-btn" class="btn btn-primary">💾 Save Evaluation Timeout Settings</button>
+                            </div>
+                        </div>
+
                         <!-- Audio Settings -->
                         <div class="panel">
                             <h3>🔊 Audio Settings</h3>

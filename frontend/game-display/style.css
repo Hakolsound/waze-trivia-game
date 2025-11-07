@@ -2347,3 +2347,118 @@ h1.question-text,
     transform: none !important;
   }
 }
+
+/* Evaluation Timeout Display (Game Display) */
+.display-evaluation-timeout-bar {
+    margin: 0 16px 16px 16px;
+    padding: 16px;
+    background: linear-gradient(135deg, #fff9e6 0%, #ffe4a3 100%);
+    border: 3px solid #ffb800;
+    border-radius: 16px;
+    box-shadow: 0 6px 16px rgba(255, 184, 0, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.display-evaluation-timeout-bar.hidden {
+    display: none;
+}
+
+.display-evaluation-timeout-bar.timeout-warning {
+    background: linear-gradient(135deg, #ffe5e5 0%, #ffb3b3 100%);
+    border-color: #ff3333;
+    animation: pulse-warning-fast 0.8s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+    0%, 100% {
+        box-shadow: 0 6px 16px rgba(255, 184, 0, 0.3);
+    }
+    50% {
+        box-shadow: 0 6px 24px rgba(255, 184, 0, 0.5);
+    }
+}
+
+@keyframes pulse-warning-fast {
+    0%, 100% {
+        box-shadow: 0 6px 16px rgba(255, 51, 51, 0.4);
+    }
+    50% {
+        box-shadow: 0 6px 28px rgba(255, 51, 51, 0.7);
+    }
+}
+
+.display-timeout-icon {
+    font-size: 32px;
+    flex-shrink: 0;
+}
+
+.display-timeout-info {
+    flex: 1;
+}
+
+.display-timeout-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #666;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.display-timeout-timer {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+}
+
+.display-timeout-time {
+    font-size: 36px;
+    font-weight: 700;
+    color: #333;
+    font-family: 'Courier New', monospace;
+    line-height: 1;
+}
+
+.display-timeout-unit {
+    font-size: 20px;
+    font-weight: 600;
+    color: #666;
+}
+
+.display-timeout-progress-ring {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.progress-ring-bg {
+    fill: none;
+    stroke: rgba(0, 0, 0, 0.1);
+    stroke-width: 4;
+}
+
+.progress-ring-fill {
+    fill: none;
+    stroke: #4caf50;
+    stroke-width: 4;
+    stroke-linecap: round;
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+    transition: stroke-dashoffset 0.3s ease, stroke 0.3s ease;
+    stroke-dasharray: 163.36; /* 2 * PI * 26 */
+    stroke-dashoffset: 0;
+}
+
+.display-evaluation-timeout-bar.timeout-warning .progress-ring-fill {
+    stroke: #ff3333;
+}
+
+.display-evaluation-timeout-bar.timeout-paused .progress-ring-fill {
+    stroke: #ff9800;
+}
+
+.display-evaluation-timeout-bar.timeout-paused .display-timeout-time {
+    color: #ff9800;
+}

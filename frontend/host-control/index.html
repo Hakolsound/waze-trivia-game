@@ -531,11 +531,31 @@
                             </button>
                         </div>
 
-                        <div id="next-in-line-card" class="next-in-line-redesign hidden">
-                            <div class="next-indicator">NEXT UP</div>
-                            <div class="next-team-info">
-                                <span class="next-team-name" id="next-team-name">Team Beta</span>
-                                <span class="next-timing" id="next-buzzer-time">at 3.1s</span>
+                        <!-- Evaluation Timeout Status Bar -->
+                        <div id="evaluation-timeout-bar" class="evaluation-timeout-bar hidden">
+                            <div class="timeout-header">
+                                <span class="timeout-icon">⏲️</span>
+                                <span class="timeout-label">Auto-Wrong Evaluation</span>
+                            </div>
+                            <div class="timeout-status">
+                                <div class="timeout-timer">
+                                    <span class="timeout-time" id="evaluation-timeout-time">30</span>
+                                    <span class="timeout-unit">s</span>
+                                </div>
+                                <div class="timeout-progress-bar">
+                                    <div class="timeout-progress-fill" id="evaluation-timeout-progress"></div>
+                                </div>
+                            </div>
+                            <div class="timeout-controls">
+                                <button id="pause-evaluation-timeout-btn" class="timeout-btn timeout-btn-pause" title="Pause timer">
+                                    <span>⏸</span>
+                                </button>
+                                <button id="resume-evaluation-timeout-btn" class="timeout-btn timeout-btn-resume hidden" title="Resume timer">
+                                    <span>▶️</span>
+                                </button>
+                                <button id="cancel-evaluation-timeout-btn" class="timeout-btn timeout-btn-cancel" title="Cancel auto-wrong">
+                                    <span>✕</span>
+                                </button>
                             </div>
                         </div>
                     </div>

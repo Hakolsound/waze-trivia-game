@@ -704,6 +704,7 @@ h1.question-text,
   transform: scale(0.8);
   transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   padding: 10% 5%;
+  overflow: hidden;
 }
 
 .answer-feedback.show {

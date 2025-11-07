@@ -2258,10 +2258,16 @@ class HostControl {
 
 
     handleAnswerEvaluated(data) {
+        // Store the backend-calculated points in the buzzer object for display consistency
+        const buzzerIndex = this.buzzerOrder.findIndex(b => b.groupId === data.groupId);
+        if (buzzerIndex !== -1) {
+            this.buzzerOrder[buzzerIndex].pointsAwarded = data.pointsAwarded;
+        }
+
         // Add to evaluation history
         const teamName = this.getTeamName(data.groupId);
         this.addToEvaluationHistory(teamName, data.isCorrect, data.pointsAwarded);
-        
+
         // Update team display to reflect new scores
         this.updateTeamDisplay();
 
@@ -2414,8 +2420,15 @@ class HostControl {
             const position = this.buzzerOrder.indexOf(buzzer) + 1;
             const teamName = this.getTeamName(buzzer.groupId);
             const deltaTime = (buzzer.deltaMs / 1000).toFixed(2);
-            const actualPoints = this.getActualPointsForBuzzer(buzzer);
-            const wrongPenalty = this.getWrongAnswerPenalty(buzzer);
+
+            // Use backend-calculated points if available (from answer-evaluated event)
+            // Otherwise calculate on frontend (before evaluation)
+            const actualPoints = buzzer.pointsAwarded !== undefined
+                ? Math.abs(buzzer.pointsAwarded)
+                : this.getActualPointsForBuzzer(buzzer);
+            const wrongPenalty = buzzer.pointsAwarded !== undefined
+                ? (buzzer.pointsAwarded < 0 ? buzzer.pointsAwarded : this.getWrongAnswerPenalty(buzzer))
+                : this.getWrongAnswerPenalty(buzzer);
 
             // Pre-calculate position text to avoid conditionals
             const positionTexts = ['1st', '2nd', '3rd'];

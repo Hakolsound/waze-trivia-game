@@ -2231,8 +2231,10 @@ class HostControl {
         this.elements.currentTeamName.textContent = teamName;
         this.elements.currentBuzzerTime.textContent = `Buzzed in at ${deltaTime}s`;
 
-        // Update points - show actual time-based points if applicable
-        const actualPoints = this.getActualPointsForBuzzer(buzzer);
+        // Update points - use backend-calculated points if available, otherwise calculate on frontend
+        const actualPoints = buzzer.pointsAwarded !== undefined
+            ? Math.abs(buzzer.pointsAwarded)
+            : this.getActualPointsForBuzzer(buzzer);
         this.elements.questionPoints.textContent = `+${actualPoints}`;
 
         // Store current buzzer position for evaluation
@@ -2267,6 +2269,9 @@ class HostControl {
         // Add to evaluation history
         const teamName = this.getTeamName(data.groupId);
         this.addToEvaluationHistory(teamName, data.isCorrect, data.pointsAwarded);
+
+        // Refresh the evaluation modal to show backend-calculated points
+        this.updateAnswerEvaluationModal();
 
         // Update team display to reflect new scores
         this.updateTeamDisplay();

@@ -449,7 +449,8 @@ class GameService {
         const penaltyPoints = this.calculatePenaltyPoints(
           basePoints,
           game.wrong_answer_penalty_ratio || '1:1',
-          game.wrong_answer_penalty_custom || 0
+          game.wrong_answer_penalty_custom || 0,
+          game.wrong_answer_penalty_custom_multiplier || 1.5
         );
         pointsToAward = -penaltyPoints;
       } else {
@@ -1743,7 +1744,7 @@ class GameService {
   // Wrong Answer Penalty Settings
   async getPenaltySettings(gameId) {
     const game = await this.db.get(
-      'SELECT wrong_answer_penalty_enabled, wrong_answer_penalty_ratio, wrong_answer_penalty_custom FROM games WHERE id = ?',
+      'SELECT wrong_answer_penalty_enabled, wrong_answer_penalty_ratio, wrong_answer_penalty_custom, wrong_answer_penalty_custom_multiplier FROM games WHERE id = ?',
       [gameId]
     );
     if (!game) throw new Error('Game not found');
@@ -1751,7 +1752,8 @@ class GameService {
     return {
       enabled: Boolean(game.wrong_answer_penalty_enabled),
       ratio: game.wrong_answer_penalty_ratio || '1:1',
-      customPoints: game.wrong_answer_penalty_custom || 0
+      customPoints: game.wrong_answer_penalty_custom || 0,
+      customMultiplier: game.wrong_answer_penalty_custom_multiplier || 1.5
     };
   }
 
@@ -1775,6 +1777,11 @@ class GameService {
     if (settings.hasOwnProperty('customPoints')) {
       updates.push('wrong_answer_penalty_custom = ?');
       values.push(settings.customPoints);
+    }
+
+    if (settings.hasOwnProperty('customMultiplier')) {
+      updates.push('wrong_answer_penalty_custom_multiplier = ?');
+      values.push(settings.customMultiplier);
     }
 
     if (updates.length === 0) {
@@ -1801,9 +1808,13 @@ class GameService {
     return { success: true, settings: updatedSettings };
   }
 
-  calculatePenaltyPoints(questionPoints, ratio, customPoints) {
+  calculatePenaltyPoints(questionPoints, ratio, customPoints, customMultiplier = 1.5) {
     if (ratio === 'custom') {
       return customPoints;
+    }
+
+    if (ratio === 'custom-ratio') {
+      return Math.round(questionPoints * customMultiplier);
     }
 
     const [numerator, denominator] = ratio.split(':').map(Number);

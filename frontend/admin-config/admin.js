@@ -302,6 +302,8 @@ class AdminConfig {
             penaltyEnabled: document.getElementById('penalty-enabled'),
             penaltyDetails: document.getElementById('penalty-details'),
             penaltyRatio: document.getElementById('penalty-ratio'),
+            penaltyCustomRatioDetails: document.getElementById('penalty-custom-ratio-details'),
+            penaltyCustomMultiplier: document.getElementById('penalty-custom-multiplier'),
             penaltyCustomDetails: document.getElementById('penalty-custom-details'),
             penaltyCustomPoints: document.getElementById('penalty-custom-points'),
 
@@ -3390,9 +3392,20 @@ class AdminConfig {
     }
 
     togglePenaltyCustomDetails() {
-        if (this.elements.penaltyCustomDetails && this.elements.penaltyRatio) {
-            this.elements.penaltyCustomDetails.style.display =
-                this.elements.penaltyRatio.value === 'custom' ? 'block' : 'none';
+        if (this.elements.penaltyRatio) {
+            const ratioValue = this.elements.penaltyRatio.value;
+
+            // Show custom ratio input if custom-ratio is selected
+            if (this.elements.penaltyCustomRatioDetails) {
+                this.elements.penaltyCustomRatioDetails.style.display =
+                    ratioValue === 'custom-ratio' ? 'block' : 'none';
+            }
+
+            // Show custom fixed points input if custom is selected
+            if (this.elements.penaltyCustomDetails) {
+                this.elements.penaltyCustomDetails.style.display =
+                    ratioValue === 'custom' ? 'block' : 'none';
+            }
         }
     }
 
@@ -3414,6 +3427,9 @@ class AdminConfig {
             if (this.elements.penaltyRatio) {
                 this.elements.penaltyRatio.value = settings.ratio || '1:1';
             }
+            if (this.elements.penaltyCustomMultiplier) {
+                this.elements.penaltyCustomMultiplier.value = settings.customMultiplier || 1.5;
+            }
             if (this.elements.penaltyCustomPoints) {
                 this.elements.penaltyCustomPoints.value = settings.customPoints || 50;
             }
@@ -3431,6 +3447,7 @@ class AdminConfig {
         const settings = {
             enabled: this.elements.penaltyEnabled?.checked || false,
             ratio: this.elements.penaltyRatio?.value || '1:1',
+            customMultiplier: parseFloat(this.elements.penaltyCustomMultiplier?.value) || 1.5,
             customPoints: parseInt(this.elements.penaltyCustomPoints?.value) || 50
         };
 

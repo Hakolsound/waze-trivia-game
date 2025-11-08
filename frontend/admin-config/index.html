@@ -172,8 +172,19 @@
                                         <option value="1:1">Equal (1:1) - Wrong answer costs same as question points</option>
                                         <option value="1:2">Half (1:2) - Wrong answer costs half the question points</option>
                                         <option value="2:1">Double (2:1) - Wrong answer costs double the question points</option>
-                                        <option value="custom">Custom - Set a fixed penalty amount</option>
+                                        <option value="custom-ratio">Custom Ratio (X:1) - Multiply question points by X</option>
+                                        <option value="custom">Custom Fixed - Set a fixed penalty amount</option>
                                     </select>
+                                </div>
+                                <div class="setting-item penalty-custom-ratio-details" id="penalty-custom-ratio-details" style="display: none;">
+                                    <div class="setting-info">
+                                        <label for="penalty-custom-multiplier">✖️ Custom Multiplier (X):</label>
+                                        <p class="setting-description">Multiply question points by this number (e.g., 3 means penalty = points × 3)</p>
+                                    </div>
+                                    <div class="threshold-input-container">
+                                        <input type="number" id="penalty-custom-multiplier" min="0.1" max="10" step="0.1" value="1.5" class="threshold-input">
+                                        <span class="input-suffix">× question points</span>
+                                    </div>
                                 </div>
                                 <div class="setting-item penalty-custom-details" id="penalty-custom-details" style="display: none;">
                                     <div class="setting-info">

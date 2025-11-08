@@ -103,6 +103,7 @@ class Database {
         wrong_answer_penalty_enabled BOOLEAN DEFAULT 0,
         wrong_answer_penalty_ratio TEXT DEFAULT '1:1',
         wrong_answer_penalty_custom INTEGER DEFAULT 0,
+        wrong_answer_penalty_custom_multiplier REAL DEFAULT 1.5,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`,
@@ -240,6 +241,14 @@ class Database {
     } catch (error) {
       if (!error.message.includes('duplicate column name')) {
         console.error('Error adding wrong_answer_penalty_custom column:', error.message);
+      }
+    }
+
+    try {
+      await this.run('ALTER TABLE games ADD COLUMN wrong_answer_penalty_custom_multiplier REAL DEFAULT 1.5');
+    } catch (error) {
+      if (!error.message.includes('duplicate column name')) {
+        console.error('Error adding wrong_answer_penalty_custom_multiplier column:', error.message);
       }
     }
 

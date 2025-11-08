@@ -759,8 +759,10 @@ class GameService {
 
     let actualElapsedTime;
     if (gameState.isPaused) {
-      // Timer is paused - use time up to when it was paused, minus any previous pauses
-      actualElapsedTime = (gameState.pausedAt - gameState.startTime) - gameState.totalPausedDuration;
+      // Timer is paused - calculate elapsed time including the current pause period
+      const currentPauseDuration = currentTime - gameState.pausedAt;
+      const totalPausedIncludingCurrent = gameState.totalPausedDuration + currentPauseDuration;
+      actualElapsedTime = (currentTime - gameState.startTime) - totalPausedIncludingCurrent;
     } else {
       // Timer is running - use current time minus all paused duration
       actualElapsedTime = (currentTime - gameState.startTime) - gameState.totalPausedDuration;

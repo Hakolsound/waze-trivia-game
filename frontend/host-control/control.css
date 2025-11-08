@@ -2248,6 +2248,18 @@ kbd {
   align-self: center;
 }
 
+.mega-btn-skip .mega-btn-icon {
+  font-size: 1.75rem;
+}
+
+.mega-btn-skip .mega-btn-text {
+  font-size: 0.8rem;
+}
+
+.mega-btn-skip .mega-btn-hint {
+  font-size: 0.45rem;
+}
+
 /* Next in Line Redesign */
 /* History Redesign */
 .evaluation-history-redesign {

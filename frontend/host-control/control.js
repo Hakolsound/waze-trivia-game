@@ -2374,6 +2374,7 @@ class HostControl {
 
     resetAnswerEvaluation() {
         this.currentBuzzerPosition = -1;
+        this.buzzerOrder = []; // Clear buzzer queue to prevent stale evaluations
         this.answerShown = false; // Reset answer shown state
         this.isAnswerVisible = false; // Reset answer visibility state
         if (this.elements.correctAnswerContent) {

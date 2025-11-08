@@ -824,7 +824,7 @@ class HostControl {
                 case 'ArrowLeft': // Left Arrow - Mark Incorrect (if eval modal open) or Previous Question
                     e.preventDefault();
                     if (evaluationModalOpen && this.currentGame?.keyboard_shortcuts_enabled !== false) {
-                        this.evaluateAnswer(this.currentBuzzerPosition, false);
+                        this.markAnswer(false);
                     } else if (!evaluationModalOpen) {
                         this.prevQuestion();
                     }
@@ -833,7 +833,7 @@ class HostControl {
                 case 'ArrowRight': // Right Arrow - Mark Correct (if eval modal open) or Next Question
                     e.preventDefault();
                     if (evaluationModalOpen && this.currentGame?.keyboard_shortcuts_enabled !== false) {
-                        this.evaluateAnswer(this.currentBuzzerPosition, true);
+                        this.markAnswer(true);
                     } else if (!evaluationModalOpen) {
                         this.nextQuestion();
                     }

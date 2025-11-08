@@ -2242,7 +2242,9 @@ kbd {
 .mega-btn-skip {
   background: linear-gradient(135deg, #FF9800, #F57C00);
   color: white;
-  height: 50%;
+  min-height: 100px;
+  max-height: 120px;
+  padding: 20px 25px;
   align-self: center;
 }
 

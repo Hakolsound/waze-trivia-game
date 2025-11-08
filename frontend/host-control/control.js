@@ -604,6 +604,13 @@ class HostControl {
             this.handleEvaluationTimeoutExpired(data);
         });
 
+        this.socket.on('keyboard-shortcuts-settings-updated', (data) => {
+            if (data.gameId === this.currentGame?.id) {
+                this.currentGame.keyboard_shortcuts_enabled = data.enabled;
+                this.updateKeyboardShortcutsUI();
+            }
+        });
+
         this.socket.on('question-prepared', (data) => {
             this.handleQuestionPrepared(data);
         });
@@ -2404,10 +2411,27 @@ class HostControl {
         console.log(`[FRONTEND] showAnswerEvaluationModal called - currentBuzzerPosition: ${this.currentBuzzerPosition}, buzzerOrder length: ${this.buzzerOrder.length}`);
         this.elements.answerEvaluationModal.classList.remove('hidden');
         this.updateAnswerEvaluationModal();
+        this.updateKeyboardShortcutsUI();
     }
 
     hideAnswerEvaluationModal() {
         this.elements.answerEvaluationModal.classList.add('hidden');
+    }
+
+    updateKeyboardShortcutsUI() {
+        // Get the shortcut indicator elements
+        const incorrectShortcut = document.querySelector('#mark-incorrect-btn .mega-btn-shortcut');
+        const correctShortcut = document.querySelector('#mark-correct-btn .mega-btn-shortcut');
+
+        // Show or hide based on the setting
+        const enabled = this.currentGame?.keyboard_shortcuts_enabled !== false; // Default to true if not set
+
+        if (incorrectShortcut) {
+            incorrectShortcut.style.display = enabled ? 'block' : 'none';
+        }
+        if (correctShortcut) {
+            correctShortcut.style.display = enabled ? 'block' : 'none';
+        }
     }
 
     // EMERGENCY: Force refresh evaluation modal (callable via Ctrl/Cmd+E)

@@ -73,6 +73,21 @@ class Database {
       console.log('Pronunciation migration check error:', e.message);
     }
 
+    // Add keyboard_shortcuts_enabled column to games table if it doesn't exist
+    try {
+      const tableInfo = await this.all("PRAGMA table_info(games)");
+      const hasKeyboardShortcuts = tableInfo.some(column => column.name === 'keyboard_shortcuts_enabled');
+
+      if (!hasKeyboardShortcuts) {
+        await this.run('ALTER TABLE games ADD COLUMN keyboard_shortcuts_enabled BOOLEAN DEFAULT 1');
+        console.log('Added keyboard_shortcuts_enabled column to existing games table');
+      } else {
+        console.log('keyboard_shortcuts_enabled column already exists, skipping migration');
+      }
+    } catch (e) {
+      console.log('Keyboard shortcuts migration check error:', e.message);
+    }
+
     const tables = [
       `CREATE TABLE IF NOT EXISTS games (
         id TEXT PRIMARY KEY,
@@ -100,6 +115,7 @@ class Database {
         allow_negative_scores BOOLEAN DEFAULT 0,
         evaluation_timeout_enabled BOOLEAN DEFAULT 0,
         evaluation_timeout_duration INTEGER DEFAULT 30,
+        keyboard_shortcuts_enabled BOOLEAN DEFAULT 1,
         wrong_answer_penalty_enabled BOOLEAN DEFAULT 0,
         wrong_answer_penalty_ratio TEXT DEFAULT '1:1',
         wrong_answer_penalty_custom INTEGER DEFAULT 0,

@@ -200,6 +200,9 @@ class AdminConfig {
             // Load evaluation timeout settings
             await this.loadEvaluationTimeoutSettings();
 
+            // Load keyboard shortcuts settings
+            await this.loadKeyboardShortcutsSettings();
+
             // Load penalty settings
             await this.loadPenaltySettings();
 
@@ -297,6 +300,10 @@ class AdminConfig {
             evaluationTimeoutDetails: document.getElementById('evaluation-timeout-details'),
             evaluationTimeoutDuration: document.getElementById('evaluation-timeout-duration'),
             saveEvaluationTimeoutSettingsBtn: document.getElementById('save-evaluation-timeout-settings-btn'),
+
+            // Keyboard shortcuts settings elements
+            keyboardShortcutsEnabled: document.getElementById('keyboard-shortcuts-enabled'),
+            saveKeyboardShortcutsSettingsBtn: document.getElementById('save-keyboard-shortcuts-settings-btn'),
 
             // Penalty settings elements
             penaltyEnabled: document.getElementById('penalty-enabled'),
@@ -526,6 +533,12 @@ class AdminConfig {
         if (this.elements.saveEvaluationTimeoutSettingsBtn) {
             this.elements.saveEvaluationTimeoutSettingsBtn.addEventListener('click', () => {
                 this.saveEvaluationTimeoutSettingsWithToast();
+            });
+        }
+
+        if (this.elements.saveKeyboardShortcutsSettingsBtn) {
+            this.elements.saveKeyboardShortcutsSettingsBtn.addEventListener('click', () => {
+                this.saveKeyboardShortcutsSettingsWithToast();
             });
         }
 
@@ -3380,6 +3393,72 @@ class AdminConfig {
         } catch (error) {
             console.error('Failed to save evaluation timeout settings:', error);
             this.showToast('Failed to save evaluation timeout settings', 'error');
+        }
+    }
+
+    // Keyboard Shortcuts Settings Methods
+    async loadKeyboardShortcutsSettings() {
+        if (!this.currentGame) return;
+
+        try {
+            const response = await fetch(`/api/games/${this.currentGame.id}/keyboard-shortcuts-settings`);
+            if (!response.ok) {
+                throw new Error('Failed to load keyboard shortcuts settings');
+            }
+
+            const settings = await response.json();
+
+            if (this.elements.keyboardShortcutsEnabled) {
+                this.elements.keyboardShortcutsEnabled.checked = settings.enabled !== false; // Default to true
+            }
+        } catch (error) {
+            console.error('Failed to load keyboard shortcuts settings:', error);
+            // Default to enabled if load fails
+            if (this.elements.keyboardShortcutsEnabled) {
+                this.elements.keyboardShortcutsEnabled.checked = true;
+            }
+        }
+    }
+
+    async saveKeyboardShortcutsSettings() {
+        if (!this.currentGame) return;
+
+        const settings = {
+            enabled: this.elements.keyboardShortcutsEnabled ? this.elements.keyboardShortcutsEnabled.checked : true
+        };
+
+        try {
+            const response = await fetch(`/api/games/${this.currentGame.id}/keyboard-shortcuts-settings`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(settings)
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to save keyboard shortcuts settings');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Failed to save keyboard shortcuts settings:', error);
+            throw error;
+        }
+    }
+
+    async saveKeyboardShortcutsSettingsWithToast() {
+        if (!this.currentGame) {
+            this.showToast('No game selected', 'error');
+            return;
+        }
+
+        try {
+            await this.saveKeyboardShortcutsSettings();
+            this.showToast('Keyboard shortcuts settings saved successfully', 'success');
+        } catch (error) {
+            console.error('Failed to save keyboard shortcuts settings:', error);
+            this.showToast('Failed to save keyboard shortcuts settings', 'error');
         }
     }
 

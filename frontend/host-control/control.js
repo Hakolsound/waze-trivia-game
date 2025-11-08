@@ -791,16 +791,23 @@ class HostControl {
                 return;
             }
             
-            // Don't trigger shortcuts if a modal is open (except for Escape)
+            // Don't trigger shortcuts if a modal is open (except for Escape and evaluation arrows)
             const answerModal = document.getElementById('answer-evaluation-modal');
             const pointsModal = document.getElementById('manual-points-modal');
             const actionsModal = document.getElementById('game-actions-modal');
 
-            const modalOpen = (answerModal && !answerModal.classList.contains('hidden')) ||
-                            (pointsModal && !pointsModal.classList.contains('hidden')) ||
+            const evaluationModalOpen = answerModal && !answerModal.classList.contains('hidden');
+            const otherModalOpen = (pointsModal && !pointsModal.classList.contains('hidden')) ||
                             (actionsModal && !actionsModal.classList.contains('hidden'));
-                            
-            if (modalOpen && e.key !== 'Escape') {
+
+            // Allow arrow keys in evaluation modal if keyboard shortcuts are enabled
+            const isEvaluationArrow = evaluationModalOpen && (e.key === 'ArrowLeft' || e.key === 'ArrowRight');
+
+            if (otherModalOpen && e.key !== 'Escape') {
+                return;
+            }
+
+            if (evaluationModalOpen && e.key !== 'Escape' && !isEvaluationArrow) {
                 return;
             }
             
@@ -814,14 +821,22 @@ class HostControl {
                     }
                     break;
                     
-                case 'ArrowLeft': // Left Arrow - Previous Question
+                case 'ArrowLeft': // Left Arrow - Mark Incorrect (if eval modal open) or Previous Question
                     e.preventDefault();
-                    this.prevQuestion();
+                    if (evaluationModalOpen && this.currentGame?.keyboard_shortcuts_enabled !== false) {
+                        this.evaluateAnswer(this.currentBuzzerPosition, false);
+                    } else if (!evaluationModalOpen) {
+                        this.prevQuestion();
+                    }
                     break;
-                    
-                case 'ArrowRight': // Right Arrow - Next Question  
+
+                case 'ArrowRight': // Right Arrow - Mark Correct (if eval modal open) or Next Question
                     e.preventDefault();
-                    this.nextQuestion();
+                    if (evaluationModalOpen && this.currentGame?.keyboard_shortcuts_enabled !== false) {
+                        this.evaluateAnswer(this.currentBuzzerPosition, true);
+                    } else if (!evaluationModalOpen) {
+                        this.nextQuestion();
+                    }
                     break;
                     
                 case 'Escape': // Escape - Hide Leaderboard or Close Modals

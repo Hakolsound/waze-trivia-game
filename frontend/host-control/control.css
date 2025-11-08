@@ -2146,10 +2146,11 @@ kbd {
 /* Mega Buttons */
 .evaluation-mega-buttons {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 1fr 0.5fr 1fr;
   gap: 30px;
   margin: 0 auto;
   max-width: 800px;
+  align-items: center;
 }
 
 .mega-btn {
@@ -2214,6 +2215,18 @@ kbd {
   opacity: 0.7;
   /* Performance optimization */
   text-rendering: optimizeSpeed;
+}
+
+.mega-btn-shortcut {
+  position: absolute;
+  top: 12px;
+  right: 15px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  opacity: 0.9;
 }
 
 .mega-btn-correct {

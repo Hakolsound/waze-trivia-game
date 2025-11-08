@@ -448,6 +448,27 @@ module.exports = (gameService) => {
     }
   });
 
+  // Keyboard shortcuts settings endpoints
+  router.get('/:id/keyboard-shortcuts-settings', async (req, res) => {
+    try {
+      const settings = await gameService.getKeyboardShortcutsSettings(req.params.id);
+      res.json(settings);
+    } catch (error) {
+      res.status(404).json({ error: error.message });
+    }
+  });
+
+  router.put('/:id/keyboard-shortcuts-settings', async (req, res) => {
+    try {
+      console.log('Updating keyboard shortcuts settings for game:', req.params.id, 'with data:', req.body);
+      const result = await gameService.updateKeyboardShortcutsSettings(req.params.id, req.body);
+      res.json(result);
+    } catch (error) {
+      console.error('Keyboard shortcuts settings update error:', error);
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   // Evaluation timeout control endpoints
   router.post('/:id/evaluation-timeout/pause', async (req, res) => {
     try {

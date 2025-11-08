@@ -1504,6 +1504,54 @@ class GameService {
     return { success: true, settings: updatedSettings };
   }
 
+  async getKeyboardShortcutsSettings(gameId) {
+    const game = await this.db.get(
+      'SELECT keyboard_shortcuts_enabled FROM games WHERE id = ?',
+      [gameId]
+    );
+    if (!game) throw new Error('Game not found');
+
+    return {
+      enabled: game.keyboard_shortcuts_enabled !== 0 // Default to true
+    };
+  }
+
+  async updateKeyboardShortcutsSettings(gameId, settings) {
+    const game = await this.db.get('SELECT id FROM games WHERE id = ?', [gameId]);
+    if (!game) throw new Error('Game not found');
+
+    const updates = [];
+    const values = [];
+
+    if (settings.hasOwnProperty('enabled')) {
+      updates.push('keyboard_shortcuts_enabled = ?');
+      values.push(settings.enabled ? 1 : 0);
+    }
+
+    if (updates.length === 0) {
+      throw new Error('No valid settings to update');
+    }
+
+    values.push(gameId);
+    await this.db.run(
+      `UPDATE games SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      values
+    );
+
+    console.log(`[KEYBOARD-SHORTCUTS] Settings updated for game ${gameId}:`, settings);
+
+    // Get updated settings
+    const updatedSettings = await this.getKeyboardShortcutsSettings(gameId);
+
+    // Broadcast to all clients
+    this.io.to(`game-${gameId}`).emit('keyboard-shortcuts-settings-updated', updatedSettings);
+    this.io.to('control-panel').emit('keyboard-shortcuts-settings-updated', { gameId, ...updatedSettings });
+
+    console.log(`[KEYBOARD-SHORTCUTS] Settings broadcasted to all clients for game ${gameId}`);
+
+    return { success: true, settings: updatedSettings };
+  }
+
   // Start evaluation timeout when a buzzer is pressed
   startEvaluationTimeout(gameId, groupId) {
     const gameState = this.activeGames.get(gameId);

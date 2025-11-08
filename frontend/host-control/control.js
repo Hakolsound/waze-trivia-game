@@ -2784,15 +2784,20 @@ class HostControl {
         const penaltyPoints = this.calculatePenaltyPoints(
             basePoints,
             this.currentGame.wrong_answer_penalty_ratio || '1:1',
-            this.currentGame.wrong_answer_penalty_custom || 0
+            this.currentGame.wrong_answer_penalty_custom || 0,
+            this.currentGame.wrong_answer_penalty_custom_multiplier || 1.5
         );
 
         return -penaltyPoints;
     }
 
-    calculatePenaltyPoints(questionPoints, ratio, customPoints) {
+    calculatePenaltyPoints(questionPoints, ratio, customPoints, customMultiplier = 1.5) {
         if (ratio === 'custom') {
             return customPoints;
+        }
+
+        if (ratio === 'custom-ratio') {
+            return Math.round(questionPoints * customMultiplier);
         }
 
         const [numerator, denominator] = ratio.split(':').map(Number);

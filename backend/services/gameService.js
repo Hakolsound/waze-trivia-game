@@ -752,9 +752,22 @@ class GameService {
       return;
     }
 
-    // Always use JavaScript timing for physical buzzers (ESP32 deltaMs is unreliable)
-    // Calculate actual elapsed time from when question started
-    const deltaMs = timestamp - gameState.startTime;
+    // Calculate deltaMs based on actual question time elapsed (paused time excluded)
+    // This ensures evaluation timeout periods don't count against teams
+    const totalQuestionTime = gameState.timeLimit;
+    const currentTime = TimingService.now();
+
+    let actualElapsedTime;
+    if (gameState.isPaused) {
+      // Timer is paused - use time up to when it was paused, minus any previous pauses
+      actualElapsedTime = (gameState.pausedAt - gameState.startTime) - gameState.totalPausedDuration;
+    } else {
+      // Timer is running - use current time minus all paused duration
+      actualElapsedTime = (currentTime - gameState.startTime) - gameState.totalPausedDuration;
+    }
+
+    const deltaMs = actualElapsedTime;
+    console.log(`[BUZZ] Timing - Question time elapsed: ${deltaMs}ms (excludes ${gameState.totalPausedDuration}ms of paused time)`);
 
     // Get team name for logging
     const teams = await this.db.all('SELECT id, name FROM groups WHERE game_id = ?', [gameId]);

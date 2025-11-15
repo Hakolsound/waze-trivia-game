@@ -317,12 +317,14 @@ class AdminConfig {
             // Audio settings elements
             ttsEnabled: document.getElementById('tts-enabled'),
             ttsDetails: document.getElementById('tts-details'),
+            ttsLanguageFilter: document.getElementById('tts-language-filter'),
             ttsVoice: document.getElementById('tts-voice'),
             ttsSpeed: document.getElementById('tts-speed'),
             ttsSpeedValue: document.getElementById('tts-speed-value'),
             ttsVolume: document.getElementById('tts-volume'),
             ttsVolumeValue: document.getElementById('tts-volume-value'),
             testTtsBtn: document.getElementById('test-tts-btn'),
+            testTtsHebrewBtn: document.getElementById('test-tts-hebrew-btn'),
             sfxEnabled: document.getElementById('sfx-enabled'),
             sfxDetails: document.getElementById('sfx-details'),
             correctSfx: document.getElementById('correct-sfx'),
@@ -610,6 +612,12 @@ class AdminConfig {
         if (this.elements.testTtsBtn) {
             this.elements.testTtsBtn.addEventListener('click', () => {
                 this.testTtsVoice();
+            });
+        }
+
+        if (this.elements.testTtsHebrewBtn) {
+            this.elements.testTtsHebrewBtn.addEventListener('click', () => {
+                this.testTtsVoice('שלום');
             });
         }
 
@@ -3666,47 +3674,14 @@ class AdminConfig {
                 return;
             }
 
-            const voiceSelect = this.elements.ttsVoice;
-            if (!voiceSelect) return;
+            // Store all voices globally
+            this.allVoices = voices;
 
-            // Save current selection
-            const currentValue = voiceSelect.value;
+            // Update language filter options dynamically
+            this.updateLanguageFilter();
 
-            // Clear existing options except default
-            voiceSelect.innerHTML = '<option value="default">Default Voice</option>';
-
-            // Group voices by language
-            const voicesByLang = {};
-            voices.forEach(voice => {
-                const lang = voice.lang.split('-')[0]; // Get language code (e.g., 'en' from 'en-US')
-                if (!voicesByLang[lang]) {
-                    voicesByLang[lang] = [];
-                }
-                voicesByLang[lang].push(voice);
-            });
-
-            // Add voices grouped by language
-            Object.keys(voicesByLang).sort().forEach(lang => {
-                const langVoices = voicesByLang[lang];
-                langVoices.forEach(voice => {
-                    const option = document.createElement('option');
-                    option.value = voice.name;
-
-                    // Format: "Voice Name (en-US) [Female/Male]"
-                    let label = `${voice.name} (${voice.lang})`;
-                    option.textContent = label;
-
-                    voiceSelect.appendChild(option);
-                });
-            });
-
-            // Restore previous selection if it still exists
-            if (currentValue && currentValue !== 'default') {
-                const optionExists = Array.from(voiceSelect.options).some(opt => opt.value === currentValue);
-                if (optionExists) {
-                    voiceSelect.value = currentValue;
-                }
-            }
+            // Populate voice dropdown based on current language filter
+            this.filterVoicesByLanguage();
 
             console.log(`[AudioSettings] Loaded ${voices.length} voices`);
         };
@@ -3718,6 +3693,106 @@ class AdminConfig {
         if (window.speechSynthesis.onvoiceschanged !== undefined) {
             window.speechSynthesis.onvoiceschanged = populateVoices;
         }
+
+        // Add event listener for language filter change
+        if (this.elements.ttsLanguageFilter) {
+            this.elements.ttsLanguageFilter.addEventListener('change', () => {
+                this.filterVoicesByLanguage();
+            });
+        }
+    }
+
+    updateLanguageFilter() {
+        if (!this.elements.ttsLanguageFilter || !this.allVoices) return;
+
+        const languageSet = new Set();
+        const languageNames = {
+            'he': '🇮🇱 Hebrew (עברית)',
+            'en': '🇺🇸 English',
+            'ar': '🇸🇦 Arabic (العربية)',
+            'ru': '🇷🇺 Russian (Русский)',
+            'es': '🇪🇸 Spanish (Español)',
+            'fr': '🇫🇷 French (Français)',
+            'de': '🇩🇪 German (Deutsch)',
+            'it': '🇮🇹 Italian (Italiano)',
+            'pt': '🇵🇹 Portuguese (Português)',
+            'zh': '🇨🇳 Chinese (中文)',
+            'ja': '🇯🇵 Japanese (日本語)',
+            'ko': '🇰🇷 Korean (한국어)'
+        };
+
+        // Collect all available languages
+        this.allVoices.forEach(voice => {
+            const lang = voice.lang.split('-')[0];
+            languageSet.add(lang);
+        });
+
+        // Save current selection
+        const currentLang = this.elements.ttsLanguageFilter.value;
+
+        // Rebuild language filter (keep "All Languages" option)
+        const allOption = '<option value="all">All Languages</option>';
+        const langOptions = Array.from(languageSet).sort().map(lang => {
+            const displayName = languageNames[lang] || `${lang.toUpperCase()}`;
+            return `<option value="${lang}">${displayName}</option>`;
+        }).join('');
+
+        this.elements.ttsLanguageFilter.innerHTML = allOption + langOptions;
+
+        // Restore selection
+        if (currentLang && Array.from(languageSet).includes(currentLang)) {
+            this.elements.ttsLanguageFilter.value = currentLang;
+        }
+    }
+
+    filterVoicesByLanguage() {
+        if (!this.elements.ttsVoice || !this.allVoices) return;
+
+        const selectedLang = this.elements.ttsLanguageFilter?.value || 'all';
+        const currentValue = this.elements.ttsVoice.value;
+
+        // Clear existing options except default
+        this.elements.ttsVoice.innerHTML = '<option value="default">Default Voice</option>';
+
+        // Filter voices by language
+        let filteredVoices = this.allVoices;
+        if (selectedLang !== 'all') {
+            filteredVoices = this.allVoices.filter(voice =>
+                voice.lang.startsWith(selectedLang)
+            );
+        }
+
+        // Group voices by language
+        const voicesByLang = {};
+        filteredVoices.forEach(voice => {
+            const lang = voice.lang.split('-')[0];
+            if (!voicesByLang[lang]) {
+                voicesByLang[lang] = [];
+            }
+            voicesByLang[lang].push(voice);
+        });
+
+        // Add voices grouped by language
+        Object.keys(voicesByLang).sort().forEach(lang => {
+            const langVoices = voicesByLang[lang];
+            langVoices.forEach(voice => {
+                const option = document.createElement('option');
+                option.value = voice.name;
+                option.textContent = `${voice.name} (${voice.lang})`;
+                this.elements.ttsVoice.appendChild(option);
+            });
+        });
+
+        // Restore previous selection if it still exists
+        if (currentValue && currentValue !== 'default') {
+            const optionExists = Array.from(this.elements.ttsVoice.options).some(opt => opt.value === currentValue);
+            if (optionExists) {
+                this.elements.ttsVoice.value = currentValue;
+            }
+        }
+
+        const voiceCount = filteredVoices.length;
+        console.log(`[AudioSettings] Showing ${voiceCount} voices for language: ${selectedLang}`);
     }
 
     async loadAudioSettings() {
@@ -3847,13 +3922,15 @@ class AdminConfig {
         }
     }
 
-    testTtsVoice() {
+    testTtsVoice(customText = null) {
         if (!('speechSynthesis' in window)) {
             this.showToast('Text-to-speech not supported in this browser', 'error');
             return;
         }
 
-        const utterance = new SpeechSynthesisUtterance('Team Alpha');
+        // Use custom text if provided, otherwise default to 'Team Alpha'
+        const textToSpeak = customText || 'Team Alpha';
+        const utterance = new SpeechSynthesisUtterance(textToSpeak);
         const selectedVoiceName = this.elements.ttsVoice?.value || 'default';
 
         // Find the voice object by name
@@ -3862,6 +3939,7 @@ class AdminConfig {
             const voice = voices.find(v => v.name === selectedVoiceName);
             if (voice) {
                 utterance.voice = voice;
+                console.log(`[TTS Test] Using voice: ${voice.name} (${voice.lang}) for text: "${textToSpeak}"`);
             }
         }
 
@@ -3870,6 +3948,8 @@ class AdminConfig {
 
         // Don't cancel - just speak (browser will handle interruption)
         window.speechSynthesis.speak(utterance);
+
+        this.showToast(`Testing: "${textToSpeak}"`, 'success');
     }
 
     testSfx(type) {

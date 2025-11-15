@@ -317,8 +317,25 @@
                                     <div class="tts-details" id="tts-details" style="display: none;">
                                         <div class="setting-item">
                                             <div class="setting-info">
-                                                <label for="tts-voice">Voice:</label>
-                                                <p class="setting-description">Voices loaded from your browser</p>
+                                                <label for="tts-language-filter">🌍 Filter by Language:</label>
+                                                <p class="setting-description">Show voices for specific language</p>
+                                            </div>
+                                            <select id="tts-language-filter" class="language-filter-select">
+                                                <option value="all">All Languages</option>
+                                                <option value="he">🇮🇱 Hebrew (עברית)</option>
+                                                <option value="en">🇺🇸 English</option>
+                                                <option value="ar">🇸🇦 Arabic (العربية)</option>
+                                                <option value="ru">🇷🇺 Russian (Русский)</option>
+                                                <option value="es">🇪🇸 Spanish (Español)</option>
+                                                <option value="fr">🇫🇷 French (Français)</option>
+                                                <option value="de">🇩🇪 German (Deutsch)</option>
+                                                <!-- More languages will be added dynamically -->
+                                            </select>
+                                        </div>
+                                        <div class="setting-item">
+                                            <div class="setting-info">
+                                                <label for="tts-voice">🎤 Voice:</label>
+                                                <p class="setting-description">Available voices for selected language</p>
                                             </div>
                                             <select id="tts-voice" class="voice-select">
                                                 <option value="default">Default Voice</option>
@@ -338,7 +355,10 @@
                                             <input type="range" id="tts-volume" min="0" max="100" step="5" value="80" class="slider-input">
                                         </div>
                                         <div class="setting-item">
-                                            <button id="test-tts-btn" class="btn btn-secondary btn-small">🔊 Test Voice</button>
+                                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                                <button id="test-tts-btn" class="btn btn-secondary btn-small">🔊 Test Voice (English)</button>
+                                                <button id="test-tts-hebrew-btn" class="btn btn-secondary btn-small">🇮🇱 Test Hebrew (שלום)</button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
